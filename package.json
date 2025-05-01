@@ -1,0 +1,21 @@
+{
+  "name": "gb-mcp",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.6.1",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.10.2",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "typescript": "^5.8.3"
+  },
+  "type": "module"
+}
