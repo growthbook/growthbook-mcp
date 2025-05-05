@@ -245,6 +245,26 @@ server.tool(
   }
 );
 
+server.tool(
+  "get_experiment",
+  "Gets a single experiment from GrowthBook",
+  {
+    experimentId: z.string().describe("The ID of the experiment to get"),
+  },
+  async ({ experimentId }) => {
+    const res = await fetch(`${baseApiUrl}/experiments/${experimentId}`, {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+    });
+    const data = await res.json();
+    return {
+      content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+    };
+  }
+);
+
 // Start receiving messages on stdin and sending messages on stdout
 const transport = new StdioServerTransport();
 await server.connect(transport);
