@@ -1,14 +1,7 @@
-import {
-  McpServer,
-  ResourceTemplate,
-} from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-} from "@modelcontextprotocol/sdk/types.js";
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { z } from "zod";
+import { getDocs } from "./docs.js";
 
 function getApiKey() {
   const apiKey = process.env.GB_API_KEY;
@@ -18,17 +11,24 @@ function getApiKey() {
   return apiKey;
 }
 
-const baseApiUrl = "http://localhost:3100/api/v1";
+function getApiUrl() {
+  const defaultApiUrl = "https://api.growthbook.io/api/v1";
+  const userApiUrl = process.env.GB_API_URL;
+  return `${userApiUrl || defaultApiUrl}`;
+}
+
+const baseApiUrl = getApiUrl();
 const apiKey = getApiKey();
 
 // Create an MCP server
 const server = new McpServer(
   {
-    name: "GrowthBook",
+    name: "GrowthBook MCP",
     version: "1.0.0",
   },
   {
-    instructions: "You are a helpful assistant that can help with GrowthBook.",
+    instructions:
+      "You are a helpful assistant that interacts with GrowthBook, an open source feature flagging and experimentation platform.",
   }
 );
 
@@ -208,6 +208,7 @@ server.tool(
     valueType: z.enum(["string", "number", "boolean", "json"]),
     defaultValue: z.string(),
     tags: z.array(z.string()).optional(),
+    docs: z.enum(["nextjs", "react", "javascript", "typescript"]),
   },
   async ({
     id,
@@ -218,6 +219,7 @@ server.tool(
     valueType,
     defaultValue,
     tags,
+    docs,
   }) => {
     const payload = {
       id,
@@ -240,8 +242,19 @@ server.tool(
     });
 
     const data = await res.json();
+
+    const docsText = getDocs(docs);
+
+    const text = `
+    ${JSON.stringify(data, null, 2)}
+    
+    Here is the documentation for the feature flag, if it makes sense to add the flag to the codebase:
+    
+    ${docsText}
+    `;
+
     return {
-      content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+      content: [{ type: "text", text }],
     };
   }
 );
