@@ -17,9 +17,15 @@ function getApiUrl() {
   return `${userApiUrl || defaultApiUrl}`;
 }
 
+function getAppOrigin() {
+  const defaultAppOrigin = "https://app.growthbook.io";
+  const userAppOrigin = process.env.GB_APP_ORIGIN;
+  return `${userAppOrigin || defaultAppOrigin}`;
+}
+
 const baseApiUrl = getApiUrl();
 const apiKey = getApiKey();
-
+const appOrigin = getAppOrigin();
 // Create an MCP server
 const server = new McpServer(
   {
@@ -251,6 +257,8 @@ server.tool(
     Here is the documentation for the feature flag, if it makes sense to add the flag to the codebase:
     
     ${docsText}
+
+    Additionally, see the feature flag on GrowthBook: @${appOrigin}/features/${id}
     `;
 
     return {
@@ -261,7 +269,7 @@ server.tool(
 
 server.tool(
   "create_force_rule",
-  "Create a new force feature rule on an existing feature",
+  "Create a new force feature rule on an existing feature. Don't use this for experiments. Instead, use create_experiment.",
   {
     featureId: z.string(),
     description: z.string().optional(),
@@ -324,6 +332,161 @@ server.tool(
       },
     });
     const data = await res.json();
+
+    const text = `
+    ${JSON.stringify(data, null, 2)}
+    
+    See the experiment on GrowthBook: @${appOrigin}/experiment/${experimentId}
+    `;
+
+    return {
+      content: [{ type: "text", text }],
+    };
+  }
+);
+
+const VariationSchema = z.object({
+  name: z.string().describe("The value to use for the variation"),
+  key: z
+    .string()
+    .describe(
+      "The key to use for the variation. Use a slugified version of name, if not supplied"
+    ),
+  value: z.string().describe("The value to use for the variation"),
+});
+
+server.tool(
+  "create_experiment",
+  "Create a new experiment rule on an existing feature",
+  {
+    featureId: z.string(),
+    description: z.string().optional(),
+    condition: z
+      .string()
+      .describe(
+        "Applied to everyone by default. Write conditions in MongoDB-style query syntax."
+      )
+      .optional(),
+    variations: z.array(VariationSchema),
+    assignmentQueryId: z
+      .string()
+      .optional()
+      .describe(
+        "The ID of the assignment query to use. If not present, you'll need to fetch the datasource and show the result to the user for confirmation."
+      ),
+    name: z.string().describe("The name of the experiment"),
+    trackingKey: z
+      .string()
+      .describe(
+        "The key to use for tracking the experiment. Use a slugified version of name, if not supplied"
+      ),
+    environments: z.string().array(),
+    hypothesis: z.string().describe("The hypothesis for the experiment"),
+  },
+  async ({
+    featureId,
+    description,
+    condition,
+    variations,
+    environments,
+    assignmentQueryId,
+    name,
+    trackingKey,
+    hypothesis,
+  }) => {
+    if (!assignmentQueryId) {
+      const res = await fetch(`${baseApiUrl}/data-sources/`, {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+      });
+      const data = await res.json();
+
+      const text = `
+      ${JSON.stringify(data, null, 2)}
+      
+      Here is the list of datasources. Please select one and use the ID in the create_experiment tool.
+      `;
+
+      return {
+        content: [{ type: "text", text }],
+      };
+    }
+
+    // Create experiment
+    const experimentPayload = {
+      name,
+      trackingKey,
+      description,
+      condition,
+      variations,
+      hypothesis,
+      assignmentQueryId,
+    };
+
+    const experimentRes = await fetch(`${baseApiUrl}/experiments`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(experimentPayload),
+    });
+
+    if (!experimentRes.ok) {
+      const errorText = await experimentRes.text();
+      return {
+        content: [{ type: "text", text: errorText }],
+      };
+    }
+
+    const experimentData = await experimentRes.json();
+
+    const featurePayload = {
+      // Loop through the environments and create a rule for each one keyed by environment name
+      environments: environments.reduce((acc, env) => {
+        acc[env] = {
+          enabled: true,
+          rules: [
+            {
+              type: "experiment-ref",
+              experimentId: experimentData?.experiment.id,
+              description,
+              condition,
+              variations: experimentData?.experiment.variations.map(
+                (variation: { variationId: string }, idx: number) => ({
+                  value: variations[idx].value,
+                  variationId: variation.variationId,
+                })
+              ),
+            },
+          ],
+        };
+        return acc;
+      }, {} as Record<string, { enabled: boolean; rules: Array<any> }>),
+    };
+
+    // return {
+    //   content: [
+    //     {
+    //       type: "text",
+    //       text: JSON.stringify({ featurePayload, experimentData }, null, 2),
+    //     },
+    //   ],
+    // };
+
+    const res = await fetch(`${baseApiUrl}/features/${featureId}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(featurePayload),
+    });
+
+    const data = await res.json();
+
     return {
       content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
     };
