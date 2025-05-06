@@ -12,9 +12,9 @@ function getApiKey() {
 }
 
 function getApiUrl() {
-  const defaultApiUrl = "https://api.growthbook.io";
+  const defaultApiUrl = "https://api.growthbook.io/api/v1";
   const userApiUrl = process.env.GB_API_URL;
-  return `${userApiUrl || defaultApiUrl}/api/v1`;
+  return `${userApiUrl || defaultApiUrl}`;
 }
 
 const baseApiUrl = getApiUrl();
