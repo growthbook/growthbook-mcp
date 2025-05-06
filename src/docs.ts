@@ -1,3 +1,16 @@
+export function getDocs(docs: string) {
+  switch (docs) {
+    case "nextjs":
+    case "react":
+      return react;
+    case "javascript":
+    case "typescript":
+      return ts;
+    default:
+      return "For implementation details, visit https://docs.growthbook.io";
+  }
+}
+
 export const ts = `
 For GrowthBook usage in TypeScript or JavaScript, make sure it's installed and in the project:
 

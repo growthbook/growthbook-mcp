@@ -1,15 +1,7 @@
-import {
-  McpServer,
-  ResourceTemplate,
-} from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-} from "@modelcontextprotocol/sdk/types.js";
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { z } from "zod";
-import { react, ts } from "./docs.js";
+import { getDocs } from "./docs.js";
 
 function getApiKey() {
   const apiKey = process.env.GB_API_KEY;
@@ -19,17 +11,24 @@ function getApiKey() {
   return apiKey;
 }
 
-const baseApiUrl = "http://localhost:3100/api/v1";
+function getApiUrl() {
+  const defaultApiUrl = "https://api.growthbook.io";
+  const userApiUrl = process.env.GB_API_URL;
+  return `${userApiUrl || defaultApiUrl}/api/v1`;
+}
+
+const baseApiUrl = getApiUrl();
 const apiKey = getApiKey();
 
 // Create an MCP server
 const server = new McpServer(
   {
-    name: "GrowthBook",
+    name: "GrowthBook MCP",
     version: "1.0.0",
   },
   {
-    instructions: "You are a helpful assistant that can help with GrowthBook.",
+    instructions:
+      "You are a helpful assistant that interacts with GrowthBook, an open source feature flagging and experimentation platform.",
   }
 );
 
@@ -259,19 +258,6 @@ server.tool(
   }
 );
 
-function getDocs(docs: string) {
-  switch (docs) {
-    case "nextjs":
-    case "react":
-      return react;
-    case "javascript":
-    case "typescript":
-      return ts;
-    default:
-      return "For implementation details, visit https://docs.growthbook.io";
-  }
-}
-
 server.tool(
   "create_force_rule",
   "Create a new force feature rule on an existing feature",
@@ -336,74 +322,6 @@ server.tool(
         "Content-Type": "application/json",
       },
     });
-    const data = await res.json();
-    return {
-      content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
-    };
-  }
-);
-
-server.tool(
-  "add_experiment",
-  "Add a feature-flag experiment rule",
-  {
-    id: z
-      .string()
-      .regex(
-        /^[a-zA-Z0-9_-]+$/,
-        "Feature key can only include letters, numbers, hyphens, and underscores"
-      ),
-    archived: z.boolean().optional().default(false),
-    description: z.string().optional().default(""),
-    owner: z.string(),
-    project: z.string().optional().default(""),
-    valueType: z.enum(["string", "number", "boolean", "json"]),
-    defaultValue: z.string(),
-    tags: z.array(z.string()).optional(),
-    variations: z.array(z.string()),
-    docs: z.enum(["nextjs", "react", "javascript", "typescript"]),
-  },
-  async ({
-    id,
-    archived,
-    description,
-    owner,
-    project,
-    valueType,
-    defaultValue,
-    tags,
-    variations,
-    docs,
-  }) => {
-    const environmentsRes = await fetch(`${baseApiUrl}/environments`, {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-    });
-
-    const environmentsData = await environmentsRes.json();
-
-    const environments = environmentsData.reduce(
-      (acc: any, environment: any) => {
-        acc[environment.id] = {
-          enabled: environment.defaultState,
-          rules: [{ id, type: "experiment-ref", experimentId: id, variations }],
-        };
-        return acc;
-      },
-      {}
-    );
-
-    const res = await fetch(`${baseApiUrl}/experiments`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
-
     const data = await res.json();
     return {
       content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
