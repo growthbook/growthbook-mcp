@@ -198,8 +198,9 @@ server.tool(
       .string()
       .regex(
         /^[a-zA-Z0-9_-]+$/,
-        "Feature key can only include letters, numbers, hyphens, and underscores. Also known as the feature flag name."
-      ),
+        "Feature key can only include letters, numbers, hyphens, and underscores."
+      )
+      .describe("Also known as the feature flag name."),
     archived: z.boolean().optional().default(false),
     description: z.string().optional().default(""),
     owner: z.string(),
