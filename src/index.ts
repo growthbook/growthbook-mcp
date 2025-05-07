@@ -320,7 +320,7 @@ server.tool(
 
 server.tool(
   "create_safe_rollout_rule",
-  "Create a new safe rollout feature rule on an existing feature",
+  "Create a new safe rollout feature rule on an existing feature.",
   {
     featureId: z.string(),
     description: z.string().optional(),
@@ -329,10 +329,31 @@ server.tool(
       .describe(
         "Applied to everyone by default. Write conditions in MongoDB-style query syntax."
       ),
-    controlValue: z.string(),
-    variationValue: z.string(),
-    hashAttribute: z.string(),
+    controlValue: z
+      .string()
+      .describe(
+        "The type of the value should match the feature type. Ask the user for this value."
+      ),
+    variationValue: z
+      .string()
+      .describe(
+        "The type of the value should match the feature type. Ask the user for this value."
+      ),
+    hashAttribute: z.string().describe("Ask the user for this value."),
     environments: z.string().array(),
+    exposureQueryId: z.string().describe("Ask the user for this value."),
+    datasourceId: z.string().describe("Ask the user for this value."),
+    maxDuration: z
+      .number()
+      .describe(
+        "The max duration of the rollout in days. Max duration is how long you would like to monitor for regressions and receive recommendations based on guardrail metric results. Ask the user for this value."
+      ),
+    guardrailMetricIds: z
+      .string()
+      .array()
+      .describe(
+        "The metrics you want to use to track to see whether or not the rollout is causing any regressions. Must be a part of the datasource specified for the safe rollout. Ask the user for these values."
+      ),
   },
   async ({
     featureId,
@@ -342,6 +363,10 @@ server.tool(
     variationValue,
     hashAttribute,
     environments,
+    exposureQueryId,
+    datasourceId,
+    maxDuration,
+    guardrailMetricIds,
   }) => {
     const payload = {
       // Loop through the environments and create a rule for each one keyed by environment name
@@ -356,6 +381,10 @@ server.tool(
               controlValue,
               variationValue,
               hashAttribute,
+              exposureQueryId,
+              datasourceId,
+              maxDuration,
+              guardrailMetricIds,
             },
           ],
         };
