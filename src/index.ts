@@ -311,6 +311,66 @@ server.tool(
 );
 
 server.tool(
+  "create_safe_rollout_rule",
+  "Create a new safe rollout feature rule on an existing feature",
+  {
+    featureId: z.string(),
+    description: z.string().optional(),
+    condition: z
+      .string()
+      .describe(
+        "Applied to everyone by default. Write conditions in MongoDB-style query syntax."
+      ),
+    controlValue: z.string(),
+    variationValue: z.string(),
+    hashAttribute: z.string(),
+    environments: z.string().array(),
+  },
+  async ({
+    featureId,
+    description,
+    condition,
+    controlValue,
+    variationValue,
+    hashAttribute,
+    environments,
+  }) => {
+    const payload = {
+      // Loop through the environments and create a rule for each one keyed by environment name
+      environments: environments.reduce((acc, env) => {
+        acc[env] = {
+          enabled: true,
+          rules: [
+            {
+              type: "safe-rollout",
+              description,
+              condition,
+              controlValue,
+              variationValue,
+              hashAttribute,
+            },
+          ],
+        };
+        return acc;
+      }, {} as Record<string, { enabled: boolean; rules: Array<any> }>),
+    };
+
+    const res = await fetch(`${baseApiUrl}/features/${featureId}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    return {
+      content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+    };
+  }
+);
+
+server.tool(
   "get_experiment",
   "Gets a single experiment from GrowthBook",
   {
