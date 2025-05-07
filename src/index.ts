@@ -34,7 +34,7 @@ const server = new McpServer(
   },
   {
     instructions:
-      "You are a helpful assistant that interacts with GrowthBook, an open source feature flagging and experimentation platform.",
+      "You are a helpful assistant that interacts with GrowthBook, an open source feature flagging and experimentation platform. You can use tools to create and manage feature flags, experiments, and environments. Note that experiments are also called a/b tests.",
   }
 );
 
@@ -289,7 +289,7 @@ server.tool(
 
 server.tool(
   "create_force_rule",
-  "Create a new force feature rule on an existing feature. Don't use this for experiments. Instead, use create_experiment.",
+  "Create a new force feature rule on an existing feature. A force rule is a rule that forces a feature to a specific value for a specific environment. Important:Don't use this for experiments or A/B tests. Instead, use create_experiment.",
   {
     featureId: z.string(),
     description: z.string().optional(),
@@ -457,7 +457,10 @@ server.tool(
 
 server.tool(
   "create_experiment",
-  "Create a new experiment rule on an existing feature. If the feature is not already created, use create_flag to create it first. This tool also requires an assignment query ID, which you can get by calling get_assignment_query_ids first.",
+  `Create a new experiment (also called an a/b test) rule on an existing feature flag. 
+  If the feature is not already created (you can use get_flags to see if it exists), use create_flag to create it first. 
+  This tool also requires an assignment query ID, which you can get by calling get_assignment_query_ids tool first.
+  Access environments by using the get_environments tool.`,
   {
     featureId: z.string(),
     description: z.string().optional(),
@@ -499,7 +502,6 @@ server.tool(
       name,
       trackingKey,
       description,
-      condition,
       variations,
       hypothesis,
       assignmentQueryId,
@@ -533,7 +535,7 @@ server.tool(
               type: "experiment-ref",
               experimentId: experimentData?.experiment.id,
               description,
-              condition,
+              ...(condition ? { condition } : {}),
               variations: experimentData?.experiment.variations.map(
                 (variation: { variationId: string }, idx: number) => ({
                   value: variations[idx].value,
@@ -570,7 +572,7 @@ server.tool(
     const text = `
     ${JSON.stringify(data, null, 2)}
     
-    See the feature flag experiment on GrowthBook: @${appOrigin}/features/${featureId}
+    Show the following link to the user in the response, as it gives quick access to the feature flag experiment on GrowthBook: ${appOrigin}/features/${featureId}
     `;
 
     return {
