@@ -122,4 +122,6 @@ export default function OtherComponent() {
       </IfFeatureEnabled>
     </div>
   );
-}`;
+}
+  
+Note that it's preferred to use hooks like useFeatureValue at the top of the component and then use the value in the TSX/JSX`;
