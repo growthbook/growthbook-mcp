@@ -361,7 +361,11 @@ server.tool(
       ),
     hashAttribute: z.string().describe("Ask the user for this value."),
     environments: z.string().array(),
-    exposureQueryId: z.string().describe("Ask the user for this value."),
+    exposureQueryId: z
+      .string()
+      .describe(
+        "Also known as the assignment query. Ask the user for this value."
+      ),
     datasourceId: z.string().describe("Ask the user for this value."),
     maxDuration: z
       .number()
@@ -421,8 +425,14 @@ server.tool(
       body: JSON.stringify(payload),
     });
     const data = await res.json();
+    const text = `
+    ${JSON.stringify(data, null, 2)}
+    
+    Show the following link to the user in the response, as it gives quick access to the feature flag experiment on GrowthBook: ${appOrigin}/features/${featureId}
+    `;
+
     return {
-      content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+      content: [{ type: "text", text }],
     };
   }
 );
@@ -466,7 +476,7 @@ const VariationSchema = z.object({
 
 server.tool(
   "get_assignment_query_ids",
-  "Get all assignment query IDs for the current project. This is a list of all the datasources that are available to use for experiments.",
+  "Get all assignment query IDs for the current project. This is a list of all the datasources that are available to use for experiments and safe rollouts.",
   {},
   async () => {
     const res = await fetch(`${baseApiUrl}/data-sources/`, {
@@ -715,6 +725,31 @@ server.tool(
     };
   }
 );
+
+server.tool("get_attributes", "Get all attributes", {}, async () => {
+  try {
+    const queryParams = new URLSearchParams();
+    queryParams.append("limit", "100");
+
+    const res = await fetch(
+      `${baseApiUrl}/attributes?${queryParams.toString()}`,
+      {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    const data = await res.json();
+    return {
+      content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+    };
+  } catch (error) {
+    console.error("Error fetching attributes:", error);
+    throw error;
+  }
+});
 
 // Start receiving messages on stdin and sending messages on stdout
 const transport = new StdioServerTransport();
