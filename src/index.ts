@@ -34,7 +34,27 @@ const server = new McpServer(
   },
   {
     instructions:
-      "You are a helpful assistant that interacts with GrowthBook, an open source feature flagging and experimentation platform.",
+      "You are a helpful assistant that interacts with GrowthBook, an open source feature flagging and experimentation platform. You can use tools to create and manage feature flags, experiments, and environments. Note that experiments are also called a/b tests.",
+  }
+);
+
+// Get all environments
+server.tool(
+  "get_environments",
+  "Fetches all environments from the GrowthBook API. GrowthBook comes with one environment by default (production), but you can add as many as you need. Feature flags can be enabled and disabled on a per-environment basis. You can also set the default feature state for any new environment. Additionally, you can scope environments to only be available in specific projects, allowing for further control and segmentation over feature delivery.",
+  {},
+  async () => {
+    const res = await fetch(`${baseApiUrl}/environments`, {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    const data = await res.json();
+    return {
+      content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+    };
   }
 );
 
@@ -269,7 +289,7 @@ server.tool(
 
 server.tool(
   "create_force_rule",
-  "Create a new force feature rule on an existing feature. Don't use this for experiments. Instead, use create_experiment.",
+  "Create a new force feature rule on an existing feature. A force rule is a rule that forces a feature to a specific value for a specific environment. Important:Don't use this for experiments or A/B tests. Instead, use create_experiment.",
   {
     featureId: z.string(),
     description: z.string().optional(),
@@ -445,8 +465,31 @@ const VariationSchema = z.object({
 });
 
 server.tool(
+  "get_assignment_query_ids",
+  "Get all assignment query IDs for the current project. This is a list of all the datasources that are available to use for experiments.",
+  {},
+  async () => {
+    const res = await fetch(`${baseApiUrl}/data-sources/`, {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    const data = await res.json();
+
+    return {
+      content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+    };
+  }
+);
+
+server.tool(
   "create_experiment",
-  "Create a new experiment rule on an existing feature",
+  `Create a new experiment (also called an a/b test) rule on an existing feature flag. 
+  If the feature is not already created (you can use get_flags to see if it exists), use create_flag to create it first. 
+  This tool also requires an assignment query ID, which you can get by calling get_assignment_query_ids tool first.
+  Access environments by using the get_environments tool.`,
   {
     featureId: z.string(),
     description: z.string().optional(),
@@ -459,7 +502,7 @@ server.tool(
     variations: z.array(VariationSchema),
     assignmentQueryId: z
       .string()
-      .optional()
+
       .describe(
         "The ID of the assignment query to use. If not present, you'll need to fetch the datasource and show the result to the user for confirmation."
       ),
@@ -483,32 +526,11 @@ server.tool(
     trackingKey,
     hypothesis,
   }) => {
-    if (!assignmentQueryId) {
-      const res = await fetch(`${baseApiUrl}/data-sources/`, {
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-      });
-      const data = await res.json();
-
-      const text = `
-      ${JSON.stringify(data, null, 2)}
-      
-      Here is the list of datasources. Please select one and use the ID in the create_experiment tool.
-      `;
-
-      return {
-        content: [{ type: "text", text }],
-      };
-    }
-
     // Create experiment
     const experimentPayload = {
       name,
       trackingKey,
       description,
-      condition,
       variations,
       hypothesis,
       assignmentQueryId,
@@ -542,7 +564,7 @@ server.tool(
               type: "experiment-ref",
               experimentId: experimentData?.experiment.id,
               description,
-              condition,
+              ...(condition ? { condition } : {}),
               variations: experimentData?.experiment.variations.map(
                 (variation: { variationId: string }, idx: number) => ({
                   value: variations[idx].value,
@@ -572,6 +594,118 @@ server.tool(
         "Content-Type": "application/json",
       },
       body: JSON.stringify(featurePayload),
+    });
+
+    const data = await res.json();
+
+    const text = `
+    ${JSON.stringify(data, null, 2)}
+    
+    Show the following link to the user in the response, as it gives quick access to the feature flag experiment on GrowthBook: ${appOrigin}/features/${featureId}
+    `;
+
+    return {
+      content: [{ type: "text", text }],
+    };
+  }
+);
+
+// Get SDK connections
+server.tool(
+  "get_sdk_connections",
+  `Get all SDK connections, 
+  which are how GrowthBook connects to an app. 
+  Importantly, users need the SDK key, which is a public key that allows the app to fetch features and experiments the API `,
+  {},
+  async () => {
+    const res = await fetch(`${baseApiUrl}/sdk-connections`, {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    const data = await res.json();
+
+    return {
+      content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+    };
+  }
+);
+
+server.tool(
+  "create_sdk_connection",
+  `Create an SDK connection for a user. Returns an SDK key that can be used to fetch features and experiments.`,
+  {
+    name: z
+      .string()
+      .describe(
+        "Name of the SDK connection in GrowthBook. Should reflect the current project."
+      ),
+    language: z
+      .enum([
+        "nocode-webflow",
+        "nocode-wordpress",
+        "nocode-shopify",
+        "nocode-other",
+        "javascript",
+        "nodejs",
+        "react",
+        "php",
+        "ruby",
+        "python",
+        "go",
+        "java",
+        "csharp",
+        "android",
+        "ios",
+        "flutter",
+        "elixir",
+        "edge-cloudflare",
+        "edge-fastly",
+        "edge-lambda",
+        "edge-other",
+        "other",
+      ])
+      .describe(
+        "The language of the SDK. Either 'javascript' or 'typescript'."
+      ),
+    environment: z
+      .string()
+      .optional()
+      .describe("The environment associated with the SDK connection."),
+  },
+  async ({ name, language, environment }) => {
+    if (!environment) {
+      const res = await fetch(`${baseApiUrl}/environments`, {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      const data = await res.json();
+
+      const text = `
+  ${JSON.stringify(data, null, 2)}
+  
+  Here is the list of environments. Ask the user to select one and use the ID in the create_sdk_connection tool.
+  `;
+    }
+
+    const payload = {
+      name,
+      language,
+      environment,
+    };
+
+    const res = await fetch(`${baseApiUrl}/sdk-connections`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
     });
 
     const data = await res.json();
