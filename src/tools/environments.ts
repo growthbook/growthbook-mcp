@@ -1,0 +1,32 @@
+import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+
+interface EnvironmentTools {
+  server: McpServer;
+  baseApiUrl: string;
+  apiKey: string;
+}
+export function registerEnvironmentTools({
+  server,
+  baseApiUrl,
+  apiKey,
+}: EnvironmentTools) {
+  // Get all environments
+  server.tool(
+    "get_environments",
+    "Fetches all environments from the GrowthBook API. GrowthBook comes with one environment by default (production), but you can add as many as you need. Feature flags can be enabled and disabled on a per-environment basis. You can also set the default feature state for any new environment. Additionally, you can scope environments to only be available in specific projects, allowing for further control and segmentation over feature delivery.",
+    {},
+    async () => {
+      const res = await fetch(`${baseApiUrl}/environments`, {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      const data = await res.json();
+      return {
+        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+      };
+    }
+  );
+}
