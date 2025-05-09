@@ -191,7 +191,7 @@ export function registerFeatureTools({
     "get_stale_safe_rollouts",
     "Fetches all complete safe rollouts (rolled-back or released) from the GrowthBook API",
     {
-      limit: z.number().optional().default(10),
+      limit: z.number().optional().default(100),
       offset: z.number().optional().default(0),
       project: z.string().optional(),
     },
@@ -239,7 +239,7 @@ export function registerFeatureTools({
       Share information about the rolled-back or released safe rollout rules with the user. Safe Rollout rules are stored under 
       environmentSettings, keyed by environment and are within the rules array with a type of "safe-rollout". Ask the user if they
       would like to remove references to the feature associated with the rolled-back or released safe rollout rules and if they do,
-      remove the references and replace the values with controlValue if the safe rollout rule is rolled-back or with the 
+      remove the references and associated GrowthBook code and replace the values with controlValue if the safe rollout rule is rolled-back or with the 
       variationValue if the safe rollout is released. In addition to the current file, you may need to update other files in the codebase.
       `;
 
