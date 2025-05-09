@@ -199,79 +199,96 @@ export function registerExperimentTools({
     }
   );
 
-  // server.tool(
-  //   "create_force_rule",
-  //   "Create a new force rule on an existing feature. If the existing feature isn't apparent, create a new feature using create_feature_flag first. A force rule sets a feature to a specific value for a specific environment based on a condition. For A/B tests and experiments, use create_experiment instead.",
-  //   {
-  //     featureId: z
-  //       .string()
-  //       .describe("The ID of the feature to create the rule on"),
-  //     description: z.string().optional(),
-  //     condition: z
-  //       .string()
-  //       .describe(
-  //         "Applied to everyone by default. Write conditions in MongoDB-style query syntax."
-  //       )
-  //       .optional(),
-  //     value: z
-  //       .string()
-  //       .describe("The type of the value should match the feature type"),
-  //     environments: z.string().array(),
-  //     docs: z.enum(["nextjs", "react", "javascript", "typescript"]),
-  //   },
-  //   async ({
-  //     featureId,
-  //     description,
-  //     condition,
-  //     value,
-  //     environments,
-  //     docs,
-  //   }) => {
-  //     const payload = {
-  //       // Loop through the environments and create a rule for each one keyed by environment name
-  //       environments: environments.reduce((acc, env) => {
-  //         acc[env] = {
-  //           enabled: true,
-  //           rules: [
-  //             {
-  //               type: "force",
-  //               description,
-  //               condition,
-  //               value,
-  //             },
-  //           ],
-  //         };
-  //         return acc;
-  //       }, {} as Record<string, { enabled: boolean; rules: Array<any> }>),
-  //     };
+  server.tool(
+    "create_force_rule",
+    "Create a new force rule on an existing feature. If the existing feature isn't apparent, create a new feature using create_feature_flag first. A force rule sets a feature to a specific value for a specific environment based on a condition. For A/B tests and experiments, use create_experiment instead.",
+    {
+      featureId: z
+        .string()
+        .describe("The ID of the feature to create the rule on"),
+      description: z.string().optional(),
+      condition: z
+        .string()
+        .describe(
+          "Applied to everyone by default. Write conditions in MongoDB-style query syntax."
+        )
+        .optional(),
+      value: z
+        .string()
+        .describe("The type of the value should match the feature type"),
+      environments: z.string().array(),
+      language: z
+        .enum([
+          ".tsx",
+          ".jsx",
+          ".ts",
+          ".js",
+          ".vue",
+          ".py",
+          ".go",
+          ".php",
+          ".rb",
+          ".java",
+          ".cs",
+        ])
+        .describe(
+          "The extension of the current file. If it's unclear, ask the user."
+        ),
+    },
+    async ({
+      featureId,
+      description,
+      condition,
+      value,
+      environments,
+      language,
+    }) => {
+      const payload = {
+        // Loop through the environments and create a rule for each one keyed by environment name
+        environments: environments.reduce((acc, env) => {
+          acc[env] = {
+            enabled: true,
+            rules: [
+              {
+                type: "force",
+                description,
+                condition,
+                value,
+              },
+            ],
+          };
+          return acc;
+        }, {} as Record<string, { enabled: boolean; rules: Array<any> }>),
+      };
 
-  //     const res = await fetch(`${baseApiUrl}/features/${featureId}`, {
-  //       method: "POST",
-  //       headers: {
-  //         Authorization: `Bearer ${apiKey}`,
-  //         "Content-Type": "application/json",
-  //       },
-  //       body: JSON.stringify(payload),
-  //     });
-  //     const data = await res.json();
+      const res = await fetch(`${baseApiUrl}/features/${featureId}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
 
-  //     const docsText = getDocs(docs);
+      const docsText = getDocs(language);
 
-  //     const text = `
-  //     ${JSON.stringify(data, null, 2)}
+      const text = `
+      ${JSON.stringify(data, null, 2)}
 
-  //     Here is the documentation for the feature flag, if it makes sense to add the flag to the codebase:
+      Here is the documentation for the feature flag, if it makes sense to add the flag to the codebase:
+      
+      ${docsText}
+  
+      Importantly, share the link to the feature flag with the user.
+      > See the feature flag on GrowthBook: ${appOrigin}/features/${featureId}
+      `;
 
-  //     ${docsText}
-
-  //     Additionally, see the feature flag on GrowthBook: ${appOrigin}/features/${featureId}
-  //     `;
-
-  //     return {
-  //       content: [{ type: "text", text }],
-  //     };
-  //   }
-  // );
+      return {
+        content: [{ type: "text", text }],
+      };
+    }
+  );
 
   // server.tool(
   //   "create_safe_rollout_rule",
