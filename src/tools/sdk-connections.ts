@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { handleResNotOk } from "../utils.js";
+import { getDocs } from "../docs.js";
 
 interface SdkConnectionTools {
   server: McpServer;
@@ -17,7 +18,7 @@ export function registerSdkConnectionTools({
     "get_sdk_connections",
     `Get all SDK connections, 
     which are how GrowthBook connects to an app. 
-    Importantly, users need the SDK key, which is a public key that allows the app to fetch features and experiments the API `,
+    Importantly, users need the key, which is a public key that allows the app to fetch features and experiments the API `,
     {},
     async () => {
       try {
@@ -45,7 +46,7 @@ export function registerSdkConnectionTools({
 
   server.tool(
     "create_sdk_connection",
-    `Create an SDK connection for a user. Returns an SDK key that can be used to fetch features and experiments.`,
+    `Create an SDK connection for a user. Returns an SDK clientKey that can be used to fetch features and experiments.`,
     {
       name: z
         .string()
@@ -87,26 +88,29 @@ export function registerSdkConnectionTools({
     },
     async ({ name, language, environment }) => {
       if (!environment) {
-        const res = await fetch(`${baseApiUrl}/environments`, {
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
-        });
+        try {
+          const res = await fetch(`${baseApiUrl}/environments`, {
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              "Content-Type": "application/json",
+            },
+          });
 
-        await handleResNotOk(res);
-
-        const data = await res.json();
-
-        const text = `
-        ${JSON.stringify(data, null, 2)}
-        
-        Here is the list of environments. Ask the user to select one and use the ID in the create_sdk_connection tool.
+          await handleResNotOk(res);
+          const data = await res.json();
+          const text = `${JSON.stringify(data, null, 2)}
+    
+        Here is the list of environments. Ask the user to select one and use the key in the create_sdk_connection tool.
         `;
 
-        return {
-          content: [{ type: "text", text }],
-        };
+          return {
+            content: [{ type: "text", text }],
+          };
+        } catch (error) {
+          return {
+            content: [{ type: "text", text: `Error: ${error}` }],
+          };
+        }
       }
 
       const payload = {
@@ -115,22 +119,87 @@ export function registerSdkConnectionTools({
         environment,
       };
 
-      const res = await fetch(`${baseApiUrl}/sdk-connections`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+      try {
+        const res = await fetch(`${baseApiUrl}/sdk-connections`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
 
-      await handleResNotOk(res);
+        await handleResNotOk(res);
 
-      const data = await res.json();
+        const data = await res.json();
 
-      return {
-        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
-      };
+        return {
+          content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+        };
+      } catch (error) {
+        return {
+          content: [{ type: "text", text: `Error: ${error}` }],
+        };
+      }
+    }
+  );
+
+  server.tool(
+    "check_setup",
+    "Give a quick check of the setup to ensure that GrowthBook is installed correctly.",
+    {
+      language: z.enum(["javascript", "typescript", "react", "nextjs"]),
+    },
+    async ({ language }) => {
+      try {
+        const sdkRes = await fetch(`${baseApiUrl}/sdk-connections`, {
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        await handleResNotOk(sdkRes);
+
+        const sdkData = await sdkRes.json();
+
+        const queryParams = new URLSearchParams();
+        queryParams.append("limit", "100");
+
+        const attrRes = await fetch(
+          `${baseApiUrl}/attributes?${queryParams.toString()}`,
+          {
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        await handleResNotOk(attrRes);
+
+        const attrData = await attrRes.json();
+        const docs = getDocs(language, "setup");
+
+        const text = `
+        Here is the list of SDK connections. The key field should match the clientKey property in the codebase:
+        ${JSON.stringify(sdkData, null, 2)}
+
+        Here is the list of attributes. Compare this list to what's in the codebase:
+        ${JSON.stringify(attrData, null, 2)}
+
+        Use the following instructions to check the codebase to verify everything is correctly configured:
+        ${docs}
+        `;
+
+        return {
+          content: [{ type: "text", text }],
+        };
+      } catch (error) {
+        return {
+          content: [{ type: "text", text: `Error: ${error}` }],
+        };
+      }
     }
   );
 }

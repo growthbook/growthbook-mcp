@@ -32,3 +32,11 @@ export function getAppOrigin() {
   const userAppOrigin = process.env.GB_APP_ORIGIN;
   return `${userAppOrigin || defaultAppOrigin}`;
 }
+
+export function getUser() {
+  const user = process.env.GB_USER;
+  if (!user) {
+    throw new Error("GB_USER environment variable is required");
+  }
+  return user;
+}

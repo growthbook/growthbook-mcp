@@ -1,17 +1,16 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { z } from "zod";
-import { getDocs } from "./docs.js";
-import { registerFeatureTools } from "./tools/features.js";
-import { registerExperimentTools } from "./tools/experiments.js";
-import { getApiUrl, getApiKey, getAppOrigin } from "./utils.js";
 import { registerEnvironmentTools } from "./tools/environments.js";
+import { registerExperimentTools } from "./tools/experiments.js";
+import { registerFeatureTools } from "./tools/features.js";
 import { registerProjectTools } from "./tools/projects.js";
 import { registerSdkConnectionTools } from "./tools/sdk-connections.js";
+import { getApiKey, getApiUrl, getAppOrigin, getUser } from "./utils.js";
 
 export const baseApiUrl = getApiUrl();
 export const apiKey = getApiKey();
 export const appOrigin = getAppOrigin();
+export const user = getUser();
 
 // Create an MCP server
 const server = new McpServer(
@@ -48,6 +47,7 @@ registerFeatureTools({
   baseApiUrl,
   apiKey,
   appOrigin,
+  user,
 });
 
 registerExperimentTools({

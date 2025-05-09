@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { handleResNotOk } from "../utils.js";
-
+import { getDocs } from "../docs.js";
 interface ExperimentTools {
   server: McpServer;
   baseApiUrl: string;
@@ -186,6 +186,8 @@ export function registerExperimentTools({
           }
         );
 
+        await handleResNotOk(res);
+
         const data = await res.json();
         return {
           content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
@@ -199,9 +201,11 @@ export function registerExperimentTools({
 
   server.tool(
     "create_force_rule",
-    "Create a new force rule on an existing feature. A force rule sets a feature to a specific value for a specific environment based on a condition. For A/B tests and experiments, use create_experiment instead.",
+    "Create a new force rule on an existing feature. If the existing feature isn't apparent, create a new feature using create_feature_flag first. A force rule sets a feature to a specific value for a specific environment based on a condition. For A/B tests and experiments, use create_experiment instead.",
     {
-      featureId: z.string(),
+      featureId: z
+        .string()
+        .describe("The ID of the feature to create the rule on"),
       description: z.string().optional(),
       condition: z
         .string()
@@ -213,8 +217,16 @@ export function registerExperimentTools({
         .string()
         .describe("The type of the value should match the feature type"),
       environments: z.string().array(),
+      docs: z.enum(["nextjs", "react", "javascript", "typescript"]),
     },
-    async ({ featureId, description, condition, value, environments }) => {
+    async ({
+      featureId,
+      description,
+      condition,
+      value,
+      environments,
+      docs,
+    }) => {
       const payload = {
         // Loop through the environments and create a rule for each one keyed by environment name
         environments: environments.reduce((acc, env) => {
@@ -242,8 +254,21 @@ export function registerExperimentTools({
         body: JSON.stringify(payload),
       });
       const data = await res.json();
+
+      const docsText = getDocs(docs);
+
+      const text = `
+      ${JSON.stringify(data, null, 2)}
+      
+      Here is the documentation for the feature flag, if it makes sense to add the flag to the codebase:
+      
+      ${docsText}
+  
+      Additionally, see the feature flag on GrowthBook: ${appOrigin}/features/${featureId}
+      `;
+
       return {
-        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+        content: [{ type: "text", text }],
       };
     }
   );
@@ -354,23 +379,31 @@ export function registerExperimentTools({
       experimentId: z.string().describe("The ID of the experiment to get"),
     },
     async ({ experimentId }) => {
-      const res = await fetch(`${baseApiUrl}/experiments/${experimentId}`, {
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-      });
-      const data = await res.json();
+      try {
+        const res = await fetch(`${baseApiUrl}/experiments/${experimentId}`, {
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+        });
 
-      const text = `
+        await handleResNotOk(res);
+        const data = await res.json();
+
+        const text = `
     ${JSON.stringify(data, null, 2)}
     
     See the experiment on GrowthBook: @${appOrigin}/experiment/${experimentId}
     `;
 
-      return {
-        content: [{ type: "text", text }],
-      };
+        return {
+          content: [{ type: "text", text }],
+        };
+      } catch (error) {
+        return {
+          content: [{ type: "text", text: `Error: ${error}` }],
+        };
+      }
     }
   );
 

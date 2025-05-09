@@ -1,19 +1,26 @@
 import { z } from "zod";
 import { getDocs } from "../docs.js";
 import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { handleResNotOk } from "../utils.js";
+import { exec } from "child_process";
+import { promisify } from "util";
 
 interface FeatureTools {
   server: McpServer;
   baseApiUrl: string;
   apiKey: string;
   appOrigin: string;
+  user: string;
 }
+
+const execAsync = promisify(exec);
 
 export function registerFeatureTools({
   server,
   baseApiUrl,
   apiKey,
   appOrigin,
+  user,
 }: FeatureTools) {
   server.tool(
     "create_feature_flag",
@@ -36,7 +43,7 @@ export function registerFeatureTools({
         .optional()
         .default("")
         .describe("A description of the feature flag"),
-      owner: z.string().describe("The owner of the feature flag"),
+
       project: z
         .string()
         .optional()
@@ -52,24 +59,39 @@ export function registerFeatureTools({
         .array(z.string())
         .optional()
         .describe("Tags for the feature flag"),
-      docs: z.enum(["nextjs", "react", "javascript", "typescript"]),
+      language: z
+        .enum([
+          ".tsx",
+          ".jsx",
+          ".ts",
+          ".js",
+          ".vue",
+          ".py",
+          ".go",
+          ".php",
+          ".rb",
+          ".java",
+          ".cs",
+        ])
+        .describe(
+          "The extension of the current file. If it's unclear, ask the user."
+        ),
     },
     async ({
       id,
       archived,
       description,
-      owner,
       project,
       valueType,
       defaultValue,
       tags,
-      docs,
+      language,
     }) => {
       const payload = {
         id,
         archived,
         description,
-        owner,
+        owner: user,
         project,
         valueType,
         defaultValue,
@@ -101,7 +123,7 @@ export function registerFeatureTools({
 
         const data = await res.json();
 
-        const docsText = getDocs(docs);
+        const docsText = getDocs(language);
 
         const text = `
       ${JSON.stringify(data, null, 2)}
@@ -150,10 +172,7 @@ export function registerFeatureTools({
           }
         );
 
-        if (!res.ok) {
-          const errorText = await res.text();
-          throw new Error(errorText);
-        }
+        await handleResNotOk(res);
 
         const data = await res.json();
 
@@ -164,6 +183,27 @@ export function registerFeatureTools({
         console.error("Error fetching flags:", error);
         throw error;
       }
+    }
+  );
+
+  server.tool(
+    "generate_flag_types",
+    "Generate types for a feature flags",
+    {},
+    async () => {
+      const text = `These commands will generate types for your feature flags:
+      Here's your API key: ${apiKey} 
+      
+      The first command will log you in to GrowthBook:
+      npx -y growthbook auth login
+      
+      The second command will generate types for your feature flags:
+      npx -y growthbook features generate-types
+      `;
+
+      return {
+        content: [{ type: "text", text }],
+      };
     }
   );
 }
