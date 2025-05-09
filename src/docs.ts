@@ -36,10 +36,11 @@ if (gb.isOn("my-feature")) {
 const color = gb.getFeatureValue("button-color", "blue");
 `;
 
-export const react = `  
-Here are some helper hooks for using GrowthBook in React.
-Note that it's preferred to put these hooks at the top of the component and then use the dynamic value in the TSX/JSX;
+export const react = `
+Here are some helper hooks for using GrowthBook in React.  
+**Best practice:** Call these hooks at the top of your component, then use the returned values in your JSX. This keeps logic predictable and follows React’s rules of hooks.
 
+\`\`\`tsx
 import { useFeatureValue, useFeatureIsOn } from "@growthbook/growthbook-react";
 
 export default function OtherComponent() {
@@ -49,21 +50,24 @@ export default function OtherComponent() {
   // String/Number/JSON features with a fallback value
   const buttonColor = useFeatureValue("login-button-color", "blue");
 
-  if (newLogin) {
-    return <NewLogin color={buttonColor} />;
-  } else {
-    return <Login color={buttonColor} />;
-  }
+  return newLogin ? (
+    <NewLogin color={buttonColor} />
+  ) : (
+    <Login color={buttonColor} />
+  );
 }
-  
-Here are some helper components for using GrowthBook in React:
+\`\`\`
+
+If you prefer declarative components, you can also use our helper components:
+
+\`\`\`tsx
 import { IfFeatureEnabled, FeatureString } from "@growthbook/growthbook-react";
 
 export default function OtherComponent() {
   return (
     <div>
       <h1>
-        <FeatureString feature="site-h1" default="My Site"/>
+        <FeatureString feature="site-h1" default="My Site" />
       </h1>
       <IfFeatureEnabled feature="welcome-message">
         <p>Welcome to our site!</p>
@@ -71,7 +75,8 @@ export default function OtherComponent() {
     </div>
   );
 }
-  `;
+\`\`\`
+`;
 
 const boilerPlateSetup = `
 1. Check that GrowthBook is installed and in the project. This will be a package like @growthbook/growthbook in package.json.

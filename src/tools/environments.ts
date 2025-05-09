@@ -1,4 +1,5 @@
 import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { handleResNotOk } from "../utils.js";
 
 interface EnvironmentTools {
   server: McpServer;
@@ -22,6 +23,8 @@ export function registerEnvironmentTools({
           "Content-Type": "application/json",
         },
       });
+
+      await handleResNotOk(res);
 
       const data = await res.json();
       return {

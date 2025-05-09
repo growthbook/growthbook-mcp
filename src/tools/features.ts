@@ -132,7 +132,8 @@ export function registerFeatureTools({
       
       ${docsText}
   
-      Additionally, see the feature flag on GrowthBook: ${appOrigin}/features/${id}
+      Importantly, share the link to the feature flag with the user.
+      > See the feature flag on GrowthBook: ${appOrigin}/features/${id}
       `;
 
         return {
@@ -186,24 +187,24 @@ export function registerFeatureTools({
     }
   );
 
-  server.tool(
-    "generate_flag_types",
-    "Generate types for a feature flags",
-    {},
-    async () => {
-      const text = `These commands will generate types for your feature flags:
-      Here's your API key: ${apiKey} 
-      
-      The first command will log you in to GrowthBook:
-      npx -y growthbook auth login
-      
-      The second command will generate types for your feature flags:
-      npx -y growthbook features generate-types
-      `;
+  // server.tool(
+  //   "generate_flag_types",
+  //   "Generate types for a feature flags",
+  //   {},
+  //   async () => {
+  //     const text = `These commands will generate types for your feature flags:
+  //     Here's your API key: ${apiKey}
 
-      return {
-        content: [{ type: "text", text }],
-      };
-    }
-  );
+  //     The first command will log you in to GrowthBook:
+  //     npx -y growthbook auth login
+
+  //     The second command will generate types for your feature flags:
+  //     npx -y growthbook features generate-types
+  //     `;
+
+  //     return {
+  //       content: [{ type: "text", text }],
+  //     };
+  //   }
+  // );
 }
