@@ -188,6 +188,54 @@ export function registerFeatureTools({
   );
 
   server.tool(
+    "get_single_feature_flag",
+    "Fetches a specific feature flag from the GrowthBook API",
+    {
+      id: z.string().describe("The ID of the feature flag"),
+      project: z.string().optional(),
+    },
+    async ({ id, project }) => {
+      try {
+        const queryParams = new URLSearchParams();
+
+        if (project) queryParams.append("project", project);
+
+        const res = await fetch(
+          `${baseApiUrl}/features/${id}?${queryParams.toString()}`,
+          {
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        await handleResNotOk(res);
+
+        const data = await res.json();
+
+        const text = `
+        ${JSON.stringify(data.feature, null, 2)}
+    
+        Share information about the feature flag with the user. In particular, give details about the enabled environments,
+        rules for each environment, and the default value. If the feature flag is archived or doesnt exist, inform the user and 
+        ask if they want to remove references to the feature flag from the codebase. 
+        
+        If the feature flag exists, share a link to the feature flag with the user.
+        > See the feature flag on GrowthBook: ${appOrigin}/features/${id}
+        `;
+
+        return {
+          content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+        };
+      } catch (error) {
+        console.error("Error fetching flags:", error);
+        throw error;
+      }
+    }
+  );
+
+  server.tool(
     "get_stale_safe_rollouts",
     "Fetches all complete safe rollouts (rolled-back or released) from the GrowthBook API",
     {
