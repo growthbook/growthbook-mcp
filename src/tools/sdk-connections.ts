@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { handleResNotOk } from "../utils.js";
-import { getDocs } from "../docs.js";
 
 interface SdkConnectionTools {
   server: McpServer;
@@ -22,16 +21,29 @@ export function registerSdkConnectionTools({
     "get_sdk_connections",
     `Get all SDK connections, 
     which are how GrowthBook connects to an app. 
-    Importantly, users need the key, which is a public key that allows the app to fetch features and experiments the API `,
-    {},
-    async () => {
+    Importantly, users need the key, which is a public client key that allows the app to fetch features and experiments the API `,
+    {
+      limit: z.number().optional().default(100),
+      offset: z.number().optional().default(0),
+      project: z.string().optional(),
+    },
+    async ({ limit, offset, project }) => {
       try {
-        const res = await fetch(`${baseApiUrl}/sdk-connections`, {
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
+        const queryParams = new URLSearchParams({
+          limit: limit?.toString(),
+          offset: offset?.toString(),
         });
+        if (project) queryParams.append("project", project);
+
+        const res = await fetch(
+          `${baseApiUrl}/sdk-connections?${queryParams.toString()}`,
+          {
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
 
         await handleResNotOk(res);
 

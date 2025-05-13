@@ -1,7 +1,12 @@
 import { z } from "zod";
 import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { handleResNotOk } from "../utils.js";
-import { getDocs } from "../docs.js";
+import {
+  findImplementationDocs,
+  generateLinkToGrowthBook,
+  getDocsMetadata,
+  handleResNotOk,
+} from "../utils.js";
+
 interface ExperimentTools {
   server: McpServer;
   baseApiUrl: string;
@@ -22,11 +27,18 @@ export function registerExperimentTools({
   server.tool(
     "get_experiments",
     "Fetches all experiments from the GrowthBook API",
-    {},
-    async () => {
+    {
+      limit: z.number().optional().default(100),
+      offset: z.number().optional().default(0),
+      project: z.string().optional(),
+    },
+    async ({ limit, offset, project }) => {
       try {
-        const queryParams = new URLSearchParams();
-        queryParams.append("limit", "100");
+        const queryParams = new URLSearchParams({
+          limit: limit?.toString(),
+          offset: offset?.toString(),
+        });
+        if (project) queryParams.append("project", project);
 
         const res = await fetch(
           `${baseApiUrl}/experiments?${queryParams.toString()}`,
@@ -73,7 +85,7 @@ export function registerExperimentTools({
         .string()
         .describe("The type of the value should match the feature type"),
       environments: z.string().array(),
-      language: z
+      fileExtension: z
         .enum([
           ".tsx",
           ".jsx",
@@ -97,52 +109,72 @@ export function registerExperimentTools({
       condition,
       value,
       environments,
-      language,
+      fileExtension,
     }) => {
-      const payload = {
-        // Loop through the environments and create a rule for each one keyed by environment name
-        environments: environments.reduce((acc, env) => {
-          acc[env] = {
-            enabled: true,
-            rules: [
-              {
-                type: "force",
-                description,
-                condition,
-                value,
-              },
-            ],
-          };
-          return acc;
-        }, {} as Record<string, { enabled: boolean; rules: Array<any> }>),
-      };
+      try {
+        const payload = {
+          // Loop through the environments and create a rule for each one keyed by environment name
+          environments: environments.reduce((acc, env) => {
+            acc[env] = {
+              enabled: true,
+              rules: [
+                {
+                  type: "force",
+                  description,
+                  condition,
+                  value,
+                },
+              ],
+            };
+            return acc;
+          }, {} as Record<string, { enabled: boolean; rules: Array<any> }>),
+        };
 
-      const res = await fetch(`${baseApiUrl}/features/${featureId}`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
+        const res = await fetch(`${baseApiUrl}/features/${featureId}`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
 
-      const docsText = getDocs(language);
+        await handleResNotOk(res);
 
-      const text = `
-      ${JSON.stringify(data, null, 2)}
+        const data = await res.json();
 
-      Here is the documentation for the feature flag, if it makes sense to add the flag to the codebase:
+        const linkToGrowthBook = generateLinkToGrowthBook(
+          appOrigin,
+          "features",
+          featureId
+        );
+        const docsText = await findImplementationDocs(fileExtension);
+        const { docs, language } = getDocsMetadata(fileExtension);
+
+        const text = `This is the API response: ${JSON.stringify(data, null, 2)}
       
-      ${docsText}
-  
-      Importantly, share the link to the feature flag with the user.
-      > See the feature flag on GrowthBook: ${appOrigin}/features/${featureId}
+        Additionally, here is a template of what to show to the user:
+
+        **✅ Your feature flag \`my-flag-name\` is ready!.**
+        [View it in GrowthBook](${linkToGrowthBook})
+    
+        **How to use it in your code:**
+        (To the LLM agent. Use the text below to properly add the feature flag to the codebase. Also, surface the relevant docs/implemenation to the user)
+
+        ${docsText}
+
+        **Want to learn more?**
+        See the [GrowthBook ${language} docs](${docs})
       `;
 
-      return {
-        content: [{ type: "text", text }],
-      };
+        return {
+          content: [{ type: "text", text }],
+        };
+      } catch (error) {
+        return {
+          content: [{ type: "text", text: `Error: ${error}` }],
+        };
+      }
     }
   );
 
@@ -168,11 +200,15 @@ export function registerExperimentTools({
         await handleResNotOk(res);
         const data = await res.json();
 
+        const linkToGrowthBook = generateLinkToGrowthBook(
+          appOrigin,
+          "experiment",
+          experimentId
+        );
         const text = `
     ${JSON.stringify(data, null, 2)}
     
-    Importantly, share the link to the experiment with the user.
-    > See the experiment on GrowthBook: ${appOrigin}/experiment/${experimentId}
+    [View the experiment in GrowthBook](${linkToGrowthBook})
     `;
 
         return {

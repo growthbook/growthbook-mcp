@@ -1,7 +1,12 @@
 import { z } from "zod";
-import { getDocs } from "../docs.js";
+
 import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { handleResNotOk } from "../utils.js";
+import {
+  getDocsMetadata,
+  findImplementationDocs,
+  handleResNotOk,
+  generateLinkToGrowthBook,
+} from "../utils.js";
 import { exec } from "child_process";
 import { promisify } from "util";
 
@@ -47,7 +52,6 @@ export function registerFeatureTools({
         .optional()
         .default("")
         .describe("A description of the feature flag"),
-
       project: z
         .string()
         .optional()
@@ -63,7 +67,7 @@ export function registerFeatureTools({
         .array(z.string())
         .optional()
         .describe("Tags for the feature flag"),
-      language: z
+      fileExtension: z
         .enum([
           ".tsx",
           ".jsx",
@@ -89,7 +93,7 @@ export function registerFeatureTools({
       valueType,
       defaultValue,
       tags,
-      language,
+      fileExtension,
     }) => {
       const payload = {
         id,
@@ -126,18 +130,27 @@ export function registerFeatureTools({
         }
 
         const data = await res.json();
-
-        const docsText = getDocs(language);
-
-        const text = `
-      ${JSON.stringify(data, null, 2)}
+        const docsText = await findImplementationDocs(fileExtension);
+        const { docs, language } = getDocsMetadata(fileExtension);
+        const linkToGrowthBook = generateLinkToGrowthBook(
+          appOrigin,
+          "features",
+          id
+        );
+        const text = `This is the API response: ${JSON.stringify(data, null, 2)}
       
-      Here is the documentation for the feature flag, if it makes sense to add the flag to the codebase:
-      
-      ${docsText}
-  
-      Importantly, share the link to the feature flag with the user.
-      > See the feature flag on GrowthBook: ${appOrigin}/features/${id}
+        Additionally, here is a template of what to show to the user:
+
+        **✅ Your feature flag \`my-flag-name\` is ready!.**
+        [View it in GrowthBook](${linkToGrowthBook})
+    
+        **How to use it in your code:**
+        (To the LLM agent. Use the text below to properly add the feature flag to the codebase. Also, surface the relevant docs/implemenation to the user)
+
+        ${docsText}
+
+        **Want to learn more?**
+        See the [GrowthBook ${language} docs](${docs})
       `;
 
         return {
@@ -225,7 +238,11 @@ export function registerFeatureTools({
         await handleResNotOk(res);
 
         const data = await res.json();
-
+        const linkToGrowthBook = generateLinkToGrowthBook(
+          appOrigin,
+          "features",
+          id
+        );
         const text = `
         ${JSON.stringify(data.feature, null, 2)}
     
@@ -233,8 +250,7 @@ export function registerFeatureTools({
         rules for each environment, and the default value. If the feature flag is archived or doesnt exist, inform the user and 
         ask if they want to remove references to the feature flag from the codebase. 
         
-        Importantly, share the link to the feature flag with the user.
-        > See the feature flag on GrowthBook: ${appOrigin}/features/${id}
+        [View it in GrowthBook](${linkToGrowthBook})
         `;
 
         return {
