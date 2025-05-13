@@ -148,9 +148,9 @@ export function registerFeatureTools({
 
   server.tool(
     "get_feature_flags",
-    "Fetches all feature flags from the GrowthBook API",
+    "Fetches all feature flags from the GrowthBook API. Flags are returned in the order they were created, from oldest to newest.",
     {
-      limit: z.number().optional().default(10),
+      limit: z.number().optional().default(100),
       offset: z.number().optional().default(0),
       project: z.string().optional(),
     },
@@ -221,12 +221,12 @@ export function registerFeatureTools({
         rules for each environment, and the default value. If the feature flag is archived or doesnt exist, inform the user and 
         ask if they want to remove references to the feature flag from the codebase. 
         
-        If the feature flag exists, share a link to the feature flag with the user.
+        Importantly, share the link to the feature flag with the user.
         > See the feature flag on GrowthBook: ${appOrigin}/features/${id}
         `;
 
         return {
-          content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+          content: [{ type: "text", text }],
         };
       } catch (error) {
         console.error("Error fetching flags:", error);

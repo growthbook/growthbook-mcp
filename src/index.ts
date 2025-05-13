@@ -6,6 +6,7 @@ import { registerFeatureTools } from "./tools/features.js";
 import { registerProjectTools } from "./tools/projects.js";
 import { registerSdkConnectionTools } from "./tools/sdk-connections.js";
 import { getApiKey, getApiUrl, getAppOrigin, getUser } from "./utils.js";
+import { registerSearchTool } from "./tools/search.js";
 
 export const baseApiUrl = getApiUrl();
 export const apiKey = getApiKey();
@@ -55,6 +56,10 @@ registerExperimentTools({
   baseApiUrl,
   apiKey,
   appOrigin,
+});
+
+registerSearchTool({
+  server,
 });
 
 // Start receiving messages on stdin and sending messages on stdout
