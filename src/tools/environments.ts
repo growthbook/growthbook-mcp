@@ -6,6 +6,11 @@ interface EnvironmentTools {
   baseApiUrl: string;
   apiKey: string;
 }
+
+/**
+ * Tool: get_environments
+ * Description: Fetches all environments from the GrowthBook API. Environments can be used to enable/disable feature flags per environment and control feature delivery segmentation.
+ */
 export function registerEnvironmentTools({
   server,
   baseApiUrl,

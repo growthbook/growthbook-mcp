@@ -22,6 +22,10 @@ export function registerFeatureTools({
   appOrigin,
   user,
 }: FeatureTools) {
+  /**
+   * Tool: create_feature_flag
+   * Description: Creates, adds, or wraps an element with a feature flag in GrowthBook. Allows specifying key, type, default value, and other metadata.
+   */
   server.tool(
     "create_feature_flag",
     "Create, add, or wrap an element with a feature flag.",
@@ -146,6 +150,10 @@ export function registerFeatureTools({
     }
   );
 
+  /**
+   * Tool: get_feature_flags
+   * Description: Fetches all feature flags from the GrowthBook API, with optional limit, offset, and project filtering.
+   */
   server.tool(
     "get_feature_flags",
     "Fetches all feature flags from the GrowthBook API. Flags are returned in the order they were created, from oldest to newest.",
@@ -187,6 +195,10 @@ export function registerFeatureTools({
     }
   );
 
+  /**
+   * Tool: get_single_feature_flag
+   * Description: Fetches a specific feature flag from the GrowthBook API by its ID, with optional project filtering.
+   */
   server.tool(
     "get_single_feature_flag",
     "Fetches a specific feature flag from the GrowthBook API",
@@ -235,6 +247,10 @@ export function registerFeatureTools({
     }
   );
 
+  /**
+   * Tool: get_stale_safe_rollouts
+   * Description: Fetches all complete safe rollouts (rolled-back or released) from the GrowthBook API, with optional limit, offset, and project filtering.
+   */
   server.tool(
     "get_stale_safe_rollouts",
     "Fetches all complete safe rollouts (rolled-back or released) from the GrowthBook API",

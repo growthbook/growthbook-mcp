@@ -13,6 +13,11 @@ export function registerSdkConnectionTools({
   baseApiUrl,
   apiKey,
 }: SdkConnectionTools) {
+  /**
+   * Tool: get_sdk_connections
+   * Description: Retrieves all SDK connections, which are how GrowthBook connects to an app.
+   * Users need the key, which is a public key that allows the app to fetch features and experiments from the API.
+   */
   server.tool(
     "get_sdk_connections",
     `Get all SDK connections, 
@@ -43,6 +48,11 @@ export function registerSdkConnectionTools({
     }
   );
 
+  /**
+   * Tool: create_sdk_connection
+   * Description: Creates an SDK connection for a user. Returns an SDK clientKey that can be used to fetch features and experiments.
+   * Requires a name, language, and optionally an environment.
+   */
   server.tool(
     "create_sdk_connection",
     `Create an SDK connection for a user. Returns an SDK clientKey that can be used to fetch features and experiments.`,

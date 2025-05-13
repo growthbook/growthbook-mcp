@@ -4,6 +4,10 @@ import { z } from "zod";
 const APPLICATION_ID = "MN7ZMY63CG";
 const API_KEY = "e17ebcbd97bce29ad0bdec269770e9df";
 
+/**
+ * Tool: search_growthbook_docs
+ * Description: Searches the GrowthBook documentation for information on how to use a feature, based on a user-provided query.
+ */
 export function registerSearchTool({ server }: { server: McpServer }) {
   server.tool(
     "search_growthbook_docs",

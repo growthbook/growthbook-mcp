@@ -7,6 +7,11 @@ interface ProjectTools {
   baseApiUrl: string;
   apiKey: string;
 }
+
+/**
+ * Tool: get_projects
+ * Description: Fetches all projects from the GrowthBook API, with optional limit and offset for pagination.
+ */
 export function registerProjectTools({
   server,
   baseApiUrl,
