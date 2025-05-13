@@ -7,7 +7,7 @@
 **Environment Variables**
 
 | Variable Name | Status | Description |
-| --- | --- | --- | --- |
+| --- | --- | --- | 
 | GB_API_KEY | Required | A GrowthBook API key. |
 | GB_USER | Required | Your name. Used when creating a feature flag. |
 | GB_API_URL | Optional | Your GrowthBook API URL. Defaults to |
