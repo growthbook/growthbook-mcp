@@ -9,16 +9,6 @@ interface ExperimentTools {
   appOrigin: string;
 }
 
-// const VariationSchema = z.object({
-//   name: z.string().describe("The value to use for the variation"),
-//   key: z
-//     .string()
-//     .describe(
-//       "The key to use for the variation. Use a slugified version of name, if not supplied"
-//     ),
-//   value: z.string().describe("The value to use for the variation"),
-// });
-
 export function registerExperimentTools({
   server,
   baseApiUrl,
@@ -290,105 +280,6 @@ export function registerExperimentTools({
     }
   );
 
-  // server.tool(
-  //   "create_safe_rollout_rule",
-  //   "Create a new safe rollout feature rule on an existing feature.",
-  //   {
-  //     featureId: z.string(),
-  //     description: z.string().optional(),
-  //     condition: z
-  //       .string()
-  //       .describe(
-  //         "Applied to everyone by default. Write conditions in MongoDB-style query syntax."
-  //       ),
-  //     controlValue: z
-  //       .string()
-  //       .describe(
-  //         "The type of the value should match the feature type. Ask the user for this value."
-  //       ),
-  //     variationValue: z
-  //       .string()
-  //       .describe(
-  //         "The type of the value should match the feature type. Ask the user for this value."
-  //       ),
-  //     hashAttribute: z.string().describe("Ask the user for this value."),
-  //     environments: z.string().array(),
-  //     exposureQueryId: z
-  //       .string()
-  //       .describe(
-  //         "Also known as the assignment query. Ask the user for this value."
-  //       ),
-  //     datasourceId: z.string().describe("Ask the user for this value."),
-  //     maxDuration: z
-  //       .number()
-  //       .describe(
-  //         "The max duration of the rollout in days. Max duration is how long you would like to monitor for regressions and receive recommendations based on guardrail metric results. Ask the user for this value."
-  //       ),
-  //     guardrailMetricIds: z
-  //       .string()
-  //       .array()
-  //       .describe(
-  //         "The metrics you want to use to track to see whether or not the rollout is causing any regressions. Must be a part of the datasource specified for the safe rollout. Ask the user for these values."
-  //       ),
-  //   },
-  //   async ({
-  //     featureId,
-  //     description,
-  //     condition,
-  //     controlValue,
-  //     variationValue,
-  //     hashAttribute,
-  //     environments,
-  //     exposureQueryId,
-  //     datasourceId,
-  //     maxDuration,
-  //     guardrailMetricIds,
-  //   }) => {
-  //     const payload = {
-  //       // Loop through the environments and create a rule for each one keyed by environment name
-  //       environments: environments.reduce((acc, env) => {
-  //         acc[env] = {
-  //           enabled: true,
-  //           rules: [
-  //             {
-  //               type: "safe-rollout",
-  //               description,
-  //               condition,
-  //               controlValue,
-  //               variationValue,
-  //               hashAttribute,
-  //               exposureQueryId,
-  //               datasourceId,
-  //               maxDuration,
-  //               guardrailMetricIds,
-  //             },
-  //           ],
-  //         };
-  //         return acc;
-  //       }, {} as Record<string, { enabled: boolean; rules: Array<any> }>),
-  //     };
-
-  //     const res = await fetch(`${baseApiUrl}/features/${featureId}`, {
-  //       method: "POST",
-  //       headers: {
-  //         Authorization: `Bearer ${apiKey}`,
-  //         "Content-Type": "application/json",
-  //       },
-  //       body: JSON.stringify(payload),
-  //     });
-  //     const data = await res.json();
-  //     const text = `
-  //   ${JSON.stringify(data, null, 2)}
-
-  //   Show the following link to the user in the response, as it gives quick access to the feature flag experiment on GrowthBook: ${appOrigin}/features/${featureId}
-  //   `;
-
-  //     return {
-  //       content: [{ type: "text", text }],
-  //     };
-  //   }
-  // );
-
   server.tool(
     "get_experiment",
     "Gets a single experiment from GrowthBook",
@@ -424,34 +315,6 @@ export function registerExperimentTools({
       }
     }
   );
-
-  // server.tool(
-  //   "get_assignment_query_ids",
-  //   "Get all assignment query IDs for the current project. This is a list of all the datasources that are available to use for experiments and safe rollouts.",
-  //   {},
-  //   async () => {
-  //     try {
-  //       const res = await fetch(`${baseApiUrl}/data-sources/`, {
-  //         headers: {
-  //           Authorization: `Bearer ${apiKey}`,
-  //           "Content-Type": "application/json",
-  //         },
-  //       });
-
-  //       await handleResNotOk(res);
-
-  //       const data = await res.json();
-
-  //       return {
-  //         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
-  //       };
-  //     } catch (error) {
-  //       return {
-  //         content: [{ type: "text", text: `Error: ${error}` }],
-  //       };
-  //     }
-  //   }
-  // );
 
   server.tool("get_attributes", "Get all attributes", {}, async () => {
     try {

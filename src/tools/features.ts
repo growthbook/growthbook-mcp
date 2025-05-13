@@ -300,25 +300,4 @@ export function registerFeatureTools({
       }
     }
   );
-
-  // server.tool(
-  //   "generate_flag_types",
-  //   "Generate types for a feature flags",
-  //   {},
-  //   async () => {
-  //     const text = `These commands will generate types for your feature flags:
-  //     Here's your API key: ${apiKey}
-
-  //     The first command will log you in to GrowthBook:
-  //     npx -y growthbook auth login
-
-  //     The second command will generate types for your feature flags:
-  //     npx -y growthbook features generate-types
-  //     `;
-
-  //     return {
-  //       content: [{ type: "text", text }],
-  //     };
-  //   }
-  // );
 }

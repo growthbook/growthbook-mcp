@@ -13,7 +13,6 @@ export function registerSdkConnectionTools({
   baseApiUrl,
   apiKey,
 }: SdkConnectionTools) {
-  // Get SDK connections
   server.tool(
     "get_sdk_connections",
     `Get all SDK connections, 
@@ -143,63 +142,4 @@ export function registerSdkConnectionTools({
       }
     }
   );
-
-  // server.tool(
-  //   "check_setup",
-  //   "Give a quick check of the setup to ensure that GrowthBook is installed correctly.",
-  //   {
-  //     language: z.enum(["javascript", "typescript", "react", "nextjs"]),
-  //   },
-  //   async ({ language }) => {
-  //     try {
-  //       const sdkRes = await fetch(`${baseApiUrl}/sdk-connections`, {
-  //         headers: {
-  //           Authorization: `Bearer ${apiKey}`,
-  //           "Content-Type": "application/json",
-  //         },
-  //       });
-
-  //       await handleResNotOk(sdkRes);
-
-  //       const sdkData = await sdkRes.json();
-
-  //       const queryParams = new URLSearchParams();
-  //       queryParams.append("limit", "100");
-
-  //       const attrRes = await fetch(
-  //         `${baseApiUrl}/attributes?${queryParams.toString()}`,
-  //         {
-  //           headers: {
-  //             Authorization: `Bearer ${apiKey}`,
-  //             "Content-Type": "application/json",
-  //           },
-  //         }
-  //       );
-
-  //       await handleResNotOk(attrRes);
-
-  //       const attrData = await attrRes.json();
-  //       const docs = getDocs(language, "setup");
-
-  //       const text = `
-  //       Here is the list of SDK connections. The key field should match the clientKey property in the codebase:
-  //       ${JSON.stringify(sdkData, null, 2)}
-
-  //       Here is the list of attributes. Compare this list to what's in the codebase:
-  //       ${JSON.stringify(attrData, null, 2)}
-
-  //       Use the following instructions to check the codebase to verify everything is correctly configured:
-  //       ${docs}
-  //       `;
-
-  //       return {
-  //         content: [{ type: "text", text }],
-  //       };
-  //     } catch (error) {
-  //       return {
-  //         content: [{ type: "text", text: `Error: ${error}` }],
-  //       };
-  //     }
-  //   }
-  // );
 }

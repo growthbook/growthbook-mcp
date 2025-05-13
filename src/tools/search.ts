@@ -14,7 +14,7 @@ export function registerSearchTool({ server }: { server: McpServer }) {
         .describe("The search query to look up in the GrowthBook docs."),
     },
     async ({ query }) => {
-      const INDEX_NAME = "growthbook"; // Replace with your actual Algolia index name
+      const INDEX_NAME = "growthbook";
       const url = `https://${APPLICATION_ID}-dsn.algolia.net/1/indexes/${INDEX_NAME}/query`;
       const response = await fetch(url, {
         method: "POST",
