@@ -331,6 +331,10 @@ export function registerFeatureTools({
     }
   );
 
+  /**
+   * Tool: generate_flag_types
+   * Description: Generates types for feature flags using the GrowthBook CLI.
+   */
   server.tool(
     "generate_flag_types",
     "Generate types for feature flags",

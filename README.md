@@ -115,6 +115,7 @@ A hammer icon should appear in the chat window, indicating that your GrowthBook 
   - `get_single_feature_flag`: Fetch details for a specific feature flag by ID.
   - `get_stale_safe_rollouts`: List all safe rollout rules that have been rolled back or released.
   - `create_force_rule`: Create a feature flag with a targeting condition.
+  - `generate_flag_types`: Generates types for feature flags
 
 - **Experiments**
 
