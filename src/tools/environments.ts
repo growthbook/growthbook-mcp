@@ -22,7 +22,7 @@ export function registerEnvironmentTools({
     {},
     async () => {
       try {
-        const res = await fetch(`${baseApiUrl}/environments`, {
+        const res = await fetch(`${baseApiUrl}/api/v1/environments`, {
           headers: {
             Authorization: `Bearer ${apiKey}`,
             "Content-Type": "application/json",

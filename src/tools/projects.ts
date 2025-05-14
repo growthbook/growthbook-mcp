@@ -32,7 +32,7 @@ export function registerProjectTools({
 
       try {
         const res = await fetch(
-          `${baseApiUrl}/projects?${queryParams.toString()}`,
+          `${baseApiUrl}/api/v1/projects?${queryParams.toString()}`,
           {
             headers: {
               Authorization: `Bearer ${apiKey}`,

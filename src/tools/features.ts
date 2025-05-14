@@ -18,8 +18,6 @@ interface FeatureTools {
   user: string;
 }
 
-const execAsync = promisify(exec);
-
 export function registerFeatureTools({
   server,
   baseApiUrl,
@@ -107,7 +105,7 @@ export function registerFeatureTools({
       };
 
       try {
-        const res = await fetch(`${baseApiUrl}/features`, {
+        const res = await fetch(`${baseApiUrl}/api/v1/features`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${apiKey}`,
@@ -185,7 +183,7 @@ export function registerFeatureTools({
         if (project) queryParams.append("project", project);
 
         const res = await fetch(
-          `${baseApiUrl}/features?${queryParams.toString()}`,
+          `${baseApiUrl}/api/v1/features?${queryParams.toString()}`,
           {
             headers: {
               Authorization: `Bearer ${apiKey}`,
@@ -226,7 +224,7 @@ export function registerFeatureTools({
         if (project) queryParams.append("project", project);
 
         const res = await fetch(
-          `${baseApiUrl}/features/${id}?${queryParams.toString()}`,
+          `${baseApiUrl}/api/v1/features/${id}?${queryParams.toString()}`,
           {
             headers: {
               Authorization: `Bearer ${apiKey}`,
@@ -285,7 +283,7 @@ export function registerFeatureTools({
         if (project) queryParams.append("project", project);
 
         const res = await fetch(
-          `${baseApiUrl}/features?${queryParams.toString()}`,
+          `${baseApiUrl}/api/v1/features?${queryParams.toString()}`,
           {
             headers: {
               Authorization: `Bearer ${apiKey}`,
@@ -335,18 +333,16 @@ export function registerFeatureTools({
 
   server.tool(
     "generate_flag_types",
-    "Generate types for a feature flags",
+    "Generate types for feature flags",
     {},
     async () => {
-      const text = `These commands will generate types for your feature flags:
-      Here's your API key: ${apiKey}
-      Here's your API base URL: ${baseApiUrl}
+      const text = `Run the following commands for the user to generate types for their feature flags:
 
       The first command will log you in to GrowthBook:
-      npx -y growthbook auth login -k ${apiKey} -u ${baseApiUrl} -p default
+      npx -y growthbook@latest auth login -k ${apiKey} -u ${baseApiUrl} -p default
 
       The second command will generate types for your feature flags:
-      npx -y growthbook features generate-types
+      npx -y growthbook@latest features generate-types -u ${baseApiUrl}
       `;
 
       return {

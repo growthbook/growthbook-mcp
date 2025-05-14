@@ -41,7 +41,7 @@ export function registerExperimentTools({
         if (project) queryParams.append("project", project);
 
         const res = await fetch(
-          `${baseApiUrl}/experiments?${queryParams.toString()}`,
+          `${baseApiUrl}/api/v1/experiments?${queryParams.toString()}`,
           {
             headers: {
               Authorization: `Bearer ${apiKey}`,
@@ -130,7 +130,7 @@ export function registerExperimentTools({
           }, {} as Record<string, { enabled: boolean; rules: Array<any> }>),
         };
 
-        const res = await fetch(`${baseApiUrl}/features/${featureId}`, {
+        const res = await fetch(`${baseApiUrl}/api/v1/features/${featureId}`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${apiKey}`,
@@ -190,12 +190,15 @@ export function registerExperimentTools({
     },
     async ({ experimentId }) => {
       try {
-        const res = await fetch(`${baseApiUrl}/experiments/${experimentId}`, {
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
-        });
+        const res = await fetch(
+          `${baseApiUrl}/api/v1/experiments/${experimentId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
 
         await handleResNotOk(res);
         const data = await res.json();
@@ -232,7 +235,7 @@ export function registerExperimentTools({
       queryParams.append("limit", "100");
 
       const res = await fetch(
-        `${baseApiUrl}/attributes?${queryParams.toString()}`,
+        `${baseApiUrl}/api/v1/attributes?${queryParams.toString()}`,
         {
           headers: {
             Authorization: `Bearer ${apiKey}`,

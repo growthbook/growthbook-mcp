@@ -36,7 +36,7 @@ export function registerSdkConnectionTools({
         if (project) queryParams.append("project", project);
 
         const res = await fetch(
-          `${baseApiUrl}/sdk-connections?${queryParams.toString()}`,
+          `${baseApiUrl}/api/v1/sdk-connections?${queryParams.toString()}`,
           {
             headers: {
               Authorization: `Bearer ${apiKey}`,
@@ -110,7 +110,7 @@ export function registerSdkConnectionTools({
     async ({ name, language, environment }) => {
       if (!environment) {
         try {
-          const res = await fetch(`${baseApiUrl}/environments`, {
+          const res = await fetch(`${baseApiUrl}/api/v1/environments`, {
             headers: {
               Authorization: `Bearer ${apiKey}`,
               "Content-Type": "application/json",
@@ -141,7 +141,7 @@ export function registerSdkConnectionTools({
       };
 
       try {
-        const res = await fetch(`${baseApiUrl}/sdk-connections`, {
+        const res = await fetch(`${baseApiUrl}/api/v1/sdk-connections`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${apiKey}`,
