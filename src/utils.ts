@@ -22,7 +22,7 @@ export function getApiKey() {
 }
 
 export function getApiUrl() {
-  const defaultApiUrl = "https://api.growthbook.io/api/v1";
+  const defaultApiUrl = "https://api.growthbook.io";
   const userApiUrl = process.env.GB_API_URL;
   return `${userApiUrl || defaultApiUrl}`;
 }
