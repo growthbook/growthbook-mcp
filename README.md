@@ -1,17 +1,24 @@
 # GrowthBook MCP Server
 
-// Todo: overview
+With the GrowthBook MCP server, you can interact with GrowthBook right from your LLM client. See experiment details, add a feature flag, and more.
 
 ## Installation
 
+### Local Installation
+1. Clone the repo
+2. Run `npx tsc` to generate a build
+
 **Environment Variables**
+Use the following env variables to configure the MCP server.
 
 | Variable Name | Status | Description |
 | --- | --- | --- | 
 | GB_API_KEY | Required | A GrowthBook API key. |
 | GB_USER | Required | Your name. Used when creating a feature flag. |
-| GB_API_URL | Optional | Your GrowthBook API URL. Defaults to |
-| GB_APP_ORIGIN | Optional | Your GrowthBook app URL Defaults to |
+| GB_API_URL | Optional | Your GrowthBook API URL. Defaults to `https://api.growthbook.io/api/v1`.|
+| GB_APP_ORIGIN | Optional | Your GrowthBook app URL Defaults to `https://app.growthbook.io`.|
+
+Find instructions below to add the MCP server to a client. Any client that supports MCP is also compatible. Consult its documentation for how to add the server.
 
 ### Cursor
 1. Open **Cursor Settings** &rarr; **MCP**
@@ -94,13 +101,34 @@ A hammer icon should appear in the chat window, indicating that your GrowthBook 
 
 ---
 
-Most other clients are supported. Follow their respective instructions for installation.
-
-### Local
-1. Clone the repo
-2. Run `npx tsc` to generate a build
-
 ## Tools
 
-// Todo
+- **Feature Flags**
+  - `create_feature_flag`: Create, add, or wrap an element with a feature flag. Specify key, type, default value, and metadata.
+  - `get_feature_flags`: List all feature flags in your GrowthBook instance.
+  - `get_single_feature_flag`: Fetch details for a specific feature flag by ID.
+  - `get_stale_safe_rollouts`: List all safe rollout rules that have been rolled back or released.
+  - `create_force_rule`: Create a feature flag with a targeting condition.
+
+- **Experiments**
+  - `get_experiments`: List all experiments in GrowthBook.
+  - `get_experiment`: Fetch details for a specific experiment by ID.
+  - `get_attributes`: List all user attributes tracked in GrowthBook (useful for targeting).
+
+- **Environments**
+  - `get_environments`: List all environments (e.g., production, staging) configured in GrowthBook.
+
+- **Projects**
+  - `get_projects`: List all projects in your GrowthBook instance.
+
+- **SDK Connections**
+  - `get_sdk_connections`: List all SDK connections (how GrowthBook connects to your apps).
+  - `create_sdk_connection`: Create a new SDK connection for your app, specifying language and environment.
+
+- **Documentation Search**
+  - `search_growthbook_docs`: Search the GrowthBook documentation for information on how to use a feature, by keyword or question.
+
+
+
+
 
