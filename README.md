@@ -2,12 +2,7 @@
 
 With the GrowthBook MCP server, you can interact with GrowthBook right from your LLM client. See experiment details, add a feature flag, and more.
 
-## Installation
-
-### Local Installation
-
-1. Clone the repo
-2. Run `npx tsc` to generate a build
+## Setup
 
 **Environment Variables**
 Use the following env variables to configure the MCP server.
@@ -31,8 +26,8 @@ Find instructions below to add the MCP server to a client. Any client that suppo
 {
   "mcpServers": {
     "growthbook": {
-      "command": "node",
-      "args": ["ABSOLUTE_PATH_TO_THE_BUILT_MCP_SERVER"],
+      "command": "npx",
+      "args": ["-y", "@growthbook/mcp"],
       "env": {
         "GB_API_KEY": "YOUR_API_KEY",
         "GB_API_URL": "YOUR_API_URL",
@@ -57,9 +52,9 @@ You should now see a green active status after the server successfully connects!
  "mcp": {
     "servers": {
       "growthbook": {
-        "command": "node",
+        "command": "npx",
         "args": [
-          "ABSOLUTE_PATH_TO_THE_BUILT_MCP_SERVER"
+          "-y", "@growthbook/mcp"
         ],
         "env": {
           "GB_API_KEY": "YOUR_API_KEY",
@@ -87,8 +82,8 @@ GrowthBook MCP is now ready to use in VS Code.
 {
   "mcpServers": {
     "growthbook": {
-      "command": "node",
-      "args": ["ABSOLUTE_PATH_TO_THE_BUILT_MCP_SERVER"],
+      "command": "npx",
+      "args": ["-y", "@growthbook/mcp"],
       "env": {
         "GB_API_KEY": "YOUR_API_KEY",
         "GB_API_URL": "YOUR_API_URL",
