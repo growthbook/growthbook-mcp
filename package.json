@@ -12,7 +12,7 @@
     "bump:major": "pnpm version major --no-git-tag-version"
   },
   "bin": {
-    "mcp": "./build/index.js"
+    "mcp": "build/index.js"
   },
   "files": [
     "build"
