@@ -7,16 +7,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Install pnpm
         uses: pnpm/action-setup@v3
         with:
           version: 10
-
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "pnpm"
+      - name: Install dependencies
+        run: pnpm install
       # TODO: add CI job
       - run: pnpm build
       - uses: JS-DevTools/npm-publish@v3
