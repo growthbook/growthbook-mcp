@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { registerEnvironmentTools } from "./tools/environments.js";
@@ -22,7 +24,7 @@ const server = new McpServer(
   {
     instructions:
       "You are a helpful assistant that interacts with GrowthBook, an open source feature flagging and experimentation platform. You can use tools to create and manage feature flags, experiments, and environments. Note that experiments are also called a/b tests.",
-  }
+  },
 );
 
 registerEnvironmentTools({
