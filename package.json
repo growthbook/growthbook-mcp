@@ -1,14 +1,25 @@
 {
   "name": "@growthbook/mcp",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "",
+  "access": "public",
+  "homepage": "https://github.com/growthbook/growthbook-mcp",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc"
+    "build": "tsc",
+    "bump:patch": "pnpm version patch --no-git-tag-version",
+    "bump:minor": "pnpm version minor --no-git-tag-version",
+    "bump:major": "pnpm version major --no-git-tag-version"
   },
+  "bin": {
+    "mcp": "./build/index.js"
+  },
+  "files": [
+    "build"
+  ],
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "GrowthBook",
+  "license": "MIT",
   "packageManager": "pnpm@10.6.1",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.10.2",
