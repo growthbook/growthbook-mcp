@@ -1,5 +1,7 @@
 # GrowthBook MCP Server
 
+[![smithery badge](https://smithery.ai/badge/@growthbook/growthbook-mcp)](https://smithery.ai/server/@growthbook/growthbook-mcp)
+
 With the GrowthBook MCP server, you can interact with GrowthBook right from your LLM client. See experiment details, add a feature flag, and more.
 
 ## Setup
@@ -15,6 +17,42 @@ Use the following env variables to configure the MCP server.
 | GB_APP_ORIGIN | Optional | Your GrowthBook app URL Defaults to `https://app.growthbook.io`.  |
 
 Find instructions below to add the MCP server to a client. Any client that supports MCP is also compatible. Consult its documentation for how to add the server.
+
+### Claude Desktop
+
+1. **Open Settings** &rarr; **Developer**
+2. Click **Edit Config**
+3. Open `claude_desktop_config.json`
+4. Add the following configuration:
+
+```json
+{
+  "mcpServers": {
+    "growthbook": {
+      "command": "npx",
+      "args": ["-y", "@growthbook/mcp"],
+      "env": {
+        "GB_API_KEY": "YOUR_API_KEY",
+        "GB_API_URL": "YOUR_API_URL",
+        "GB_APP_ORIGIN": "YOUR_APP_ORIGIN",
+        "GB_USER": "YOUR_NAME"
+      }
+    }
+  }
+}
+```
+
+5. Save the config and restart Claude
+
+A hammer icon should appear in the chat window, indicating that your GrowthBook MCP server is connected and available!
+
+### Installing via Smithery
+
+To install GrowthBook MCP for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@growthbook/growthbook-mcp):
+
+```bash
+npx -y @smithery/cli install @growthbook/growthbook-mcp --client claude
+```
 
 ### Cursor
 
@@ -71,33 +109,6 @@ You should now see a green active status after the server successfully connects!
 
 GrowthBook MCP is now ready to use in VS Code.
 
-### Claude Desktop
-
-1. **Open Settings** &rarr; **Developer**
-2. Click **Edit Config**
-3. Open `claude_desktop_config.json`
-4. Add the following configuration:
-
-```json
-{
-  "mcpServers": {
-    "growthbook": {
-      "command": "npx",
-      "args": ["-y", "@growthbook/mcp"],
-      "env": {
-        "GB_API_KEY": "YOUR_API_KEY",
-        "GB_API_URL": "YOUR_API_URL",
-        "GB_APP_ORIGIN": "YOUR_APP_ORIGIN",
-        "GB_USER": "YOUR_NAME"
-      }
-    }
-  }
-}
-```
-
-5. Save the config and restart Claude
-
-A hammer icon should appear in the chat window, indicating that your GrowthBook MCP server is connected and available!
 
 ---
 
