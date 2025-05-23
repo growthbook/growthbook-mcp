@@ -1,0 +1,34 @@
+# Smithery configuration file: https://smithery.ai/docs/build/project-config
+
+startCommand:
+  type: stdio
+  commandFunction:
+    # A JS function that produces the CLI command based on the given config to start the MCP on stdio.
+    |-
+    (config) => ({ command: 'node', args: ['build/index.js'], env: { GB_API_KEY: config.gbApiKey, GB_USER: config.gbUser, GB_API_URL: config.gbApiUrl, GB_APP_ORIGIN: config.gbAppOrigin } })
+  configSchema:
+    # JSON Schema defining the configuration options for the MCP.
+    type: object
+    required:
+      - gbApiKey
+      - gbUser
+    properties:
+      gbApiKey:
+        type: string
+        description: Your GrowthBook API key
+      gbUser:
+        type: string
+        description: Your user name, used for feature flag creation
+      gbApiUrl:
+        type: string
+        default: https://api.growthbook.io
+        description: GrowthBook API URL
+      gbAppOrigin:
+        type: string
+        default: https://app.growthbook.io
+        description: GrowthBook application origin URL
+  exampleConfig:
+    gbApiKey: 1234567890abcdef
+    gbUser: Alice Example
+    gbApiUrl: https://api.growthbook.io
+    gbAppOrigin: https://app.growthbook.io
