@@ -9,6 +9,7 @@ import { registerProjectTools } from "./tools/projects.js";
 import { registerSdkConnectionTools } from "./tools/sdk-connections.js";
 import { getApiKey, getApiUrl, getAppOrigin, getUser } from "./utils.js";
 import { registerSearchTool } from "./tools/search.js";
+import { registerDefaultsTools } from "./tools/defaults.js";
 
 export const baseApiUrl = getApiUrl();
 export const apiKey = getApiKey();
@@ -22,9 +23,10 @@ const server = new McpServer(
     version: "1.0.0",
   },
   {
-    instructions:
-      "You are a helpful assistant that interacts with GrowthBook, an open source feature flagging and experimentation platform. You can use tools to create and manage feature flags, experiments, and environments. Note that experiments are also called a/b tests.",
-  },
+    instructions: `You are a helpful assistant that interacts with GrowthBook, an open source feature flagging and experimentation platform. You can use tools to create and manage feature flags, experiments, and environments. Note that experiments are also called A/B tests. 
+      
+Certain tools may require you to select from a list of values. Call the resources tool to get a list of values.`,
+  }
 );
 
 registerEnvironmentTools({
@@ -58,12 +60,20 @@ registerExperimentTools({
   baseApiUrl,
   apiKey,
   appOrigin,
+  user,
 });
 
 registerSearchTool({
   server,
 });
 
+registerDefaultsTools({
+  server,
+  baseApiUrl,
+  apiKey,
+});
+
 // Start receiving messages on stdin and sending messages on stdout
 const transport = new StdioServerTransport();
+
 await server.connect(transport);

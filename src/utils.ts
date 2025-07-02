@@ -1,12 +1,13 @@
+import { getFeatureFlagDocs } from "./docs.js";
+
 export async function handleResNotOk(res: Response) {
   if (!res.ok) {
+    const errorText = await res.text();
     let errorMessage = `HTTP ${res.status} ${res.statusText}`;
     try {
-      const errorBody = await res.json();
+      const errorBody = JSON.parse(errorText);
       errorMessage += `: ${JSON.stringify(errorBody)}`;
     } catch {
-      // fallback to text if not JSON
-      const errorText = await res.text();
       if (errorText) errorMessage += `: ${errorText}`;
     }
     throw new Error(errorMessage);
@@ -47,69 +48,69 @@ export function getDocsMetadata(extension: string) {
     case ".jsx":
       return {
         language: "react",
-        md: "https://raw.githubusercontent.com/growthbook/growthbook/main/docs/docs/lib/react.mdx",
+        stub: getFeatureFlagDocs("react"),
         docs: "https://docs.growthbook.io/lib/react",
       };
     case ".ts":
     case ".js":
       return {
         language: "javascript",
-        md: "https://raw.githubusercontent.com/growthbook/growthbook/main/docs/docs/lib/js.mdx",
+        stub: getFeatureFlagDocs("javascript"),
         docs: "https://docs.growthbook.io/lib/js",
       };
     case ".vue":
       return {
         language: "vue",
-        md: "https://raw.githubusercontent.com/growthbook/growthbook/main/docs/docs/lib/vue.mdx",
+        stub: getFeatureFlagDocs("vue"),
         docs: "https://docs.growthbook.io/lib/vue",
       };
     case ".py":
       return {
         language: "python",
-        md: "https://raw.githubusercontent.com/growthbook/growthbook/main/docs/docs/lib/python.mdx",
+        stub: getFeatureFlagDocs("python"),
         docs: "https://docs.growthbook.io/lib/python",
       };
     case ".go":
       return {
         language: "go",
-        md: "https://raw.githubusercontent.com/growthbook/growthbook/main/docs/docs/lib/go.mdx",
+        stub: getFeatureFlagDocs("go"),
         docs: "https://docs.growthbook.io/lib/go",
       };
     case ".php":
       return {
         language: "php",
-        md: "https://raw.githubusercontent.com/growthbook/growthbook/main/docs/docs/lib/php.mdx",
+        stub: getFeatureFlagDocs("php"),
         docs: "https://docs.growthbook.io/lib/php",
       };
     case ".rb":
       return {
         language: "ruby",
-        md: "https://raw.githubusercontent.com/growthbook/growthbook/main/docs/docs/lib/ruby.mdx",
+        stub: getFeatureFlagDocs("ruby"),
         docs: "https://docs.growthbook.io/lib/ruby",
       };
     case ".java":
       return {
         language: "java",
-        md: "https://raw.githubusercontent.com/growthbook/growthbook/main/docs/docs/lib/java.mdx",
+        stub: getFeatureFlagDocs("java"),
         docs: "https://docs.growthbook.io/lib/java",
       };
     case ".cs":
       return {
         language: "csharp",
-        md: "https://raw.githubusercontent.com/growthbook/growthbook/main/docs/docs/lib/csharp.mdx",
+        stub: getFeatureFlagDocs("csharp"),
         docs: "https://docs.growthbook.io/lib/csharp",
       };
     case ".swift":
       return {
         language: "swift",
-        md: "https://raw.githubusercontent.com/growthbook/growthbook/main/docs/docs/lib/swift.mdx",
+        stub: getFeatureFlagDocs("swift"),
         docs: "https://docs.growthbook.io/lib/swift",
       };
     case ".ex":
     case ".exs":
       return {
         language: "elixir",
-        md: "https://raw.githubusercontent.com/growthbook/growthbook/main/docs/docs/lib/elixir.mdx",
+        stub: getFeatureFlagDocs("elixir"),
         docs: "https://docs.growthbook.io/lib/elixir",
       };
     case ".kt":
@@ -117,19 +118,19 @@ export function getDocsMetadata(extension: string) {
     case ".ktm":
       return {
         language: "kotlin",
-        md: "https://raw.githubusercontent.com/growthbook/growthbook/main/docs/docs/lib/kotlin.mdx",
+        stub: getFeatureFlagDocs("kotlin"),
         docs: "https://docs.growthbook.io/lib/kotlin",
       };
     case ".dart":
       return {
         language: "flutter",
-        md: "https://raw.githubusercontent.com/growthbook/growthbook/main/docs/docs/lib/flutter.mdx",
+        stub: getFeatureFlagDocs("flutter"),
         docs: "https://docs.growthbook.io/lib/flutter",
       };
     default:
       return {
         language: "unknown",
-        md: "https://raw.githubusercontent.com/growthbook/growthbook/main/docs/docs/lib/index.mdx",
+        stub: getFeatureFlagDocs("unknown"),
         docs: "https://docs.growthbook.io/lib/",
       };
   }
@@ -159,18 +160,6 @@ export async function searchGrowthBookDocs(query: string) {
     return hits;
   } catch (error) {
     return [];
-  }
-}
-
-export async function findImplementationDocs(extension: string) {
-  const { md } = getDocsMetadata(extension);
-  try {
-    const response = await fetch(md);
-    await handleResNotOk(response);
-    const markdown = await response.text();
-    return markdown;
-  } catch (error) {
-    return "Docs not found";
   }
 }
 
