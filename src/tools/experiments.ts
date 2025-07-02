@@ -1,17 +1,18 @@
 import { z } from "zod";
 import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import {
-  findImplementationDocs,
   generateLinkToGrowthBook,
   getDocsMetadata,
   handleResNotOk,
 } from "../utils.js";
+import { getDefaults } from "./defaults.js";
 
 interface ExperimentTools {
   server: McpServer;
   baseApiUrl: string;
   apiKey: string;
   appOrigin: string;
+  user: string;
 }
 
 export function registerExperimentTools({
@@ -19,6 +20,7 @@ export function registerExperimentTools({
   baseApiUrl,
   apiKey,
   appOrigin,
+  user,
 }: ExperimentTools) {
   /**
    * Tool: get_experiments
@@ -148,8 +150,7 @@ export function registerExperimentTools({
           "features",
           featureId
         );
-        const docsText = await findImplementationDocs(fileExtension);
-        const { docs, language } = getDocsMetadata(fileExtension);
+        const { docs, language, stub } = getDocsMetadata(fileExtension);
 
         const text = `This is the API response: ${JSON.stringify(data, null, 2)}
       
@@ -161,7 +162,7 @@ export function registerExperimentTools({
         **How to use it in your code:**
         (To the LLM agent. Use the text below to properly add the feature flag to the codebase. Also, surface the relevant docs/implemenation to the user)
 
-        ${docsText}
+        ${stub}
 
         **Want to learn more?**
         See the [GrowthBook ${language} docs](${docs})
@@ -255,4 +256,194 @@ export function registerExperimentTools({
       throw error;
     }
   });
+
+  server.tool(
+    "create_experiment",
+    "IMPORTANT: Call get_defaults before creating an experiment, and use its output to guide the arguments. Creates a new feature flag and experiment (A/B test).",
+    {
+      name: z
+        .string()
+        .describe(
+          "Experiment name. Base name off the examples from get_defaults. If none are available, use a short, descriptive name that captures the essence of the experiment."
+        ),
+      description: z.string().optional().describe("Experiment description."),
+      hypothesis: z
+        .string()
+        .optional()
+        .describe(
+          "Experiment hypothesis. Base hypothesis off the examples from get_defaults. If none are available, use a falsifiable statement about what will happen if the experiment succeeds or fails."
+        ),
+      value: z.string().describe("The default value of the experiment."),
+      variations: z
+        .array(
+          z.object({
+            name: z
+              .string()
+              .describe(
+                "Variation name. Base name off the examples from get_defaults. If none are available, use a short, descriptive name that captures the essence of the variation."
+              ),
+            value: z
+              .union([z.string(), z.number(), z.boolean(), z.record(z.any())])
+              .describe(
+                "The value of the control and each of the variations. The value should be a string, number, boolean, or object. If it's an object, it should be a valid JSON object."
+              ),
+          })
+        )
+        .describe(
+          "Experiment variations. The key should be the variation name and the value should be the variation value. Look to variations included in preview experiments for guidance on generation. The default or control variation should always be first."
+        ),
+      fileExtension: z
+        .enum([
+          ".tsx",
+          ".jsx",
+          ".ts",
+          ".js",
+          ".vue",
+          ".py",
+          ".go",
+          ".php",
+          ".rb",
+          ".java",
+          ".cs",
+        ])
+        .describe(
+          "The extension of the current file. If it's unclear, ask the user."
+        ),
+      confirmedDefaultsReviewed: z
+        .boolean()
+        .describe(
+          "Set to true to confirm you have called get_defaults and reviewed the output to guide these parameters."
+        ),
+    },
+    async ({
+      description,
+      hypothesis,
+      name,
+      variations,
+      fileExtension,
+      confirmedDefaultsReviewed,
+    }) => {
+      if (!confirmedDefaultsReviewed) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: "Error: Please call get_defaults and review the output to guide these parameters.",
+            },
+          ],
+        };
+      }
+
+      // Fetch experiment defaults first and surface to user
+      let experimentDefaults = await getDefaults(apiKey, baseApiUrl);
+
+      const experimentPayload = {
+        name,
+        description,
+        hypothesis,
+        trackingKey: name.toLowerCase().replace(/[^a-z0-9]/g, "-"),
+        tags: ["mcp"],
+        assignmentQueryId: experimentDefaults?.assignmentQuery,
+        datasourceId: experimentDefaults?.datasource,
+        variations: variations.map((variation, idx) => ({
+          key: idx.toString(),
+          name: variation.name,
+        })),
+      };
+
+      const experimentRes = await fetch(`${baseApiUrl}/api/v1/experiments`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(experimentPayload),
+      });
+
+      await handleResNotOk(experimentRes);
+
+      const experimentData = await experimentRes.json();
+
+      const flagId = `flag_${name.toLowerCase().replace(/[^a-z0-9]/g, "_")}`;
+
+      const flagPayload = {
+        id: flagId,
+        owner: user,
+        defaultValue: variations[0].value,
+        valueType:
+          typeof variations[0].value === "string"
+            ? "string"
+            : typeof variations[0].value === "number"
+            ? "number"
+            : "boolean",
+        description,
+        environments: {
+          ...experimentDefaults.environments.reduce((acc, env) => {
+            acc[env] = {
+              enabled: true,
+              rules: [
+                {
+                  type: "experiment-ref",
+                  experimentId: experimentData.experiment.id,
+                  variations: experimentData.experiment.variations.map(
+                    (expVariation: { variationId: string }, idx: number) => ({
+                      value: variations[idx].value,
+                      variationId: expVariation.variationId,
+                    })
+                  ),
+                },
+              ],
+            };
+            return acc;
+          }, {} as Record<string, { enabled: boolean; rules: Array<any> }>),
+        },
+      };
+
+      const flagRes = await fetch(`${baseApiUrl}/api/v1/features`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(flagPayload),
+      });
+
+      const flagData = await flagRes.json();
+
+      await handleResNotOk(flagRes);
+
+      const experimentLink = generateLinkToGrowthBook(
+        appOrigin,
+        "experiment",
+        experimentData.experiment.id
+      );
+
+      const flagLink = generateLinkToGrowthBook(
+        appOrigin,
+        "features",
+        flagData.feature.id
+      );
+
+      const { stub, docs, language } = getDocsMetadata(fileExtension);
+
+      const text = `
+(To the LLM. It's essential to show the links below to the user. This is the only way they can review and launch the experiment.)
+**✅ Your draft experiment \`${name}\` is ready!.** [View the experiment in GrowthBook](${experimentLink}) to review and launch.
+
+A linked feature flag was also created: \`${flagId}\`. [View the feature flag in GrowthBook](${flagLink}).
+
+**How to use it in your code:**
+(To the LLM agent. GrowthBook uses feature flags to implement experiments. Use the code snippets below to properly update the file to use the new feature flag)
+
+${stub}
+
+**Learn more about implementing experiments in your codebase:**
+See the [GrowthBook ${language} docs](${docs})
+    `;
+
+      return {
+        content: [{ type: "text", text }],
+      };
+    }
+  );
 }
