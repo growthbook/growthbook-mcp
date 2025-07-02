@@ -1,11 +1,8 @@
+import { z } from "zod";
 import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { handleResNotOk } from "../utils.js";
+import { handleResNotOk, type BaseToolsInterface } from "../utils.js";
 
-interface EnvironmentTools {
-  server: McpServer;
-  baseApiUrl: string;
-  apiKey: string;
-}
+interface EnvironmentTools extends BaseToolsInterface {}
 
 /**
  * Tool: get_environments

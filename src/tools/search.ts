@@ -1,12 +1,16 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { searchGrowthBookDocs } from "../utils.js";
+import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { searchGrowthBookDocs, type BaseToolsInterface } from "../utils.js";
+
+interface SearchTools {
+  server: McpServer;
+}
 
 /**
  * Tool: search_growthbook_docs
  * Description: Searches the GrowthBook documentation for information on how to use a feature, based on a user-provided query.
  */
-export function registerSearchTool({ server }: { server: McpServer }) {
+export function registerSearchTools({ server }: SearchTools) {
   server.tool(
     "search_growthbook_docs",
     "Search the GrowthBook docs on how to use a feature",

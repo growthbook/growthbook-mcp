@@ -1,4 +1,41 @@
 import { getFeatureFlagDocs } from "./docs.js";
+import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+
+// Shared interfaces for MCP tools
+export interface BaseToolsInterface {
+  server: McpServer;
+  baseApiUrl: string;
+  apiKey: string;
+}
+
+export interface ExtendedToolsInterface extends BaseToolsInterface {
+  appOrigin: string;
+  user: string;
+}
+
+// Shared file extension enum for all MCP tools
+export const SUPPORTED_FILE_EXTENSIONS = [
+  ".tsx",
+  ".jsx", 
+  ".ts",
+  ".js",
+  ".vue",
+  ".py",
+  ".go",
+  ".php",
+  ".rb",
+  ".java",
+  ".cs",
+  ".swift",
+  ".ex",
+  ".exs",
+  ".kt",
+  ".kts",
+  ".ktm",
+  ".dart",
+] as const;
+
+export type SupportedFileExtension = (typeof SUPPORTED_FILE_EXTENSIONS)[number];
 
 export async function handleResNotOk(res: Response) {
   if (!res.ok) {

@@ -4,16 +4,12 @@ import {
   generateLinkToGrowthBook,
   getDocsMetadata,
   handleResNotOk,
+  type ExtendedToolsInterface,
+  SUPPORTED_FILE_EXTENSIONS,
 } from "../utils.js";
 import { getDefaults } from "./defaults.js";
 
-interface ExperimentTools {
-  server: McpServer;
-  baseApiUrl: string;
-  apiKey: string;
-  appOrigin: string;
-  user: string;
-}
+interface ExperimentTools extends ExtendedToolsInterface {}
 
 export function registerExperimentTools({
   server,
@@ -88,19 +84,7 @@ export function registerExperimentTools({
         .describe("The type of the value should match the feature type"),
       environments: z.string().array(),
       fileExtension: z
-        .enum([
-          ".tsx",
-          ".jsx",
-          ".ts",
-          ".js",
-          ".vue",
-          ".py",
-          ".go",
-          ".php",
-          ".rb",
-          ".java",
-          ".cs",
-        ])
+        .enum(SUPPORTED_FILE_EXTENSIONS)
         .describe(
           "The extension of the current file. If it's unclear, ask the user."
         ),
@@ -293,19 +277,7 @@ export function registerExperimentTools({
           "Experiment variations. The key should be the variation name and the value should be the variation value. Look to variations included in preview experiments for guidance on generation. The default or control variation should always be first."
         ),
       fileExtension: z
-        .enum([
-          ".tsx",
-          ".jsx",
-          ".ts",
-          ".js",
-          ".vue",
-          ".py",
-          ".go",
-          ".php",
-          ".rb",
-          ".java",
-          ".cs",
-        ])
+        .enum(SUPPORTED_FILE_EXTENSIONS)
         .describe(
           "The extension of the current file. If it's unclear, ask the user."
         ),

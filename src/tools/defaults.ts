@@ -1,9 +1,9 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { handleResNotOk } from "../utils.js";
+import { z } from "zod";
+import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { handleResNotOk, type BaseToolsInterface } from "../utils.js";
 import envPaths from "env-paths";
 import { writeFile, readFile } from "fs/promises";
 import { join } from "path";
-import { z } from "zod";
 
 const paths = envPaths("growthbook-mcp"); // Use your app name
 const experimentDefaultsDir = paths.config; // This is the recommended config directory
@@ -261,11 +261,7 @@ export async function registerDefaultsTools({
   server,
   baseApiUrl,
   apiKey,
-}: {
-  server: McpServer;
-  baseApiUrl: string;
-  apiKey: string;
-}) {
+}: BaseToolsInterface) {
   server.tool(
     "get_defaults",
     "Get the default values for experiments, including hypothesis, description, datasource, assignment query, and environments.",

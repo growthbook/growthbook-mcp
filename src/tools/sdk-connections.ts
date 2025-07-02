@@ -1,12 +1,8 @@
 import { z } from "zod";
 import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { handleResNotOk } from "../utils.js";
+import { handleResNotOk, type BaseToolsInterface } from "../utils.js";
 
-interface SdkConnectionTools {
-  server: McpServer;
-  baseApiUrl: string;
-  apiKey: string;
-}
+interface SdkConnectionTools extends BaseToolsInterface {}
 export function registerSdkConnectionTools({
   server,
   baseApiUrl,
@@ -19,9 +15,7 @@ export function registerSdkConnectionTools({
    */
   server.tool(
     "get_sdk_connections",
-    `Get all SDK connections, 
-    which are how GrowthBook connects to an app. 
-    Importantly, users need the key, which is a public client key that allows the app to fetch features and experiments the API `,
+    "Get all SDK connections. SDK connections are how GrowthBook connects to an app. Users need the client key to fetch features and experiments from the API.",
     {
       limit: z.number().optional().default(100),
       offset: z.number().optional().default(0),

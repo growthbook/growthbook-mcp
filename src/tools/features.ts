@@ -1,22 +1,17 @@
 import { z } from "zod";
-
 import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import {
   getDocsMetadata,
   findImplementationDocs,
   handleResNotOk,
   generateLinkToGrowthBook,
+  type ExtendedToolsInterface,
+  SUPPORTED_FILE_EXTENSIONS,
 } from "../utils.js";
 import { exec } from "child_process";
 import { promisify } from "util";
 
-interface FeatureTools {
-  server: McpServer;
-  baseApiUrl: string;
-  apiKey: string;
-  appOrigin: string;
-  user: string;
-}
+interface FeatureTools extends ExtendedToolsInterface {}
 
 export function registerFeatureTools({
   server,
@@ -66,19 +61,7 @@ export function registerFeatureTools({
         .optional()
         .describe("Tags for the feature flag"),
       fileExtension: z
-        .enum([
-          ".tsx",
-          ".jsx",
-          ".ts",
-          ".js",
-          ".vue",
-          ".py",
-          ".go",
-          ".php",
-          ".rb",
-          ".java",
-          ".cs",
-        ])
+        .enum(SUPPORTED_FILE_EXTENSIONS)
         .describe(
           "The extension of the current file. If it's unclear, ask the user."
         ),
