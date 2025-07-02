@@ -128,8 +128,7 @@ export function registerFeatureTools({
         }
 
         const data = await res.json();
-        const docsText = await findImplementationDocs(fileExtension);
-        const { docs, language } = getDocsMetadata(fileExtension);
+        const { docs, language, stub } = getDocsMetadata(fileExtension);
         const linkToGrowthBook = generateLinkToGrowthBook(
           appOrigin,
           "features",
@@ -145,7 +144,7 @@ export function registerFeatureTools({
         **How to use it in your code:**
         (To the LLM agent. Use the text below to properly add the feature flag to the codebase. Also, surface the relevant docs/implemenation to the user)
 
-        ${docsText}
+        ${stub}
 
         **Want to learn more?**
         See the [GrowthBook ${language} docs](${docs})
@@ -171,16 +170,16 @@ export function registerFeatureTools({
     {
       limit: z.number().optional().default(100),
       offset: z.number().optional().default(0),
-      project: z.string().optional(),
+      projectId: z.string().optional(),
     },
-    async ({ limit, offset, project }) => {
+    async ({ limit, offset, projectId }) => {
       try {
         const queryParams = new URLSearchParams({
           limit: limit?.toString(),
           offset: offset?.toString(),
         });
 
-        if (project) queryParams.append("project", project);
+        if (projectId) queryParams.append("projectId", projectId);
 
         const res = await fetch(
           `${baseApiUrl}/api/v1/features?${queryParams.toString()}`,
