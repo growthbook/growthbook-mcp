@@ -84,14 +84,7 @@ export function registerExperimentTools({
           "The extension of the current file. If it's unclear, ask the user."
         ),
     },
-    async ({
-      featureId,
-      description,
-      condition,
-      value,
-
-      fileExtension,
-    }) => {
+    async ({ featureId, description, condition, value, fileExtension }) => {
       try {
         // Fetch feature defaults first and surface to user
         const defaults = await getDefaults(apiKey, baseApiUrl);

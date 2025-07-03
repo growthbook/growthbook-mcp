@@ -7,6 +7,7 @@ import {
   SUPPORTED_FILE_EXTENSIONS,
 } from "../utils.js";
 import { getDefaults } from "./defaults.js";
+import { exec } from "child_process";
 
 interface FeatureTools extends ExtendedToolsInterface {}
 
@@ -266,20 +267,45 @@ export function registerFeatureTools({
   server.tool(
     "generate_flag_types",
     "Generate types for feature flags",
-    {},
-    async () => {
-      const text = `Run the following commands for the user to generate types for their feature flags:
-
-      The first command will log you in to GrowthBook:
-      npx -y growthbook@latest auth login -k ${apiKey} -u ${baseApiUrl} -p default
-
-      The second command will generate types for your feature flags:
-      npx -y growthbook@latest features generate-types -u ${baseApiUrl}
-      `;
-
-      return {
-        content: [{ type: "text", text }],
-      };
+    {
+      currentWorkingDirectory: z
+        .string()
+        .describe("The current working directory of the user's project"),
+    },
+    async ({ currentWorkingDirectory }) => {
+      function runCommand(command: string, cwd: string): Promise<string> {
+        return new Promise((resolve, reject) => {
+          exec(command, { cwd }, (error, stdout, stderr) => {
+            if (error) {
+              reject(stderr || error.message);
+            } else {
+              resolve(stdout);
+            }
+          });
+        });
+      }
+      try {
+        // Login command
+        await runCommand(
+          `npx -y growthbook@latest auth login -k ${apiKey} -u ${baseApiUrl} -p default`,
+          currentWorkingDirectory
+        );
+        // Generate types command
+        const output = await runCommand(
+          `npx -y growthbook@latest features generate-types -u ${baseApiUrl}`,
+          currentWorkingDirectory
+        );
+        return {
+          content: [
+            {
+              type: "text",
+              text: `✅ Types generated successfully:\n${output}`,
+            },
+          ],
+        };
+      } catch (error: any) {
+        throw new Error(`Error generating types: ${error}`);
+      }
     }
   );
 }
