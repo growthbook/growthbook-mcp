@@ -1,12 +1,7 @@
 import { z } from "zod";
-import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { handleResNotOk } from "../utils.js";
+import { handleResNotOk, type BaseToolsInterface } from "../utils.js";
 
-interface SdkConnectionTools {
-  server: McpServer;
-  baseApiUrl: string;
-  apiKey: string;
-}
+interface SdkConnectionTools extends BaseToolsInterface {}
 export function registerSdkConnectionTools({
   server,
   baseApiUrl,
@@ -14,26 +9,20 @@ export function registerSdkConnectionTools({
 }: SdkConnectionTools) {
   /**
    * Tool: get_sdk_connections
-   * Description: Retrieves all SDK connections, which are how GrowthBook connects to an app.
-   * Users need the key, which is a public key that allows the app to fetch features and experiments from the API.
    */
   server.tool(
     "get_sdk_connections",
-    `Get all SDK connections, 
-    which are how GrowthBook connects to an app. 
-    Importantly, users need the key, which is a public client key that allows the app to fetch features and experiments the API `,
+    "Get all SDK connections. SDK connections are how GrowthBook connects to an app. Users need the client key to fetch features and experiments from the API.",
     {
       limit: z.number().optional().default(100),
       offset: z.number().optional().default(0),
-      project: z.string().optional(),
     },
-    async ({ limit, offset, project }) => {
+    async ({ limit, offset }) => {
       try {
         const queryParams = new URLSearchParams({
           limit: limit?.toString(),
           offset: offset?.toString(),
         });
-        if (project) queryParams.append("project", project);
 
         const res = await fetch(
           `${baseApiUrl}/api/v1/sdk-connections?${queryParams.toString()}`,
@@ -53,17 +42,13 @@ export function registerSdkConnectionTools({
           content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
         };
       } catch (error) {
-        return {
-          content: [{ type: "text", text: `Error: ${error}` }],
-        };
+        throw new Error(`Error fetching sdk connections: ${error}`);
       }
     }
   );
 
   /**
    * Tool: create_sdk_connection
-   * Description: Creates an SDK connection for a user. Returns an SDK clientKey that can be used to fetch features and experiments.
-   * Requires a name, language, and optionally an environment.
    */
   server.tool(
     "create_sdk_connection",
@@ -158,9 +143,7 @@ export function registerSdkConnectionTools({
           content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
         };
       } catch (error) {
-        return {
-          content: [{ type: "text", text: `Error: ${error}` }],
-        };
+        throw new Error(`Error creating sdk connection: ${error}`);
       }
     }
   );

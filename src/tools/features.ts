@@ -1,22 +1,14 @@
 import { z } from "zod";
-
-import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import {
   getDocsMetadata,
-  findImplementationDocs,
   handleResNotOk,
   generateLinkToGrowthBook,
+  type ExtendedToolsInterface,
+  SUPPORTED_FILE_EXTENSIONS,
 } from "../utils.js";
 import { exec } from "child_process";
-import { promisify } from "util";
 
-interface FeatureTools {
-  server: McpServer;
-  baseApiUrl: string;
-  apiKey: string;
-  appOrigin: string;
-  user: string;
-}
+interface FeatureTools extends ExtendedToolsInterface {}
 
 export function registerFeatureTools({
   server,
@@ -27,11 +19,10 @@ export function registerFeatureTools({
 }: FeatureTools) {
   /**
    * Tool: create_feature_flag
-   * Description: Creates, adds, or wraps an element with a feature flag in GrowthBook. Allows specifying key, type, default value, and other metadata.
    */
   server.tool(
     "create_feature_flag",
-    "Create, add, or wrap an element with a feature flag.",
+    "Creates a new feature flag in GrowthBook and modifies the codebase when relevant.",
     {
       id: z
         .string()
@@ -40,68 +31,31 @@ export function registerFeatureTools({
           "Feature key can only include letters, numbers, hyphens, and underscores."
         )
         .describe("A unique key name for the feature"),
-      archived: z
-        .boolean()
-        .optional()
-        .default(false)
-        .describe("Whether the feature flag is archived"),
       description: z
         .string()
         .optional()
         .default("")
-        .describe("A description of the feature flag"),
-      project: z
-        .string()
-        .optional()
-        .default("")
-        .describe("The project the feature flag belongs to"),
+        .describe("A briefdescription of the feature flag"),
       valueType: z
         .enum(["string", "number", "boolean", "json"])
         .describe("The value type the feature flag will return"),
       defaultValue: z
         .string()
         .describe("The default value of the feature flag"),
-      tags: z
-        .array(z.string())
-        .optional()
-        .describe("Tags for the feature flag"),
       fileExtension: z
-        .enum([
-          ".tsx",
-          ".jsx",
-          ".ts",
-          ".js",
-          ".vue",
-          ".py",
-          ".go",
-          ".php",
-          ".rb",
-          ".java",
-          ".cs",
-        ])
+        .enum(SUPPORTED_FILE_EXTENSIONS)
         .describe(
           "The extension of the current file. If it's unclear, ask the user."
         ),
     },
-    async ({
-      id,
-      archived,
-      description,
-      project,
-      valueType,
-      defaultValue,
-      tags,
-      fileExtension,
-    }) => {
+    async ({ id, description, valueType, defaultValue, fileExtension }) => {
       const payload = {
         id,
-        archived,
         description,
         owner: user,
-        project,
         valueType,
         defaultValue,
-        tags,
+        tags: ["mcp"],
       };
 
       try {
@@ -114,22 +68,10 @@ export function registerFeatureTools({
           body: JSON.stringify(payload),
         });
 
-        if (!res.ok) {
-          let errorMessage = `HTTP ${res.status} ${res.statusText}`;
-          try {
-            const errorBody = await res.json();
-            errorMessage += `: ${JSON.stringify(errorBody)}`;
-          } catch {
-            // fallback to text if not JSON
-            const errorText = await res.text();
-            if (errorText) errorMessage += `: ${errorText}`;
-          }
-          throw new Error(errorMessage);
-        }
+        await handleResNotOk(res);
 
         const data = await res.json();
-        const docsText = await findImplementationDocs(fileExtension);
-        const { docs, language } = getDocsMetadata(fileExtension);
+        const { docs, language, stub } = getDocsMetadata(fileExtension);
         const linkToGrowthBook = generateLinkToGrowthBook(
           appOrigin,
           "features",
@@ -145,7 +87,7 @@ export function registerFeatureTools({
         **How to use it in your code:**
         (To the LLM agent. Use the text below to properly add the feature flag to the codebase. Also, surface the relevant docs/implemenation to the user)
 
-        ${docsText}
+        ${stub}
 
         **Want to learn more?**
         See the [GrowthBook ${language} docs](${docs})
@@ -155,32 +97,27 @@ export function registerFeatureTools({
           content: [{ type: "text", text }],
         };
       } catch (error) {
-        console.error("Error creating feature flag:", error);
-        throw error;
+        throw new Error(`Error creating feature flag: ${error}`);
       }
     }
   );
 
   /**
    * Tool: get_feature_flags
-   * Description: Fetches all feature flags from the GrowthBook API, with optional limit, offset, and project filtering.
    */
   server.tool(
     "get_feature_flags",
-    "Fetches all feature flags from the GrowthBook API. Flags are returned in the order they were created, from oldest to newest.",
+    "Fetches all feature flags from the GrowthBook API, with optional limit, offset, and project filtering.",
     {
       limit: z.number().optional().default(100),
       offset: z.number().optional().default(0),
-      project: z.string().optional(),
     },
-    async ({ limit, offset, project }) => {
+    async ({ limit, offset }) => {
       try {
         const queryParams = new URLSearchParams({
           limit: limit?.toString(),
           offset: offset?.toString(),
         });
-
-        if (project) queryParams.append("project", project);
 
         const res = await fetch(
           `${baseApiUrl}/api/v1/features?${queryParams.toString()}`,
@@ -200,15 +137,13 @@ export function registerFeatureTools({
           content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
         };
       } catch (error) {
-        console.error("Error fetching flags:", error);
-        throw error;
+        throw new Error(`Error fetching flags: ${error}`);
       }
     }
   );
 
   /**
    * Tool: get_single_feature_flag
-   * Description: Fetches a specific feature flag from the GrowthBook API by its ID, with optional project filtering.
    */
   server.tool(
     "get_single_feature_flag",
@@ -255,15 +190,13 @@ export function registerFeatureTools({
           content: [{ type: "text", text }],
         };
       } catch (error) {
-        console.error("Error fetching flags:", error);
-        throw error;
+        throw new Error(`Error fetching flags: ${error}`);
       }
     }
   );
 
   /**
    * Tool: get_stale_safe_rollouts
-   * Description: Fetches all complete safe rollouts (rolled-back or released) from the GrowthBook API, with optional limit, offset, and project filtering.
    */
   server.tool(
     "get_stale_safe_rollouts",
@@ -271,16 +204,13 @@ export function registerFeatureTools({
     {
       limit: z.number().optional().default(100),
       offset: z.number().optional().default(0),
-      project: z.string().optional(),
     },
-    async ({ limit, offset, project }) => {
+    async ({ limit, offset }) => {
       try {
         const queryParams = new URLSearchParams({
           limit: limit?.toString(),
           offset: offset?.toString(),
         });
-
-        if (project) queryParams.append("project", project);
 
         const res = await fetch(
           `${baseApiUrl}/api/v1/features?${queryParams.toString()}`,
@@ -325,33 +255,56 @@ export function registerFeatureTools({
           content: [{ type: "text", text }],
         };
       } catch (error) {
-        console.error("Error fetching stale safe rollouts:", error);
-        throw error;
+        throw new Error(`Error fetching stale safe rollouts: ${error}`);
       }
     }
   );
 
   /**
    * Tool: generate_flag_types
-   * Description: Generates types for feature flags using the GrowthBook CLI.
    */
   server.tool(
     "generate_flag_types",
     "Generate types for feature flags",
-    {},
-    async () => {
-      const text = `Run the following commands for the user to generate types for their feature flags:
-
-      The first command will log you in to GrowthBook:
-      npx -y growthbook@latest auth login -k ${apiKey} -u ${baseApiUrl} -p default
-
-      The second command will generate types for your feature flags:
-      npx -y growthbook@latest features generate-types -u ${baseApiUrl}
-      `;
-
-      return {
-        content: [{ type: "text", text }],
-      };
+    {
+      currentWorkingDirectory: z
+        .string()
+        .describe("The current working directory of the user's project"),
+    },
+    async ({ currentWorkingDirectory }) => {
+      function runCommand(command: string, cwd: string): Promise<string> {
+        return new Promise((resolve, reject) => {
+          exec(command, { cwd }, (error, stdout, stderr) => {
+            if (error) {
+              reject(stderr || error.message);
+            } else {
+              resolve(stdout);
+            }
+          });
+        });
+      }
+      try {
+        // Login command
+        await runCommand(
+          `npx -y growthbook@latest auth login -k ${apiKey} -u ${baseApiUrl} -p default`,
+          currentWorkingDirectory
+        );
+        // Generate types command
+        const output = await runCommand(
+          `npx -y growthbook@latest features generate-types -u ${baseApiUrl}`,
+          currentWorkingDirectory
+        );
+        return {
+          content: [
+            {
+              type: "text",
+              text: `✅ Types generated successfully:\n${output}`,
+            },
+          ],
+        };
+      } catch (error: any) {
+        throw new Error(`Error generating types: ${error}`);
+      }
     }
   );
 }

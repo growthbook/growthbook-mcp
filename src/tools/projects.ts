@@ -1,16 +1,10 @@
 import { z } from "zod";
-import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { handleResNotOk } from "../utils.js";
+import { handleResNotOk, type BaseToolsInterface } from "../utils.js";
 
-interface ProjectTools {
-  server: McpServer;
-  baseApiUrl: string;
-  apiKey: string;
-}
+interface ProjectTools extends BaseToolsInterface {}
 
 /**
  * Tool: get_projects
- * Description: Fetches all projects from the GrowthBook API, with optional limit and offset for pagination.
  */
 export function registerProjectTools({
   server,
@@ -21,7 +15,7 @@ export function registerProjectTools({
     "get_projects",
     "Fetches all projects from the GrowthBook API",
     {
-      limit: z.number().optional().default(10),
+      limit: z.number().optional().default(100),
       offset: z.number().optional().default(0),
     },
     async ({ limit, offset }) => {

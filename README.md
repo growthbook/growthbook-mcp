@@ -121,6 +121,7 @@ A hammer icon should appear in the chat window, indicating that your GrowthBook 
   - `get_experiments`: List all experiments in GrowthBook.
   - `get_experiment`: Fetch details for a specific experiment by ID.
   - `get_attributes`: List all user attributes tracked in GrowthBook (useful for targeting).
+  - `create_experiment`: Creates a feature-flag based experiment.
 
 - **Environments**
 

@@ -1,15 +1,9 @@
-import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { handleResNotOk } from "../utils.js";
+import { handleResNotOk, type BaseToolsInterface } from "../utils.js";
 
-interface EnvironmentTools {
-  server: McpServer;
-  baseApiUrl: string;
-  apiKey: string;
-}
+interface EnvironmentTools extends BaseToolsInterface {}
 
 /**
  * Tool: get_environments
- * Description: Fetches all environments from the GrowthBook API. Environments can be used to enable/disable feature flags per environment and control feature delivery segmentation.
  */
 export function registerEnvironmentTools({
   server,
