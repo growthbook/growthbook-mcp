@@ -6,7 +6,6 @@ import {
   type ExtendedToolsInterface,
   SUPPORTED_FILE_EXTENSIONS,
 } from "../utils.js";
-import { getDefaults } from "./defaults.js";
 import { exec } from "child_process";
 
 interface FeatureTools extends ExtendedToolsInterface {}

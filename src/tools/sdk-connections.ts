@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { handleResNotOk, type BaseToolsInterface } from "../utils.js";
 
 interface SdkConnectionTools extends BaseToolsInterface {}

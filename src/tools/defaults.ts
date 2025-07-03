@@ -1,5 +1,3 @@
-import { z } from "zod";
-import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { handleResNotOk, type BaseToolsInterface } from "../utils.js";
 import envPaths from "env-paths";
 import { writeFile, readFile } from "fs/promises";

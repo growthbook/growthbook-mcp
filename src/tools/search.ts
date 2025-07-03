@@ -1,15 +1,11 @@
 import { z } from "zod";
 import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { searchGrowthBookDocs, type BaseToolsInterface } from "../utils.js";
-
-interface SearchTools {
-  server: McpServer;
-}
+import { searchGrowthBookDocs } from "../utils.js";
 
 /**
  * Tool: search_growthbook_docs
  */
-export function registerSearchTools({ server }: SearchTools) {
+export function registerSearchTools({ server }: { server: McpServer }) {
   server.tool(
     "search_growthbook_docs",
     "Search the GrowthBook docs on how to use a feature",
