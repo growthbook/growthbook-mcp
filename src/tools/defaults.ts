@@ -257,6 +257,9 @@ export async function getDefaults(
   return experimentDefaults;
 }
 
+/**
+ * Tool: get_defaults
+ */
 export async function registerDefaultsTools({
   server,
   baseApiUrl,

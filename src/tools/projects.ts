@@ -6,7 +6,6 @@ interface ProjectTools extends BaseToolsInterface {}
 
 /**
  * Tool: get_projects
- * Description: Fetches all projects from the GrowthBook API, with optional limit and offset for pagination.
  */
 export function registerProjectTools({
   server,
@@ -17,7 +16,7 @@ export function registerProjectTools({
     "get_projects",
     "Fetches all projects from the GrowthBook API",
     {
-      limit: z.number().optional().default(10),
+      limit: z.number().optional().default(100),
       offset: z.number().optional().default(0),
     },
     async ({ limit, offset }) => {

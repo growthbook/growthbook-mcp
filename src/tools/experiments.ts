@@ -20,7 +20,6 @@ export function registerExperimentTools({
 }: ExperimentTools) {
   /**
    * Tool: get_experiments
-   * Description: Fetches all experiments from the GrowthBook API.
    */
   server.tool(
     "get_experiments",
@@ -28,15 +27,13 @@ export function registerExperimentTools({
     {
       limit: z.number().optional().default(100),
       offset: z.number().optional().default(0),
-      project: z.string().optional(),
     },
-    async ({ limit, offset, project }) => {
+    async ({ limit, offset }) => {
       try {
         const queryParams = new URLSearchParams({
           limit: limit?.toString(),
           offset: offset?.toString(),
         });
-        if (project) queryParams.append("project", project);
 
         const res = await fetch(
           `${baseApiUrl}/api/v1/experiments?${queryParams.toString()}`,
@@ -55,15 +52,13 @@ export function registerExperimentTools({
           content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
         };
       } catch (error) {
-        console.error("Error fetching experiments:", error);
-        throw error;
+        throw new Error(`Error fetching experiments: ${error}`);
       }
     }
   );
 
   /**
    * Tool: create_force_rule
-   * Description: Creates a new force rule on an existing feature. A force rule sets a feature to a specific value for a specific environment based on a condition. For A/B tests and experiments, use create_experiment instead.
    */
   server.tool(
     "create_force_rule",
@@ -160,16 +155,13 @@ export function registerExperimentTools({
           content: [{ type: "text", text }],
         };
       } catch (error) {
-        return {
-          content: [{ type: "text", text: `Error: ${error}` }],
-        };
+        throw new Error(`Error creating force rule: ${error}`);
       }
     }
   );
 
   /**
    * Tool: get_experiment
-   * Description: Gets a single experiment from GrowthBook by its ID.
    */
   server.tool(
     "get_experiment",
@@ -207,16 +199,13 @@ export function registerExperimentTools({
           content: [{ type: "text", text }],
         };
       } catch (error) {
-        return {
-          content: [{ type: "text", text: `Error: ${error}` }],
-        };
+        throw new Error(`Error getting experiment: ${error}`);
       }
     }
   );
 
   /**
    * Tool: get_attributes
-   * Description: Gets all attributes from the GrowthBook API.
    */
   server.tool("get_attributes", "Get all attributes", {}, async () => {
     try {
@@ -240,11 +229,13 @@ export function registerExperimentTools({
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
     } catch (error) {
-      console.error("Error fetching attributes:", error);
-      throw error;
+      throw new Error(`Error fetching attributes: ${error}`);
     }
   });
 
+  /**
+   * Tool: create_experiment
+   */
   server.tool(
     "create_experiment",
     "IMPORTANT: Call get_defaults before creating an experiment, and use its output to guide the arguments. Creates a new feature flag and experiment (A/B test).",
@@ -326,83 +317,83 @@ export function registerExperimentTools({
           name: variation.name,
         })),
       };
+      try {
+        const experimentRes = await fetch(`${baseApiUrl}/api/v1/experiments`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(experimentPayload),
+        });
 
-      const experimentRes = await fetch(`${baseApiUrl}/api/v1/experiments`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(experimentPayload),
-      });
+        await handleResNotOk(experimentRes);
 
-      await handleResNotOk(experimentRes);
+        const experimentData = await experimentRes.json();
 
-      const experimentData = await experimentRes.json();
+        const flagId = `flag_${name.toLowerCase().replace(/[^a-z0-9]/g, "_")}`;
 
-      const flagId = `flag_${name.toLowerCase().replace(/[^a-z0-9]/g, "_")}`;
+        const flagPayload = {
+          id: flagId,
+          owner: user,
+          defaultValue: variations[0].value,
+          valueType:
+            typeof variations[0].value === "string"
+              ? "string"
+              : typeof variations[0].value === "number"
+              ? "number"
+              : "boolean",
+          description,
+          environments: {
+            ...experimentDefaults.environments.reduce((acc, env) => {
+              acc[env] = {
+                enabled: true,
+                rules: [
+                  {
+                    type: "experiment-ref",
+                    experimentId: experimentData.experiment.id,
+                    variations: experimentData.experiment.variations.map(
+                      (expVariation: { variationId: string }, idx: number) => ({
+                        value: variations[idx].value,
+                        variationId: expVariation.variationId,
+                      })
+                    ),
+                  },
+                ],
+              };
+              return acc;
+            }, {} as Record<string, { enabled: boolean; rules: Array<any> }>),
+          },
+        };
 
-      const flagPayload = {
-        id: flagId,
-        owner: user,
-        defaultValue: variations[0].value,
-        valueType:
-          typeof variations[0].value === "string"
-            ? "string"
-            : typeof variations[0].value === "number"
-            ? "number"
-            : "boolean",
-        description,
-        environments: {
-          ...experimentDefaults.environments.reduce((acc, env) => {
-            acc[env] = {
-              enabled: true,
-              rules: [
-                {
-                  type: "experiment-ref",
-                  experimentId: experimentData.experiment.id,
-                  variations: experimentData.experiment.variations.map(
-                    (expVariation: { variationId: string }, idx: number) => ({
-                      value: variations[idx].value,
-                      variationId: expVariation.variationId,
-                    })
-                  ),
-                },
-              ],
-            };
-            return acc;
-          }, {} as Record<string, { enabled: boolean; rules: Array<any> }>),
-        },
-      };
+        const flagRes = await fetch(`${baseApiUrl}/api/v1/features`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(flagPayload),
+        });
 
-      const flagRes = await fetch(`${baseApiUrl}/api/v1/features`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(flagPayload),
-      });
+        const flagData = await flagRes.json();
 
-      const flagData = await flagRes.json();
+        await handleResNotOk(flagRes);
 
-      await handleResNotOk(flagRes);
+        const experimentLink = generateLinkToGrowthBook(
+          appOrigin,
+          "experiment",
+          experimentData.experiment.id
+        );
 
-      const experimentLink = generateLinkToGrowthBook(
-        appOrigin,
-        "experiment",
-        experimentData.experiment.id
-      );
+        const flagLink = generateLinkToGrowthBook(
+          appOrigin,
+          "features",
+          flagData.feature.id
+        );
 
-      const flagLink = generateLinkToGrowthBook(
-        appOrigin,
-        "features",
-        flagData.feature.id
-      );
+        const { stub, docs, language } = getDocsMetadata(fileExtension);
 
-      const { stub, docs, language } = getDocsMetadata(fileExtension);
-
-      const text = `
+        const text = `
 (To the LLM. It's essential to show the links below to the user. This is the only way they can review and launch the experiment.)
 **✅ Your draft experiment \`${name}\` is ready!.** [View the experiment in GrowthBook](${experimentLink}) to review and launch.
 
@@ -417,9 +408,12 @@ ${stub}
 See the [GrowthBook ${language} docs](${docs})
     `;
 
-      return {
-        content: [{ type: "text", text }],
-      };
+        return {
+          content: [{ type: "text", text }],
+        };
+      } catch (error) {
+        throw new Error(`Error creating experiment: ${error}`);
+      }
     }
   );
 }

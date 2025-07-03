@@ -19,7 +19,6 @@ export function registerFeatureTools({
 }: FeatureTools) {
   /**
    * Tool: create_feature_flag
-   * Description: Creates, adds, or wraps an element with a feature flag in GrowthBook. Allows specifying key, type, default value, and other metadata.
    */
   server.tool(
     "create_feature_flag",
@@ -98,19 +97,17 @@ export function registerFeatureTools({
           content: [{ type: "text", text }],
         };
       } catch (error) {
-        console.error("Error creating feature flag:", error);
-        throw error;
+        throw new Error(`Error creating feature flag: ${error}`);
       }
     }
   );
 
   /**
    * Tool: get_feature_flags
-   * Description: Fetches all feature flags from the GrowthBook API, with optional limit, offset, and project filtering.
    */
   server.tool(
     "get_feature_flags",
-    "Fetches all feature flags from the GrowthBook API. Flags are returned in the order they were created, from oldest to newest.",
+    "Fetches all feature flags from the GrowthBook API, with optional limit, offset, and project filtering.",
     {
       limit: z.number().optional().default(100),
       offset: z.number().optional().default(0),
@@ -140,15 +137,13 @@ export function registerFeatureTools({
           content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
         };
       } catch (error) {
-        console.error("Error fetching flags:", error);
-        throw error;
+        throw new Error(`Error fetching flags: ${error}`);
       }
     }
   );
 
   /**
    * Tool: get_single_feature_flag
-   * Description: Fetches a specific feature flag from the GrowthBook API by its ID, with optional project filtering.
    */
   server.tool(
     "get_single_feature_flag",
@@ -195,15 +190,13 @@ export function registerFeatureTools({
           content: [{ type: "text", text }],
         };
       } catch (error) {
-        console.error("Error fetching flags:", error);
-        throw error;
+        throw new Error(`Error fetching flags: ${error}`);
       }
     }
   );
 
   /**
    * Tool: get_stale_safe_rollouts
-   * Description: Fetches all complete safe rollouts (rolled-back or released) from the GrowthBook API, with optional limit, offset, and project filtering.
    */
   server.tool(
     "get_stale_safe_rollouts",
@@ -211,16 +204,13 @@ export function registerFeatureTools({
     {
       limit: z.number().optional().default(100),
       offset: z.number().optional().default(0),
-      project: z.string().optional(),
     },
-    async ({ limit, offset, project }) => {
+    async ({ limit, offset }) => {
       try {
         const queryParams = new URLSearchParams({
           limit: limit?.toString(),
           offset: offset?.toString(),
         });
-
-        if (project) queryParams.append("project", project);
 
         const res = await fetch(
           `${baseApiUrl}/api/v1/features?${queryParams.toString()}`,
@@ -265,15 +255,13 @@ export function registerFeatureTools({
           content: [{ type: "text", text }],
         };
       } catch (error) {
-        console.error("Error fetching stale safe rollouts:", error);
-        throw error;
+        throw new Error(`Error fetching stale safe rollouts: ${error}`);
       }
     }
   );
 
   /**
    * Tool: generate_flag_types
-   * Description: Generates types for feature flags using the GrowthBook CLI.
    */
   server.tool(
     "generate_flag_types",

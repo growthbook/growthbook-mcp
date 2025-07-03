@@ -8,7 +8,6 @@ interface SearchTools {
 
 /**
  * Tool: search_growthbook_docs
- * Description: Searches the GrowthBook documentation for information on how to use a feature, based on a user-provided query.
  */
 export function registerSearchTools({ server }: SearchTools) {
   server.tool(
