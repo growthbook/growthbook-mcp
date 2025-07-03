@@ -67,7 +67,7 @@ export function registerExperimentTools({
    */
   server.tool(
     "create_force_rule",
-    "Create a new force rule on an existing feature. If the existing feature isn't apparent, create a new feature using create_feature_flag first. A force rule sets a feature to a specific value for a specific environment based on a condition. For A/B tests and experiments, use create_experiment instead.",
+    "Create a new force rule on an existing feature. If the existing feature isn't apparent, create a new feature using create_feature_flag first. A force rule sets a feature to a specific value based on a condition. For A/B tests and experiments, use create_experiment instead.",
     {
       featureId: z
         .string()
@@ -82,7 +82,7 @@ export function registerExperimentTools({
       value: z
         .string()
         .describe("The type of the value should match the feature type"),
-      environments: z.string().array(),
+
       fileExtension: z
         .enum(SUPPORTED_FILE_EXTENSIONS)
         .describe(
@@ -94,13 +94,17 @@ export function registerExperimentTools({
       description,
       condition,
       value,
-      environments,
+
       fileExtension,
     }) => {
       try {
+        // Fetch feature defaults first and surface to user
+        const defaults = await getDefaults(apiKey, baseApiUrl);
+        const defaultEnvironments = defaults.environments;
+
         const payload = {
           // Loop through the environments and create a rule for each one keyed by environment name
-          environments: environments.reduce((acc, env) => {
+          environments: defaultEnvironments.reduce((acc, env) => {
             acc[env] = {
               enabled: true,
               rules: [

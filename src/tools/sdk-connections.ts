@@ -19,15 +19,13 @@ export function registerSdkConnectionTools({
     {
       limit: z.number().optional().default(100),
       offset: z.number().optional().default(0),
-      projectId: z.string().optional(),
     },
-    async ({ limit, offset, projectId }) => {
+    async ({ limit, offset }) => {
       try {
         const queryParams = new URLSearchParams({
           limit: limit?.toString(),
           offset: offset?.toString(),
         });
-        if (projectId) queryParams.append("projectId", projectId);
 
         const res = await fetch(
           `${baseApiUrl}/api/v1/sdk-connections?${queryParams.toString()}`,

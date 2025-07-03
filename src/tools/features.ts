@@ -1,15 +1,12 @@
 import { z } from "zod";
-import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import {
   getDocsMetadata,
-  findImplementationDocs,
   handleResNotOk,
   generateLinkToGrowthBook,
   type ExtendedToolsInterface,
   SUPPORTED_FILE_EXTENSIONS,
 } from "../utils.js";
-import { exec } from "child_process";
-import { promisify } from "util";
+import { getDefaults } from "./defaults.js";
 
 interface FeatureTools extends ExtendedToolsInterface {}
 
@@ -26,7 +23,7 @@ export function registerFeatureTools({
    */
   server.tool(
     "create_feature_flag",
-    "Create, add, or wrap an element with a feature flag.",
+    "Creates a new feature flag in GrowthBook and modifies the codebase when relevant.",
     {
       id: z
         .string()
@@ -35,56 +32,31 @@ export function registerFeatureTools({
           "Feature key can only include letters, numbers, hyphens, and underscores."
         )
         .describe("A unique key name for the feature"),
-      archived: z
-        .boolean()
-        .optional()
-        .default(false)
-        .describe("Whether the feature flag is archived"),
       description: z
         .string()
         .optional()
         .default("")
-        .describe("A description of the feature flag"),
-      project: z
-        .string()
-        .optional()
-        .default("")
-        .describe("The project the feature flag belongs to"),
+        .describe("A briefdescription of the feature flag"),
       valueType: z
         .enum(["string", "number", "boolean", "json"])
         .describe("The value type the feature flag will return"),
       defaultValue: z
         .string()
         .describe("The default value of the feature flag"),
-      tags: z
-        .array(z.string())
-        .optional()
-        .describe("Tags for the feature flag"),
       fileExtension: z
         .enum(SUPPORTED_FILE_EXTENSIONS)
         .describe(
           "The extension of the current file. If it's unclear, ask the user."
         ),
     },
-    async ({
-      id,
-      archived,
-      description,
-      project,
-      valueType,
-      defaultValue,
-      tags,
-      fileExtension,
-    }) => {
+    async ({ id, description, valueType, defaultValue, fileExtension }) => {
       const payload = {
         id,
-        archived,
         description,
         owner: user,
-        project,
         valueType,
         defaultValue,
-        tags,
+        tags: ["mcp"],
       };
 
       try {
@@ -97,18 +69,7 @@ export function registerFeatureTools({
           body: JSON.stringify(payload),
         });
 
-        if (!res.ok) {
-          let errorMessage = `HTTP ${res.status} ${res.statusText}`;
-          try {
-            const errorBody = await res.json();
-            errorMessage += `: ${JSON.stringify(errorBody)}`;
-          } catch {
-            // fallback to text if not JSON
-            const errorText = await res.text();
-            if (errorText) errorMessage += `: ${errorText}`;
-          }
-          throw new Error(errorMessage);
-        }
+        await handleResNotOk(res);
 
         const data = await res.json();
         const { docs, language, stub } = getDocsMetadata(fileExtension);
@@ -153,16 +114,13 @@ export function registerFeatureTools({
     {
       limit: z.number().optional().default(100),
       offset: z.number().optional().default(0),
-      projectId: z.string().optional(),
     },
-    async ({ limit, offset, projectId }) => {
+    async ({ limit, offset }) => {
       try {
         const queryParams = new URLSearchParams({
           limit: limit?.toString(),
           offset: offset?.toString(),
         });
-
-        if (projectId) queryParams.append("projectId", projectId);
 
         const res = await fetch(
           `${baseApiUrl}/api/v1/features?${queryParams.toString()}`,

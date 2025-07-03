@@ -8,7 +8,7 @@ import { registerFeatureTools } from "./tools/features.js";
 import { registerProjectTools } from "./tools/projects.js";
 import { registerSdkConnectionTools } from "./tools/sdk-connections.js";
 import { getApiKey, getApiUrl, getAppOrigin, getUser } from "./utils.js";
-import { registerSearchTool } from "./tools/search.js";
+import { registerSearchTools } from "./tools/search.js";
 import { registerDefaultsTools } from "./tools/defaults.js";
 
 export const baseApiUrl = getApiUrl();
@@ -63,7 +63,7 @@ registerExperimentTools({
   user,
 });
 
-registerSearchTool({
+registerSearchTools({
   server,
 });
 
