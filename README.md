@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/growthbook-growthbook-mcp-badge.png)](https://mseep.ai/app/growthbook-growthbook-mcp)
+
 # GrowthBook MCP Server
 
 With the GrowthBook MCP server, you can interact with GrowthBook right from your LLM client. See experiment details, add a feature flag, and more.
