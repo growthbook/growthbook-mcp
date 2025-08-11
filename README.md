@@ -122,6 +122,9 @@ A hammer icon should appear in the chat window, indicating that your GrowthBook 
   - `get_experiment`: Fetch details for a specific experiment by ID.
   - `get_attributes`: List all user attributes tracked in GrowthBook (useful for targeting).
   - `create_experiment`: Creates a feature-flag based experiment.
+  - `get_defaults`: Get default values for experiments including hypothesis, description, datasource, and assignment query. (Runs automatically when the create experiment tool is called.)
+  - `create_defaults`: Set custom default values for experiments that will be used when creating new experiments.
+  - `clear_user_defaults`: Clear user-defined defaults and revert to automatic defaults.
 
 - **Environments**
 

@@ -1,14 +1,18 @@
 import { handleResNotOk, type BaseToolsInterface } from "../utils.js";
 import envPaths from "env-paths";
-import { writeFile, readFile } from "fs/promises";
+import { writeFile, readFile, mkdir, unlink } from "fs/promises";
 import { join } from "path";
+import { z } from "zod";
 
 const paths = envPaths("growthbook-mcp"); // Use your app name
 const experimentDefaultsDir = paths.config; // This is the recommended config directory
+
 const experimentDefaultsFile = join(
   experimentDefaultsDir,
   "experiment-defaults.json"
 );
+
+const userDefaultsFile = join(experimentDefaultsDir, "user-defaults.json");
 
 interface Experiment {
   name: string;
@@ -39,6 +43,17 @@ export interface ExperimentDefaultsResult {
   description: string[];
   datasource: string;
   assignmentQuery: string;
+  environments: string[];
+  filePaths: {
+    experimentDefaultsFile: string;
+    userDefaultsFile: string;
+  };
+  timestamp: string;
+}
+
+interface UserDefaults {
+  datasourceId: string;
+  assignmentQueryId: string;
   environments: string[];
   timestamp: string;
 }
@@ -102,6 +117,10 @@ export async function createDefaults(
         datasource: "",
         assignmentQuery,
         environments,
+        filePaths: {
+          experimentDefaultsFile,
+          userDefaultsFile,
+        },
         timestamp: new Date().toISOString(),
       };
     }
@@ -201,9 +220,25 @@ export async function createDefaults(
       datasource: mostFrequentDS.ds,
       assignmentQuery: mostFrequentDS.aq,
       environments,
+      filePaths: {
+        experimentDefaultsFile,
+        userDefaultsFile,
+      },
       timestamp: new Date().toISOString(),
     };
   } catch (error) {
+    throw error;
+  }
+}
+
+async function getUserDefaults(): Promise<UserDefaults | null> {
+  try {
+    const userDefaultsData = await readFile(userDefaultsFile, "utf8");
+    return JSON.parse(userDefaultsData);
+  } catch (error: any) {
+    if (error.code === "ENOENT") {
+      return null;
+    }
     throw error;
   }
 }
@@ -212,6 +247,84 @@ export async function getDefaults(
   apiKey: string,
   baseApiUrl: string
 ): Promise<ExperimentDefaultsResult> {
+  // First check for user-defined defaults
+  const userDefaults = await getUserDefaults();
+
+  if (userDefaults) {
+    // User has set defaults, use them for datasource/assignment/environments
+    // But still get the automatic defaults for names/hypotheses/descriptions
+    let autoDefaults: Partial<ExperimentDefaultsResult> = {
+      name: [],
+      hypothesis: [],
+      description: [],
+    };
+
+    try {
+      // Try to get existing auto-generated defaults for name/hypothesis/description
+      const experimentDefaultsData = await readFile(
+        experimentDefaultsFile,
+        "utf8"
+      );
+      const parsedExperimentDefaults = JSON.parse(experimentDefaultsData);
+
+      if (
+        parsedExperimentDefaults &&
+        new Date(parsedExperimentDefaults.timestamp).getTime() >
+          new Date().getTime() - 1000 * 60 * 60 * 24 * 30 // 30 days
+      ) {
+        autoDefaults = {
+          name: parsedExperimentDefaults.name || [],
+          hypothesis: parsedExperimentDefaults.hypothesis || [],
+          description: parsedExperimentDefaults.description || [],
+        };
+      } else {
+        // Re-generate auto defaults if expired
+        const generatedDefaults = await createDefaults(apiKey, baseApiUrl);
+        await mkdir(experimentDefaultsDir, { recursive: true });
+        await writeFile(
+          experimentDefaultsFile,
+          JSON.stringify(generatedDefaults, null, 2)
+        );
+        autoDefaults = {
+          name: generatedDefaults.name,
+          hypothesis: generatedDefaults.hypothesis,
+          description: generatedDefaults.description,
+        };
+      }
+    } catch (error: any) {
+      if (error.code === "ENOENT") {
+        // Generate new auto defaults
+        const generatedDefaults = await createDefaults(apiKey, baseApiUrl);
+        await mkdir(experimentDefaultsDir, { recursive: true });
+        await writeFile(
+          experimentDefaultsFile,
+          JSON.stringify(generatedDefaults, null, 2)
+        );
+        autoDefaults = {
+          name: generatedDefaults.name,
+          hypothesis: generatedDefaults.hypothesis,
+          description: generatedDefaults.description,
+        };
+      }
+    }
+
+    // Combine user defaults with auto defaults
+    return {
+      name: autoDefaults.name || [],
+      hypothesis: autoDefaults.hypothesis || [],
+      description: autoDefaults.description || [],
+      datasource: userDefaults.datasourceId,
+      assignmentQuery: userDefaults.assignmentQueryId,
+      environments: userDefaults.environments,
+      filePaths: {
+        experimentDefaultsFile,
+        userDefaultsFile,
+      },
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  // No user defaults, use fully automatic defaults
   let experimentDefaults;
   try {
     const experimentDefaultsData = await readFile(
@@ -221,13 +334,15 @@ export async function getDefaults(
     let parsedExperimentDefaults = JSON.parse(experimentDefaultsData);
     if (
       !parsedExperimentDefaults ||
-      parsedExperimentDefaults.timestamp <
+      new Date(parsedExperimentDefaults.timestamp).getTime() <
         new Date().getTime() - 1000 * 60 * 60 * 24 * 30 // 30 days
     ) {
       const generatedExperimentDefaults = await createDefaults(
         apiKey,
         baseApiUrl
       );
+
+      await mkdir(experimentDefaultsDir, { recursive: true });
       await writeFile(
         experimentDefaultsFile,
         JSON.stringify(generatedExperimentDefaults, null, 2)
@@ -242,6 +357,8 @@ export async function getDefaults(
         apiKey,
         baseApiUrl
       );
+
+      await mkdir(experimentDefaultsDir, { recursive: true });
       await writeFile(
         experimentDefaultsFile,
         JSON.stringify(generatedExperimentDefaults, null, 2)
@@ -270,8 +387,93 @@ export async function registerDefaultsTools({
     async () => {
       const defaults = await getDefaults(apiKey, baseApiUrl);
       return {
-        content: [{ type: "text", text: JSON.stringify(defaults, null, 2) }],
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(defaults, null, 2),
+          },
+        ],
       };
+    }
+  );
+
+  server.tool(
+    "set_user_defaults",
+    "Set user-defined defaults for datasource, assignment query, and environments. These will override the automatic defaults for these fields.",
+    {
+      datasourceId: z.string().describe("The data source ID to use as default"),
+      assignmentQueryId: z
+        .string()
+        .describe("The assignment query ID to use as default"),
+      environments: z
+        .array(z.string())
+        .describe("List of environment IDs to use as defaults"),
+    },
+    async ({ datasourceId, assignmentQueryId, environments }) => {
+      try {
+        const userDefaults: UserDefaults = {
+          datasourceId,
+          assignmentQueryId,
+          environments,
+          timestamp: new Date().toISOString(),
+        };
+
+        await mkdir(experimentDefaultsDir, { recursive: true });
+
+        await writeFile(
+          userDefaultsFile,
+          JSON.stringify(userDefaults, null, 2)
+        );
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `User defaults have been saved:\n\n${JSON.stringify(
+                userDefaults,
+                null,
+                2
+              )} to ${userDefaultsFile}\n\nThese will be used when creating new experiments.`,
+            },
+          ],
+        };
+      } catch (error) {
+        throw new Error(`Error setting user defaults: ${error}`);
+      }
+    }
+  );
+
+  server.tool(
+    "clear_user_defaults",
+    "Clear user-defined defaults and revert to automatic defaults.",
+    {},
+    async () => {
+      try {
+        await readFile(userDefaultsFile, "utf8");
+
+        await unlink(userDefaultsFile);
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: "User defaults have been cleared. The system will now use automatic defaults.",
+            },
+          ],
+        };
+      } catch (error: any) {
+        if (error.code === "ENOENT") {
+          return {
+            content: [
+              {
+                type: "text",
+                text: "No user defaults were set.",
+              },
+            ],
+          };
+        }
+        throw new Error(`Error clearing user defaults: ${error}`);
+      }
     }
   );
 }

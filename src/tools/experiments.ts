@@ -367,9 +367,9 @@ export function registerExperimentTools({
           body: JSON.stringify(flagPayload),
         });
 
-        const flagData = await flagRes.json();
-
         await handleResNotOk(flagRes);
+
+        const flagData = await flagRes.json();
 
         const experimentLink = generateLinkToGrowthBook(
           appOrigin,
