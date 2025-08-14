@@ -39,7 +39,7 @@ When configuring your MCP client (e.g., Cursor, VS Code, Claude Desktop), use th
          "args": ["/absolute/path/to/growthbook-mcp/dist/index.js"],
          "env": {
            "GB_API_KEY": "your-api-key",
-           "GB_USER": "your-name",
+           "GB_EMAIL": "your-email",
            "GB_API_URL": "your-api-url",
            "GB_APP_ORIGIN": "your-app-origin"
          }
@@ -75,4 +75,5 @@ For more details on client integration and available tools, see the [README.md](
 For a better development and debugging experience, try the [MCP Inspector](https://github.com/modelcontextprotocol/inspector) to test tools and more.
 
 ```bash
-npx @modelcontextprotocol/inspector -e GB_API_KEY=<value> -e GB_USER=<name> -e GB_API_URL=http://localhost:3100 -e GB_APP_ORIGIN=http://localhost:3000 node build/index.js
+npx @modelcontextprotocol/inspector -e GB_API_KEY=<value> -e GB_EMAIL=<email> -e GB_API_URL=http://localhost:3100 -e GB_APP_ORIGIN=http://localhost:3000 node build/index.js
+```

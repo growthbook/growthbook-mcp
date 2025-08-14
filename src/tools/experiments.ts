@@ -93,7 +93,7 @@ export function registerExperimentTools({
           // Loop through the environments and create a rule for each one keyed by environment name
           environments: defaultEnvironments.reduce((acc, env) => {
             acc[env] = {
-              enabled: true,
+              enabled: false,
               rules: [
                 {
                   type: "force",
@@ -254,7 +254,12 @@ export function registerExperimentTools({
                 "Variation name. Base name off the examples from get_defaults. If none are available, use a short, descriptive name that captures the essence of the variation."
               ),
             value: z
-              .union([z.string(), z.number(), z.boolean(), z.record(z.any())])
+              .union([
+                z.string(),
+                z.number(),
+                z.boolean(),
+                z.record(z.string(), z.any()),
+              ])
               .describe(
                 "The value of the control and each of the variations. The value should be a string, number, boolean, or object. If it's an object, it should be a valid JSON object."
               ),
@@ -300,14 +305,17 @@ export function registerExperimentTools({
         name,
         description,
         hypothesis,
+        owner: user.email,
         trackingKey: name.toLowerCase().replace(/[^a-z0-9]/g, "-"),
         tags: ["mcp"],
         assignmentQueryId: experimentDefaults?.assignmentQuery,
         datasourceId: experimentDefaults?.datasource,
-        variations: variations.map((variation, idx) => ({
-          key: idx.toString(),
-          name: variation.name,
-        })),
+        variations: (variations as Array<{ name: string }>).map(
+          (variation: { name: string }, idx: number) => ({
+            key: idx.toString(),
+            name: variation.name,
+          })
+        ),
       };
       try {
         const experimentRes = await fetch(`${baseApiUrl}/api/v1/experiments`, {
@@ -327,7 +335,7 @@ export function registerExperimentTools({
 
         const flagPayload = {
           id: flagId,
-          owner: user,
+          owner: user.name,
           defaultValue: variations[0].value,
           valueType:
             typeof variations[0].value === "string"
@@ -339,7 +347,7 @@ export function registerExperimentTools({
           environments: {
             ...experimentDefaults.environments.reduce((acc, env) => {
               acc[env] = {
-                enabled: true,
+                enabled: false,
                 rules: [
                   {
                     type: "experiment-ref",

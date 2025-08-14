@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { getFeatureFlagDocs } from "./docs.js";
 import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
@@ -10,13 +11,16 @@ export interface BaseToolsInterface {
 
 export interface ExtendedToolsInterface extends BaseToolsInterface {
   appOrigin: string;
-  user: string;
+  user: {
+    email: string;
+    name: string;
+  };
 }
 
 // Shared file extension enum for all MCP tools
 export const SUPPORTED_FILE_EXTENSIONS = [
   ".tsx",
-  ".jsx", 
+  ".jsx",
   ".ts",
   ".js",
   ".vue",
@@ -71,12 +75,54 @@ export function getAppOrigin() {
   return `${userAppOrigin || defaultAppOrigin}`;
 }
 
-export function getUser() {
-  const user = process.env.GB_USER;
+export async function getUser(baseApiUrl: string, apiKey: string) {
+  const user = process.env.GB_EMAIL || process.env.GB_USER;
+
   if (!user) {
-    throw new Error("GB_USER environment variable is required");
+    throw new Error("GB_EMAIL environment variable is required");
   }
-  return user;
+
+  // Show deprecation warning if using the old variable
+  if (process.env.GB_USER && !process.env.GB_EMAIL) {
+    console.error("⚠️  GB_USER is deprecated. Use GB_EMAIL instead.");
+  }
+
+  const emailSchema = z.string().email();
+
+  if (!emailSchema.safeParse(user).success) {
+    throw new Error("GB_EMAIL is not a valid email");
+  }
+
+  try {
+    const users = await fetch(
+      `${baseApiUrl}/api/v1/members?userEmail=${user}`,
+      {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+        },
+      }
+    );
+    await handleResNotOk(users);
+
+    const usersData = await users.json();
+
+    if (usersData.members.length === 0) {
+      throw new Error(
+        `Email not found in GrowthBook. Update GB_EMAIL environment variable to your email address in GrowthBook.`
+      );
+    }
+
+    const userFromGrowthBook = {
+      email: usersData.members[0].email,
+      name: usersData.members[0].name,
+    };
+
+    return userFromGrowthBook;
+  } catch (error) {
+    throw new Error(
+      `Error fetching user from GrowthBook. Please check your GB_EMAIL and GB_API_KEY environment variables.`
+    );
+  }
 }
 
 export function getDocsMetadata(extension: string) {

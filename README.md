@@ -14,7 +14,7 @@ Use the following env variables to configure the MCP server.
 | Variable Name | Status   | Description                                                       |
 | ------------- | -------- | ----------------------------------------------------------------- |
 | GB_API_KEY    | Required | A GrowthBook API key.                                             |
-| GB_USER       | Required | Your name. Used when creating a feature flag.                     |
+| GB_EMAIL      | Required | Your email address used with GrowthBook. Used when creating feature flags and experiments.|
 | GB_API_URL    | Optional | Your GrowthBook API URL. Defaults to `https://api.growthbook.io`. |
 | GB_APP_ORIGIN | Optional | Your GrowthBook app URL Defaults to `https://app.growthbook.io`.  |
 
@@ -36,7 +36,7 @@ Find instructions below to add the MCP server to a client. Any client that suppo
         "GB_API_KEY": "YOUR_API_KEY",
         "GB_API_URL": "YOUR_API_URL",
         "GB_APP_ORIGIN": "YOUR_APP_ORIGIN",
-        "GB_USER": "YOUR_NAME"
+        "GB_EMAIL": "YOUR_EMAIL"
       }
     }
   }
@@ -64,7 +64,7 @@ You should now see a green active status after the server successfully connects!
           "GB_API_KEY": "YOUR_API_KEY",
           "GB_API_URL": "YOUR_API_URL",
           "GB_APP_ORIGIN": "YOUR_APP_ORIGIN",
-          "GB_USER": "YOUR_NAME"
+          "GB_EMAIL": "YOUR_EMAIL"
         }
       }
     }
@@ -92,7 +92,7 @@ GrowthBook MCP is now ready to use in VS Code.
         "GB_API_KEY": "YOUR_API_KEY",
         "GB_API_URL": "YOUR_API_URL",
         "GB_APP_ORIGIN": "YOUR_APP_ORIGIN",
-        "GB_USER": "YOUR_NAME"
+        "GB_EMAIL": "YOUR_EMAIL"
       }
     }
   }

@@ -7,6 +7,7 @@ import {
   SUPPORTED_FILE_EXTENSIONS,
 } from "../utils.js";
 import { exec } from "child_process";
+import { getDefaults } from "./defaults.js";
 
 interface FeatureTools extends ExtendedToolsInterface {}
 
@@ -35,7 +36,7 @@ export function registerFeatureTools({
         .string()
         .optional()
         .default("")
-        .describe("A briefdescription of the feature flag"),
+        .describe("A brief description of the feature flag"),
       valueType: z
         .enum(["string", "number", "boolean", "json"])
         .describe("The value type the feature flag will return"),
@@ -49,13 +50,43 @@ export function registerFeatureTools({
         ),
     },
     async ({ id, description, valueType, defaultValue, fileExtension }) => {
+      // get environments
+      let environments = [];
+      const defaults = await getDefaults(apiKey, baseApiUrl);
+      if (defaults.environments) {
+        environments = defaults.environments;
+      } else {
+        const envRes = await fetch(
+          `${baseApiUrl}/api/v1/features/environments`,
+          {
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        await handleResNotOk(envRes);
+        const envData = await envRes.json();
+        environments = envData.environments.map((env: any) => env.id);
+      }
+
       const payload = {
         id,
         description,
-        owner: user,
+        owner: user.name,
         valueType,
         defaultValue,
         tags: ["mcp"],
+        environments: environments.reduce(
+          (acc: Record<string, any>, env: string) => {
+            acc[env] = {
+              enabled: false,
+              rules: [],
+            };
+            return acc;
+          },
+          {}
+        ),
       };
 
       try {

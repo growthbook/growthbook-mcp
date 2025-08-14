@@ -14,7 +14,7 @@ import { registerDefaultsTools } from "./tools/defaults.js";
 export const baseApiUrl = getApiUrl();
 export const apiKey = getApiKey();
 export const appOrigin = getAppOrigin();
-export const user = getUser();
+export const user = await getUser(baseApiUrl, apiKey);
 
 // Create an MCP server
 const server = new McpServer(
