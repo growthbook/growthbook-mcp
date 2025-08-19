@@ -119,8 +119,10 @@ export async function getUser(baseApiUrl: string, apiKey: string) {
 
     return userFromGrowthBook;
   } catch (error) {
+    const originalError =
+      error instanceof Error ? error.message : String(error);
     throw new Error(
-      `Error fetching user from GrowthBook. Please check your GB_EMAIL and GB_API_KEY environment variables.`
+      `Error fetching user from GrowthBook. Please check your GB_EMAIL and GB_API_KEY environment variables. Original error: ${originalError}`
     );
   }
 }
