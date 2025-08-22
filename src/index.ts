@@ -7,20 +7,24 @@ import { registerExperimentTools } from "./tools/experiments.js";
 import { registerFeatureTools } from "./tools/features.js";
 import { registerProjectTools } from "./tools/projects.js";
 import { registerSdkConnectionTools } from "./tools/sdk-connections.js";
-import { getApiKey, getApiUrl, getAppOrigin, getUser } from "./utils.js";
+import { getApiKey, getApiUrl, getAppOrigin } from "./utils.js";
 import { registerSearchTools } from "./tools/search.js";
 import { registerDefaultsTools } from "./tools/defaults.js";
 
 export const baseApiUrl = getApiUrl();
 export const apiKey = getApiKey();
 export const appOrigin = getAppOrigin();
-export const user = await getUser(baseApiUrl, apiKey);
+export const user = process.env.GB_EMAIL;
+
+if (!user) {
+  throw new Error("GB_EMAIL is not set in the environment variables");
+}
 
 // Create an MCP server
 const server = new McpServer(
   {
     name: "GrowthBook MCP",
-    version: "1.0.0",
+    version: "1.0.2",
   },
   {
     instructions: `You are a helpful assistant that interacts with GrowthBook, an open source feature flagging and experimentation platform. You can create and manage feature flags, experiments (A/B tests), and other resources associated with GrowthBook.

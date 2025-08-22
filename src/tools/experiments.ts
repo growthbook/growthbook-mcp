@@ -305,7 +305,7 @@ export function registerExperimentTools({
         name,
         description,
         hypothesis,
-        owner: user.email,
+        owner: user,
         trackingKey: name.toLowerCase().replace(/[^a-z0-9]/g, "-"),
         tags: ["mcp"],
         assignmentQueryId: experimentDefaults?.assignmentQuery,
@@ -335,7 +335,7 @@ export function registerExperimentTools({
 
         const flagPayload = {
           id: flagId,
-          owner: user.name,
+          owner: user,
           defaultValue: variations[0].value,
           valueType:
             typeof variations[0].value === "string"

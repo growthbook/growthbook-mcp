@@ -73,7 +73,7 @@ export function registerFeatureTools({
       const payload = {
         id,
         description,
-        owner: user.name,
+        owner: user,
         valueType,
         defaultValue,
         tags: ["mcp"],

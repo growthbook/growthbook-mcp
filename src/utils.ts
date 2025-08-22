@@ -11,10 +11,7 @@ export interface BaseToolsInterface {
 
 export interface ExtendedToolsInterface extends BaseToolsInterface {
   appOrigin: string;
-  user: {
-    email: string;
-    name: string;
-  };
+  user: string;
 }
 
 // Shared file extension enum for all MCP tools
@@ -73,58 +70,6 @@ export function getAppOrigin() {
   const defaultAppOrigin = "https://app.growthbook.io";
   const userAppOrigin = process.env.GB_APP_ORIGIN;
   return `${userAppOrigin || defaultAppOrigin}`;
-}
-
-export async function getUser(baseApiUrl: string, apiKey: string) {
-  const user = process.env.GB_EMAIL || process.env.GB_USER;
-
-  if (!user) {
-    throw new Error("GB_EMAIL environment variable is required");
-  }
-
-  // Show deprecation warning if using the old variable
-  if (process.env.GB_USER && !process.env.GB_EMAIL) {
-    console.error("⚠️  GB_USER is deprecated. Use GB_EMAIL instead.");
-  }
-
-  const emailSchema = z.string().email();
-
-  if (!emailSchema.safeParse(user).success) {
-    throw new Error("GB_EMAIL is not a valid email");
-  }
-
-  try {
-    const users = await fetch(
-      `${baseApiUrl}/api/v1/members?userEmail=${user}`,
-      {
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-        },
-      }
-    );
-    await handleResNotOk(users);
-
-    const usersData = await users.json();
-
-    if (usersData.members.length === 0) {
-      throw new Error(
-        `Email not found in GrowthBook. Update GB_EMAIL environment variable to your email address in GrowthBook.`
-      );
-    }
-
-    const userFromGrowthBook = {
-      email: usersData.members[0].email,
-      name: usersData.members[0].name,
-    };
-
-    return userFromGrowthBook;
-  } catch (error) {
-    const originalError =
-      error instanceof Error ? error.message : String(error);
-    throw new Error(
-      `Error fetching user from GrowthBook. Please check your GB_EMAIL and GB_API_KEY environment variables. Original error: ${originalError}`
-    );
-  }
 }
 
 export function getDocsMetadata(extension: string) {
