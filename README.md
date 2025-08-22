@@ -2,6 +2,7 @@
 
 With the GrowthBook MCP server, you can interact with GrowthBook right from your LLM client. See experiment details, add a feature flag, and more.
 
+[![Trust Score](https://archestra.ai/mcp-catalog/api/badge/quality/growthbook/growthbook-mcp)](https://archestra.ai/mcp-catalog/growthbook__growthbook-mcp)
 <a href="https://glama.ai/mcp/servers/@growthbook/growthbook-mcp">
   <img width="380" height="200" src="https://glama.ai/mcp/servers/@growthbook/growthbook-mcp/badge" alt="GrowthBook Server MCP server" />
 </a>
