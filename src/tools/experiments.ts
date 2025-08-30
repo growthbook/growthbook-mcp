@@ -197,6 +197,65 @@ export function registerExperimentTools({
   );
 
   /**
+   * Tool: get_experiment_results
+   */
+  server.tool(
+    "get_experiment_results",
+    "Gets experiment results including metrics, conversion rates, and statistical analysis for a specific experiment",
+    {
+      experimentId: z.string().describe("The ID of the experiment to get results for"),
+      phase: z.string().optional().describe("Specific phase to get results for"),
+      dimension: z.string().optional().describe("Dimension to segment results by (e.g., 'country', 'device')"),
+    },
+    async ({ experimentId, phase, dimension }) => {
+      try {
+        const queryParams = new URLSearchParams();
+        if (phase) queryParams.append("phase", phase);
+        if (dimension) queryParams.append("dimension", dimension);
+
+        const res = await fetch(
+          `${baseApiUrl}/api/v1/experiments/${experimentId}/results?${queryParams.toString()}`,
+          {
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        await handleResNotOk(res);
+        const data = await res.json();
+
+        const linkToGrowthBook = generateLinkToGrowthBook(
+          appOrigin,
+          "experiment",
+          experimentId
+        );
+        
+        const text = `
+**📊 Experiment Results for ID: ${experimentId}**
+
+${JSON.stringify(data, null, 2)}
+
+[View detailed results in GrowthBook](${linkToGrowthBook})
+
+**Analysis Summary:**
+Review the statistical significance, conversion rates, and confidence intervals above. 
+Look for metrics with low p-values and high chance to beat control percentages.
+Check the SRM (Sample Ratio Mismatch) values to ensure traffic allocation is working correctly.
+If results are not yet significant, consider running the experiment longer or increasing traffic.
+        `;
+
+        return {
+          content: [{ type: "text", text }],
+        };
+      } catch (error) {
+        throw new Error(`Error fetching experiment results: ${error}`);
+      }
+    }
+  );
+
+  /**
    * Tool: get_attributes
    */
   server.tool("get_attributes", "Get all attributes", {}, async () => {
