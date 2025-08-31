@@ -120,6 +120,7 @@ A hammer icon should appear in the chat window, indicating that your GrowthBook 
 
   - `get_experiments`: List all experiments in GrowthBook.
   - `get_experiment`: Fetch details for a specific experiment by ID.
+  - `get_experiment_results`: Get experiment results including metrics, conversion rates, and statistical analysis for a specific experiment.
   - `get_attributes`: List all user attributes tracked in GrowthBook (useful for targeting).
   - `create_experiment`: Creates a feature-flag based experiment.
   - `get_defaults`: Get default values for experiments including hypothesis, description, datasource, and assignment query. (Runs automatically when the create experiment tool is called.)
