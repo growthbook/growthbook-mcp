@@ -1,0 +1,52 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
+  "name": "io.github.growthbook/growthbook-mcp",
+  "description": "An MCP server for GrowthBook feature flags and experiments.",
+  "status": "active",
+  "repository": {
+    "url": "https://github.com/growthbook/growthbook-mcp",
+    "source": "github"
+  },
+  "version": "1.0.2",
+  "packages": [
+    {
+      "registry_type": "npm",
+      "registry_base_url": "https://registry.npmjs.org",
+      "identifier": "@growthbook/mcp",
+      "version": "1.02",
+      "transport": {
+        "type": "stdio"
+      },
+      "environment_variables": [
+        {
+          "description": "A GrowthBook API key or PAT.",
+          "is_required": true,
+          "format": "string",
+          "is_secret": true,
+          "name": "GB_API_KEY"
+        },
+        {
+          "description": "Your email address used with GrowthBook. Used when creating feature flags and experiments.",
+          "is_required": true,
+          "format": "string",
+          "is_secret": false,
+          "name": "GB_EMAIL"
+        },
+        {
+          "description": "Your GrowthBook API URL. Defaults to `https://api.growthbook.io`.",
+          "is_required": false,
+          "format": "string",
+          "is_secret": false,
+          "name": "GB_API_URL"
+        },
+        {
+          "description": "Your GrowthBook app URL Defaults to `https://app.growthbook.io`.",
+          "is_required": false,
+          "format": "string",
+          "is_secret": false,
+          "name": "GB_APP_ORIGIN"
+        }
+      ]
+    }
+  ]
+}
