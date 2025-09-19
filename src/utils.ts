@@ -201,8 +201,33 @@ export function generateLinkToGrowthBook(
     | "attribute"
     | "environment"
     | "project"
-    | "sdk-connection",
+    | "sdk-connection"
+    | "metric"
+    | "fact-metrics",
   id: string
 ) {
   return `${appOrigin}/${resource}/${id}`;
 }
+
+// Reusable pagination schema for GrowthBook API tools
+export const paginationSchema = {
+  limit: z
+    .number()
+    .min(1)
+    .max(100)
+    .default(100)
+    .describe("The number of items to fetch (1-100)"),
+  offset: z
+    .number()
+    .min(0)
+    .default(0)
+    .describe(
+      "The number of items to skip. For example, set to 100 to fetch the second page with default limit. Note: The API returns items in chronological order (oldest first) by default."
+    ),
+  mostRecent: z
+    .boolean()
+    .default(false)
+    .describe(
+      "When true, fetches the most recent items and returns them newest-first. When false (default), returns oldest items first."
+    ),
+} as const;

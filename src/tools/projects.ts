@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { handleResNotOk, type BaseToolsInterface } from "../utils.js";
+import {
+  handleResNotOk,
+  type BaseToolsInterface,
+  paginationSchema,
+} from "../utils.js";
 
 interface ProjectTools extends BaseToolsInterface {}
 
@@ -15,8 +19,7 @@ export function registerProjectTools({
     "get_projects",
     "Fetches all projects from the GrowthBook API",
     {
-      limit: z.number().optional().default(100),
-      offset: z.number().optional().default(0),
+      ...paginationSchema,
     },
     async ({ limit, offset }) => {
       const queryParams = new URLSearchParams({

@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { handleResNotOk, type BaseToolsInterface } from "../utils.js";
+import {
+  handleResNotOk,
+  type BaseToolsInterface,
+  paginationSchema,
+} from "../utils.js";
 
 interface SdkConnectionTools extends BaseToolsInterface {}
 export function registerSdkConnectionTools({
@@ -14,8 +18,7 @@ export function registerSdkConnectionTools({
     "get_sdk_connections",
     "Get all SDK connections. SDK connections are how GrowthBook connects to an app. Users need the client key to fetch features and experiments from the API.",
     {
-      limit: z.number().optional().default(100),
-      offset: z.number().optional().default(0),
+      ...paginationSchema,
     },
     async ({ limit, offset }) => {
       try {

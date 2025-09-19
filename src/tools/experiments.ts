@@ -5,6 +5,7 @@ import {
   handleResNotOk,
   type ExtendedToolsInterface,
   SUPPORTED_FILE_EXTENSIONS,
+  paginationSchema,
 } from "../utils.js";
 import { getDefaults } from "./defaults.js";
 
@@ -22,33 +23,80 @@ export function registerExperimentTools({
    */
   server.tool(
     "get_experiments",
-    "Fetches all experiments from the GrowthBook API",
+    "Fetches experiments from the GrowthBook API",
     {
-      limit: z.number().optional().default(100),
-      offset: z.number().optional().default(0),
+      ...paginationSchema,
     },
-    async ({ limit, offset }) => {
+    async ({ limit, offset, mostRecent }) => {
       try {
-        const queryParams = new URLSearchParams({
-          limit: limit?.toString(),
-          offset: offset?.toString(),
-        });
+        // Default behavior
+        if (!mostRecent || offset > 0) {
+          const defaultQueryParams = new URLSearchParams({
+            limit: limit.toString(),
+            offset: offset.toString(),
+          });
 
-        const res = await fetch(
-          `${baseApiUrl}/api/v1/experiments?${queryParams.toString()}`,
+          const defaultRes = await fetch(
+            `${baseApiUrl}/api/v1/experiments?${defaultQueryParams.toString()}`,
+            {
+              headers: {
+                Authorization: `Bearer ${apiKey}`,
+                "Content-Type": "application/json",
+              },
+            }
+          );
+
+          await handleResNotOk(defaultRes);
+          const data = await defaultRes.json();
+
+          return {
+            content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+          };
+        }
+
+        // Most recent behavior
+        const countRes = await fetch(
+          `${baseApiUrl}/api/v1/experiments?limit=1`,
           {
             headers: {
               Authorization: `Bearer ${apiKey}`,
-              "Content-Type": "application/json",
             },
           }
         );
 
-        await handleResNotOk(res);
+        await handleResNotOk(countRes);
+        const countData = await countRes.json();
+        const total = countData.total;
+        const calculatedOffset = Math.max(0, total - limit);
 
-        const data = await res.json();
+        const mostRecentQueryParams = new URLSearchParams({
+          limit: limit.toString(),
+          offset: calculatedOffset.toString(),
+        });
+
+        const mostRecentRes = await fetch(
+          `${baseApiUrl}/api/v1/experiments?${mostRecentQueryParams.toString()}`,
+          {
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+            },
+          }
+        );
+
+        await handleResNotOk(mostRecentRes);
+        const mostRecentData = await mostRecentRes.json();
+
+        if (
+          mostRecentData.experiments &&
+          Array.isArray(mostRecentData.experiments)
+        ) {
+          mostRecentData.experiments = mostRecentData.experiments.reverse();
+        }
+
         return {
-          content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+          content: [
+            { type: "text", text: JSON.stringify(mostRecentData, null, 2) },
+          ],
         };
       } catch (error) {
         throw new Error(`Error fetching experiments: ${error}`);

@@ -5,6 +5,7 @@ import {
   generateLinkToGrowthBook,
   type ExtendedToolsInterface,
   SUPPORTED_FILE_EXTENSIONS,
+  paginationSchema,
 } from "../utils.js";
 import { exec } from "child_process";
 import { getDefaults } from "./defaults.js";
@@ -140,8 +141,7 @@ export function registerFeatureTools({
     "get_feature_flags",
     "Fetches all feature flags from the GrowthBook API, with optional limit, offset, and project filtering.",
     {
-      limit: z.number().optional().default(100),
-      offset: z.number().optional().default(0),
+      ...paginationSchema,
     },
     async ({ limit, offset }) => {
       try {
