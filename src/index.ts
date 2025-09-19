@@ -10,6 +10,7 @@ import { registerSdkConnectionTools } from "./tools/sdk-connections.js";
 import { getApiKey, getApiUrl, getAppOrigin } from "./utils.js";
 import { registerSearchTools } from "./tools/search.js";
 import { registerDefaultsTools } from "./tools/defaults.js";
+import { registerMetricsTools } from "./tools/metrics.js";
 
 export const baseApiUrl = getApiUrl();
 export const apiKey = getApiKey();
@@ -100,6 +101,14 @@ registerDefaultsTools({
   server,
   baseApiUrl,
   apiKey,
+});
+
+registerMetricsTools({
+  server,
+  baseApiUrl,
+  apiKey,
+  appOrigin,
+  user,
 });
 
 // Start receiving messages on stdin and sending messages on stdout
