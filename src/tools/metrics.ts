@@ -119,9 +119,7 @@ export function registerMetricsTools({
               type: "text",
               text:
                 JSON.stringify(data, null, 2) +
-                `
-
-          [View the metric in GrowthBook](${linkToGrowthBook})
+                `\n**Critical** Show the user the link to the metric in GrowthBook: [View the metric in GrowthBook](${linkToGrowthBook})
           `,
             },
           ],

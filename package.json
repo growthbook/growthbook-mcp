@@ -1,7 +1,7 @@
 {
   "name": "@growthbook/mcp",
-  "version": "1.0.2",
-  "description": "",
+  "version": "1.1.0",
+  "description": "MCP Server for interacting with GrowthBook",
   "access": "public",
   "homepage": "https://github.com/growthbook/growthbook-mcp",
   "scripts": {
@@ -17,7 +17,13 @@
   "files": [
     "build"
   ],
-  "keywords": [],
+  "keywords": [
+    "growthbook",
+    "mcp",
+    "modelcontextprotocol",
+    "featureflags",
+    "experiments"
+  ],
   "author": "GrowthBook",
   "license": "MIT",
   "packageManager": "pnpm@10.6.1",
