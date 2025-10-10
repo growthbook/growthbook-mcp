@@ -4,7 +4,6 @@ import {
   handleResNotOk,
   generateLinkToGrowthBook,
   type ExtendedToolsInterface,
-  SUPPORTED_FILE_EXTENSIONS,
   paginationSchema,
   featureFlagSchema,
 } from "../utils.js";
