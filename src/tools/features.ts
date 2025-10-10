@@ -6,6 +6,7 @@ import {
   type ExtendedToolsInterface,
   SUPPORTED_FILE_EXTENSIONS,
   paginationSchema,
+  featureFlagSchema,
 } from "../utils.js";
 import { exec } from "child_process";
 import { getDefaults } from "./defaults.js";
@@ -26,31 +27,27 @@ export function registerFeatureTools({
     "create_feature_flag",
     "Creates a new feature flag in GrowthBook and modifies the codebase when relevant.",
     {
-      id: z
-        .string()
-        .regex(
-          /^[a-zA-Z0-9_-]+$/,
-          "Feature key can only include letters, numbers, hyphens, and underscores."
-        )
-        .describe("A unique key name for the feature"),
-      description: z
-        .string()
-        .optional()
-        .default("")
-        .describe("A brief description of the feature flag"),
-      valueType: z
-        .enum(["string", "number", "boolean", "json"])
-        .describe("The value type the feature flag will return"),
-      defaultValue: z
-        .string()
-        .describe("The default value of the feature flag"),
-      fileExtension: z
-        .enum(SUPPORTED_FILE_EXTENSIONS)
-        .describe(
-          "The extension of the current file. If it's unclear, ask the user."
-        ),
+      id: featureFlagSchema.id,
+      valueType: featureFlagSchema.valueType,
+      defaultValue: featureFlagSchema.defaultValue,
+      description: featureFlagSchema.description.optional().default(""),
+      archived: featureFlagSchema.archived.optional().default(false),
+      project: featureFlagSchema.project.optional(),
+      prerequisites: featureFlagSchema.prerequisites.optional(),
+      enabled: featureFlagSchema.enabled.optional().default(false),
+      fileExtension: featureFlagSchema.fileExtension,
     },
-    async ({ id, description, valueType, defaultValue, fileExtension }) => {
+    async ({
+      id,
+      valueType,
+      defaultValue,
+      description,
+      archived,
+      project,
+      prerequisites,
+      enabled,
+      fileExtension,
+    }) => {
       // get environments
       let environments = [];
       const defaults = await getDefaults(apiKey, baseApiUrl);
@@ -64,7 +61,7 @@ export function registerFeatureTools({
               Authorization: `Bearer ${apiKey}`,
               "Content-Type": "application/json",
             },
-          }
+          },
         );
         await handleResNotOk(envRes);
         const envData = await envRes.json();
@@ -77,16 +74,19 @@ export function registerFeatureTools({
         owner: user,
         valueType,
         defaultValue,
+        archived,
+        project,
+        prerequisites,
         tags: ["mcp"],
         environments: environments.reduce(
           (acc: Record<string, any>, env: string) => {
             acc[env] = {
-              enabled: false,
+              enabled,
               rules: [],
             };
             return acc;
           },
-          {}
+          {},
         ),
       };
 
@@ -107,15 +107,15 @@ export function registerFeatureTools({
         const linkToGrowthBook = generateLinkToGrowthBook(
           appOrigin,
           "features",
-          id
+          id,
         );
         const text = `This is the API response: ${JSON.stringify(data, null, 2)}
-      
+
         Additionally, here is a template of what to show to the user:
 
-        **✅ Your feature flag \`my-flag-name\` is ready!.**
+        **✅ Your feature flag \`my-flag-name\` is ready!**
         [View it in GrowthBook](${linkToGrowthBook})
-    
+
         **How to use it in your code:**
         (To the LLM agent. Use the text below to properly add the feature flag to the codebase. Also, surface the relevant docs/implemenation to the user)
 
@@ -131,7 +131,210 @@ export function registerFeatureTools({
       } catch (error) {
         throw new Error(`Error creating feature flag: ${error}`);
       }
-    }
+    },
+  );
+
+  /**
+   * Tool: update_feature_flag
+   */
+  server.tool(
+    "update_feature_flag",
+    "Partially updates an existing feature flag in GrowthBook and modifies the codebase when relevant.",
+    {
+      id: featureFlagSchema.id,
+      defaultValue: featureFlagSchema.defaultValue.optional(),
+      description: featureFlagSchema.description.optional(),
+      archived: featureFlagSchema.archived.optional(),
+      project: featureFlagSchema.project.optional(),
+      prerequisites: featureFlagSchema.prerequisites.optional(),
+      fileExtension: featureFlagSchema.fileExtension,
+    },
+    async ({
+      id,
+      defaultValue,
+      description,
+      archived,
+      project,
+      prerequisites,
+      fileExtension,
+    }) => {
+      // get environments
+      let environments = [];
+      const defaults = await getDefaults(apiKey, baseApiUrl);
+      if (defaults.environments) {
+        environments = defaults.environments;
+      } else {
+        const envRes = await fetch(
+          `${baseApiUrl}/api/v1/features/environments`,
+          {
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              "Content-Type": "application/json",
+            },
+          },
+        );
+        await handleResNotOk(envRes);
+        const envData = await envRes.json();
+        environments = envData.environments.map((env: any) => env.id);
+      }
+
+      const payload = {
+        description,
+        owner: user,
+        defaultValue,
+        archived,
+        project,
+        prerequisites,
+      };
+
+      try {
+        const res = await fetch(`${baseApiUrl}/api/v1/features/${id}`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+
+        await handleResNotOk(res);
+
+        const data = await res.json();
+        const { docs, language, stub } = getDocsMetadata(fileExtension);
+        const linkToGrowthBook = generateLinkToGrowthBook(
+          appOrigin,
+          "features",
+          id,
+        );
+        const text = `This is the API response: ${JSON.stringify(data, null, 2)}
+
+        Additionally, here is a template of what to show to the user:
+
+        **✅ Your feature flag \`my-flag-name\` has been updated!**
+        [View it in GrowthBook](${linkToGrowthBook})
+
+        **How to use it in your code:**
+        (To the LLM agent. Use the text below to properly update the feature flag in the codebase. Also, surface the relevant docs/implemenation to the user)
+
+        ${stub}
+
+        **Want to learn more?**
+        See the [GrowthBook ${language} docs](${docs})
+      `;
+
+        return {
+          content: [{ type: "text", text }],
+        };
+      } catch (error) {
+        throw new Error(`Error updating feature flag: ${error}`);
+      }
+    },
+  );
+
+  /**
+   * Tool: toggle_feature_flag
+   */
+  server.tool(
+    "toggle_feature_flag",
+    "Toggles a feature flag in one or more environments.",
+    {
+      id: featureFlagSchema.id,
+      environments: z
+        .record(z.boolean())
+        .describe(
+          "A partial record of environment IDs to their enabled status (true or false)",
+        ),
+    },
+    async ({ id, environments }) => {
+      const payload = {
+        environments,
+      };
+
+      try {
+        const res = await fetch(`${baseApiUrl}/api/v1/features/${id}/toggle`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+
+        await handleResNotOk(res);
+
+        const data = await res.json();
+        const linkToGrowthBook = generateLinkToGrowthBook(
+          appOrigin,
+          "features",
+          id,
+        );
+        const text = `This is the API response: ${JSON.stringify(data, null, 2)}
+
+        Additionally, here is a template of what to show to the user:
+
+        **✅ Your feature flag \`my-flag-name\` has been updated!**
+        [View it in GrowthBook](${linkToGrowthBook})
+
+        **Summary of changes:**
+        (To the LLM agent. Briefly summarize which environments were toggled on or off.)
+      `;
+
+        return {
+          content: [{ type: "text", text }],
+        };
+      } catch (error) {
+        throw new Error(`Error updating feature flag: ${error}`);
+      }
+    },
+  );
+
+  /**
+   * Tool: delete_feature_flag
+   */
+  server.tool(
+    "delete_feature_flag",
+    "Deletes an existing feature flag in GrowthBook and modifies the codebase when relevant.",
+    {
+      id: featureFlagSchema.id,
+      fileExtension: featureFlagSchema.fileExtension,
+    },
+    async ({ id, fileExtension }) => {
+      try {
+        const res = await fetch(`${baseApiUrl}/api/v1/features/${id}`, {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        await handleResNotOk(res);
+
+        const data = await res.json();
+        const { docs, language } = getDocsMetadata(fileExtension);
+        const linkToGrowthBook = generateLinkToGrowthBook(
+          appOrigin,
+          "features",
+          id,
+        );
+        const text = `This is the API response: ${JSON.stringify(data, null, 2)}
+
+        Additionally, here is a template of what to show to the user:
+
+        **✅ Your feature flag \`my-flag-name\` has been deleted.**
+        [View it in GrowthBook](${linkToGrowthBook})
+
+        **Want to learn more?**
+        See the [GrowthBook ${language} docs](${docs})
+      `;
+
+        return {
+          content: [{ type: "text", text }],
+        };
+      } catch (error) {
+        throw new Error(`Error updating feature flag: ${error}`);
+      }
+    },
   );
 
   /**
@@ -157,7 +360,7 @@ export function registerFeatureTools({
               Authorization: `Bearer ${apiKey}`,
               "Content-Type": "application/json",
             },
-          }
+          },
         );
 
         await handleResNotOk(res);
@@ -170,7 +373,7 @@ export function registerFeatureTools({
       } catch (error) {
         throw new Error(`Error fetching flags: ${error}`);
       }
-    }
+    },
   );
 
   /**
@@ -180,8 +383,8 @@ export function registerFeatureTools({
     "get_single_feature_flag",
     "Fetches a specific feature flag from the GrowthBook API",
     {
-      id: z.string().describe("The ID of the feature flag"),
-      project: z.string().optional(),
+      id: featureFlagSchema.id,
+      project: featureFlagSchema.project.optional(),
     },
     async ({ id, project }) => {
       try {
@@ -196,7 +399,7 @@ export function registerFeatureTools({
               Authorization: `Bearer ${apiKey}`,
               "Content-Type": "application/json",
             },
-          }
+          },
         );
 
         await handleResNotOk(res);
@@ -205,15 +408,15 @@ export function registerFeatureTools({
         const linkToGrowthBook = generateLinkToGrowthBook(
           appOrigin,
           "features",
-          id
+          id,
         );
         const text = `
         ${JSON.stringify(data.feature, null, 2)}
-    
+
         Share information about the feature flag with the user. In particular, give details about the enabled environments,
-        rules for each environment, and the default value. If the feature flag is archived or doesnt exist, inform the user and 
-        ask if they want to remove references to the feature flag from the codebase. 
-        
+        rules for each environment, and the default value. If the feature flag is archived or doesnt exist, inform the user and
+        ask if they want to remove references to the feature flag from the codebase.
+
         [View it in GrowthBook](${linkToGrowthBook})
         `;
 
@@ -223,7 +426,7 @@ export function registerFeatureTools({
       } catch (error) {
         throw new Error(`Error fetching flags: ${error}`);
       }
-    }
+    },
   );
 
   /**
@@ -250,7 +453,7 @@ export function registerFeatureTools({
               Authorization: `Bearer ${apiKey}`,
               "Content-Type": "application/json",
             },
-          }
+          },
         );
 
         await handleResNotOk(res);
@@ -273,14 +476,14 @@ export function registerFeatureTools({
         });
 
         const text = `
-      ${JSON.stringify(filteredSafeRollouts, null, 2)}
-  
-      Share information about the rolled-back or released safe rollout rules with the user. Safe Rollout rules are stored under 
-      environmentSettings, keyed by environment and are within the rules array with a type of "safe-rollout". Ask the user if they
-      would like to remove references to the feature associated with the rolled-back or released safe rollout rules and if they do,
-      remove the references and associated GrowthBook code and replace the values with controlValue if the safe rollout rule is rolled-back or with the 
-      variationValue if the safe rollout is released. In addition to the current file, you may need to update other files in the codebase.
-      `;
+        ${JSON.stringify(filteredSafeRollouts, null, 2)}
+
+        Share information about the rolled-back or released safe rollout rules with the user. Safe Rollout rules are stored under
+        environmentSettings, keyed by environment and are within the rules array with a type of "safe-rollout". Ask the user if they
+        would like to remove references to the feature associated with the rolled-back or released safe rollout rules and if they do,
+        remove the references and associated GrowthBook code and replace the values with controlValue if the safe rollout rule is rolled-back or with the
+        variationValue if the safe rollout is released. In addition to the current file, you may need to update other files in the codebase.
+        `;
 
         return {
           content: [{ type: "text", text }],
@@ -288,7 +491,7 @@ export function registerFeatureTools({
       } catch (error) {
         throw new Error(`Error fetching stale safe rollouts: ${error}`);
       }
-    }
+    },
   );
 
   /**
@@ -318,12 +521,12 @@ export function registerFeatureTools({
         // Login command
         await runCommand(
           `npx -y growthbook@latest auth login -k ${apiKey} -u ${baseApiUrl} -p default`,
-          currentWorkingDirectory
+          currentWorkingDirectory,
         );
         // Generate types command
         const output = await runCommand(
           `npx -y growthbook@latest features generate-types -u ${baseApiUrl}`,
-          currentWorkingDirectory
+          currentWorkingDirectory,
         );
         return {
           content: [
@@ -336,6 +539,6 @@ export function registerFeatureTools({
       } catch (error: any) {
         throw new Error(`Error generating types: ${error}`);
       }
-    }
+    },
   );
 }
