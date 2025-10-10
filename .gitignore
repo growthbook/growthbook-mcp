@@ -3,3 +3,4 @@ node_modules/
 .env
 .claude
 scratch.js
+.DS_Store
