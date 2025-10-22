@@ -142,13 +142,16 @@ export function registerFeatureTools({
     "Fetches all feature flags from the GrowthBook API, with optional limit, offset, and project filtering.",
     {
       ...paginationSchema,
+      projectId: z.string().optional().describe("The project ID to filter by"),
     },
-    async ({ limit, offset }) => {
+    async ({ limit, offset, projectId }) => {
       try {
         const queryParams = new URLSearchParams({
           limit: limit?.toString(),
           offset: offset?.toString(),
         });
+
+        if (projectId) queryParams.append("projectId", projectId);
 
         const res = await fetch(
           `${baseApiUrl}/api/v1/features?${queryParams.toString()}`,
