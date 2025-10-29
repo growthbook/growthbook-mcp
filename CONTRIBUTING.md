@@ -75,5 +75,5 @@ For more details on client integration and available tools, see the [README.md](
 For a better development and debugging experience, try the [MCP Inspector](https://github.com/modelcontextprotocol/inspector) to test tools and more.
 
 ```bash
-npx @modelcontextprotocol/inspector -e GB_API_KEY= GB_EMAIL= GB_API_URL=http://localhost:3100 -e GB_APP_ORIGIN=http://localhost:3000 node build/index.js <value >-e <email >-e
+npx @modelcontextprotocol/inspector -e GB_API_KEY=<value> -e GB_EMAIL=<email> -e GB_API_URL=http://localhost:3100 -e GB_APP_ORIGIN=http://localhost:3000 node build/index.js
 ```
