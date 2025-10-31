@@ -25,9 +25,13 @@ export function registerExperimentTools({
     "get_experiments",
     "Fetches experiments from the GrowthBook API",
     {
+      project: z
+        .string()
+        .describe("The ID of the project to filter experiments by")
+        .optional(),
       ...paginationSchema,
     },
-    async ({ limit, offset, mostRecent }) => {
+    async ({ limit, offset, mostRecent, project }) => {
       try {
         // Default behavior
         if (!mostRecent || offset > 0) {
@@ -35,6 +39,10 @@ export function registerExperimentTools({
             limit: limit.toString(),
             offset: offset.toString(),
           });
+
+          if (project) {
+            defaultQueryParams.append("projectId", project);
+          }
 
           const defaultRes = await fetch(
             `${baseApiUrl}/api/v1/experiments?${defaultQueryParams.toString()}`,
@@ -74,6 +82,10 @@ export function registerExperimentTools({
           offset: calculatedOffset.toString(),
         });
 
+        if (project) {
+          mostRecentQueryParams.append("projectId", project);
+        }
+
         const mostRecentRes = await fetch(
           `${baseApiUrl}/api/v1/experiments?${mostRecentQueryParams.toString()}`,
           {
@@ -100,102 +112,6 @@ export function registerExperimentTools({
         };
       } catch (error) {
         throw new Error(`Error fetching experiments: ${error}`);
-      }
-    }
-  );
-
-  /**
-   * Tool: create_force_rule
-   */
-  server.tool(
-    "create_force_rule",
-    "Create a new force rule on an existing feature. If the existing feature isn't apparent, create a new feature using create_feature_flag first. A force rule sets a feature to a specific value based on a condition. For A/B tests and experiments, use create_experiment instead.",
-    {
-      featureId: z
-        .string()
-        .describe("The ID of the feature to create the rule on"),
-      description: z.string().optional(),
-      condition: z
-        .string()
-        .describe(
-          "Applied to everyone by default. Write conditions in MongoDB-style query syntax."
-        )
-        .optional(),
-      value: z
-        .string()
-        .describe("The type of the value should match the feature type"),
-
-      fileExtension: z
-        .enum(SUPPORTED_FILE_EXTENSIONS)
-        .describe(
-          "The extension of the current file. If it's unclear, ask the user."
-        ),
-    },
-    async ({ featureId, description, condition, value, fileExtension }) => {
-      try {
-        // Fetch feature defaults first and surface to user
-        const defaults = await getDefaults(apiKey, baseApiUrl);
-        const defaultEnvironments = defaults.environments;
-
-        const payload = {
-          // Loop through the environments and create a rule for each one keyed by environment name
-          environments: defaultEnvironments.reduce((acc, env) => {
-            acc[env] = {
-              enabled: false,
-              rules: [
-                {
-                  type: "force",
-                  description,
-                  condition,
-                  value,
-                },
-              ],
-            };
-            return acc;
-          }, {} as Record<string, { enabled: boolean; rules: Array<any> }>),
-        };
-
-        const res = await fetch(`${baseApiUrl}/api/v1/features/${featureId}`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
-        });
-
-        await handleResNotOk(res);
-
-        const data = await res.json();
-
-        const linkToGrowthBook = generateLinkToGrowthBook(
-          appOrigin,
-          "features",
-          featureId
-        );
-        const { docs, language, stub } = getDocsMetadata(fileExtension);
-
-        const text = `This is the API response: ${JSON.stringify(data, null, 2)}
-      
-        Additionally, here is a template of what to show to the user:
-
-        **✅ Your feature flag \`my-flag-name\` is ready!.**
-        [View it in GrowthBook](${linkToGrowthBook})
-    
-        **How to use it in your code:**
-        (To the LLM agent. Use the text below to properly add the feature flag to the codebase. Also, surface the relevant docs/implemenation to the user)
-
-        ${stub}
-
-        **Want to learn more?**
-        See the [GrowthBook ${language} docs](${docs})
-      `;
-
-        return {
-          content: [{ type: "text", text }],
-        };
-      } catch (error) {
-        throw new Error(`Error creating force rule: ${error}`);
       }
     }
   );
@@ -292,7 +208,6 @@ export function registerExperimentTools({
         .describe(
           "Experiment hypothesis. Base hypothesis off the examples from get_defaults. If none are available, use a falsifiable statement about what will happen if the experiment succeeds or fails."
         ),
-      value: z.string().describe("The default value of the experiment."),
       variations: z
         .array(
           z.object({
@@ -316,6 +231,10 @@ export function registerExperimentTools({
         .describe(
           "Experiment variations. The key should be the variation name and the value should be the variation value. Look to variations included in preview experiments for guidance on generation. The default or control variation should always be first."
         ),
+      project: z
+        .string()
+        .describe("The ID of the project to create the experiment in")
+        .optional(),
       fileExtension: z
         .enum(SUPPORTED_FILE_EXTENSIONS)
         .describe(
@@ -334,6 +253,7 @@ export function registerExperimentTools({
       variations,
       fileExtension,
       confirmedDefaultsReviewed,
+      project,
     }) => {
       if (!confirmedDefaultsReviewed) {
         return {
@@ -364,7 +284,9 @@ export function registerExperimentTools({
             name: variation.name,
           })
         ),
+        ...(project && { project }),
       };
+
       try {
         const experimentRes = await fetch(`${baseApiUrl}/api/v1/experiments`, {
           method: "POST",

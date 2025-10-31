@@ -18,14 +18,22 @@ export function registerSdkConnectionTools({
     "get_sdk_connections",
     "Get all SDK connections. SDK connections are how GrowthBook connects to an app. Users need the client key to fetch features and experiments from the API.",
     {
+      project: z
+        .string()
+        .describe("The ID of the project to filter SDK connections by")
+        .optional(),
       ...paginationSchema,
     },
-    async ({ limit, offset }) => {
+    async ({ limit, offset, project }) => {
       try {
         const queryParams = new URLSearchParams({
           limit: limit?.toString(),
           offset: offset?.toString(),
         });
+
+        if (project) {
+          queryParams.append("projectId", project);
+        }
 
         const res = await fetch(
           `${baseApiUrl}/api/v1/sdk-connections?${queryParams.toString()}`,
@@ -87,15 +95,17 @@ export function registerSdkConnectionTools({
           "edge-other",
           "other",
         ])
-        .describe(
-          "The language of the SDK. Either 'javascript' or 'typescript'."
-        ),
+        .describe("The language or platform for the SDK connection."),
       environment: z
         .string()
         .optional()
         .describe("The environment associated with the SDK connection."),
+      projects: z
+        .array(z.string())
+        .describe("The projects to create the SDK connection in")
+        .optional(),
     },
-    async ({ name, language, environment }) => {
+    async ({ name, language, environment, projects }) => {
       if (!environment) {
         try {
           const res = await fetch(`${baseApiUrl}/api/v1/environments`, {
@@ -126,6 +136,7 @@ export function registerSdkConnectionTools({
         name,
         language,
         environment,
+        ...(projects && { projects }),
       };
 
       try {

@@ -45,9 +45,7 @@ export function registerProjectTools({
           content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
         };
       } catch (error) {
-        return {
-          content: [{ type: "text", text: `Error: ${error}` }],
-        };
+        throw new Error(`Error fetching projects: ${error}`);
       }
     }
   );
