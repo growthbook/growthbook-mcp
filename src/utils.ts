@@ -236,8 +236,8 @@ export const featureFlagSchema = {
   id: z
     .string()
     .regex(
-      /^[a-zA-Z0-9_-]+$/,
-      "Feature key can only include letters, numbers, hyphens, and underscores.",
+      /^[a-zA-Z0-9_.:|_-]+$/,
+      "Feature key can only include letters, numbers, and the characters _, -, ., :, and |"
     )
     .describe("A unique key name for the feature"),
   valueType: z
@@ -252,17 +252,17 @@ export const featureFlagSchema = {
   prerequisites: z
     .array(z.string())
     .describe(
-      "An array of feature flag IDs to set as prerequisites for this feature flag",
+      "An array of feature flag IDs to set as prerequisites for this feature flag"
     ),
   enabled: z
     .boolean()
     .describe(
-      "Whether the feature flag should be enabled for all environments upon creation",
+      "Whether the feature flag should be enabled for all environments upon creation"
     ),
   // Contextual info
   fileExtension: z
     .enum(SUPPORTED_FILE_EXTENSIONS)
     .describe(
-      "The extension of the current file. If it's unclear, ask the user.",
+      "The extension of the current file. If it's unclear, ask the user."
     ),
 } as const;
