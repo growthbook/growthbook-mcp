@@ -7,6 +7,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
+    "dev": "tsc --watch",
     "bump:patch": "pnpm version patch --no-git-tag-version",
     "bump:minor": "pnpm version minor --no-git-tag-version",
     "bump:major": "pnpm version major --no-git-tag-version"
