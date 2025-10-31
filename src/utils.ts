@@ -249,16 +249,6 @@ export const featureFlagSchema = {
   project: z
     .string()
     .describe("The ID of the project to which the feature flag belongs"),
-  prerequisites: z
-    .array(z.string())
-    .describe(
-      "An array of feature flag IDs to set as prerequisites for this feature flag"
-    ),
-  enabled: z
-    .boolean()
-    .describe(
-      "Whether the feature flag should be enabled for all environments upon creation"
-    ),
   // Contextual info
   fileExtension: z
     .enum(SUPPORTED_FILE_EXTENSIONS)
