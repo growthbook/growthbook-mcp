@@ -231,3 +231,28 @@ export const paginationSchema = {
       "When true, fetches the most recent items and returns them newest-first. When false (default), returns oldest items first."
     ),
 } as const;
+
+export const featureFlagSchema = {
+  id: z
+    .string()
+    .regex(
+      /^[a-zA-Z0-9_.:|_-]+$/,
+      "Feature key can only include letters, numbers, and the characters _, -, ., :, and |"
+    )
+    .describe("A unique key name for the feature"),
+  valueType: z
+    .enum(["string", "number", "boolean", "json"])
+    .describe("The value type the feature flag will return"),
+  defaultValue: z.string().describe("The default value of the feature flag"),
+  description: z.string().describe("A brief description of the feature flag"),
+  archived: z.boolean().describe("Whether the feature flag should be archived"),
+  project: z
+    .string()
+    .describe("The ID of the project to which the feature flag belongs"),
+  // Contextual info
+  fileExtension: z
+    .enum(SUPPORTED_FILE_EXTENSIONS)
+    .describe(
+      "The extension of the current file. If it's unclear, ask the user."
+    ),
+} as const;

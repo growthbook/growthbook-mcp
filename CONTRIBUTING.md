@@ -22,39 +22,39 @@ Thank you for your interest in contributing! Follow these steps to work locally 
    Use TypeScript to generate the build:
 
    ```sh
-   npx tsc
+   pnpm build
    ```
 
-   This will output the compiled JavaScript files to the `dist/` directory (or as configured in `tsconfig.json`).
+   This will output the compiled JavaScript files to the `build/` directory (or as configured in [`tsconfig.json`](./tsconfig.json)).
 
 4. **Add the server to your AI tool**
 
 When configuring your MCP client (e.g., Cursor, VS Code, Claude Desktop), use the absolute path to your local build. Example JSON config:
 
-   ```json
-   {
-     "mcpServers": {
-       "growthbook": {
-         "command": "node",
-         "args": ["/absolute/path/to/growthbook-mcp/dist/index.js"],
-         "env": {
-           "GB_API_KEY": "your-api-key",
-           "GB_EMAIL": "your-email",
-           "GB_API_URL": "your-api-url",
-           "GB_APP_ORIGIN": "your-app-origin"
-         }
-       }
-     }
-   }
-   ```
+```json
+{
+  "mcpServers": {
+    "growthbook": {
+      "command": "node",
+      "args": ["/absolute/path/to/growthbook-mcp/build/index.js"],
+      "env": {
+        "GB_API_KEY": "your-api-key",
+        "GB_EMAIL": "your-email",
+        "GB_API_URL": "your-api-url",
+        "GB_APP_ORIGIN": "your-app-origin"
+      }
+    }
+  }
+}
+```
 
-Replace `/absolute/path/to/growthbook-mcp/dist/index.js` with the actual path on your machine. If you're testing with a local version of GrowthBook, be sure to update environment variables to point to your local install.
+Replace `/absolute/path/to/growthbook-mcp/build/index.js` with the actual path on your machine. If you're testing with a local version of GrowthBook, be sure to update environment variables to point to your local install.
 
 GrowthBook MCP is now ready to use 🤖
 
 ## Testing Changes
 
-- After making code changes, re-run `npx tsc` to rebuild.
+- After making code changes, re-run `pnpm build` to rebuild.
 - Restart the server to pick up your changes.
 
 ## Submitting Pull Requests

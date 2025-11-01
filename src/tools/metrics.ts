@@ -19,16 +19,24 @@ export function registerMetricsTools({
    */
   server.tool(
     "get_metrics",
-    "Fetches metrics from the GrowthBook API",
+    "Fetches metrics from the GrowthBook API, with optional limit, offset, and project filtering.",
     {
+      project: z
+        .string()
+        .describe("The ID of the project to filter metrics by")
+        .optional(),
       ...paginationSchema,
     },
-    async ({ limit, offset }) => {
+    async ({ limit, offset, project }) => {
       try {
         const queryParams = new URLSearchParams({
           limit: limit?.toString(),
           offset: offset?.toString(),
         });
+
+        if (project) {
+          queryParams.append("projectId", project);
+        }
 
         const metricsRes = await fetch(
           `${baseApiUrl}/api/v1/metrics?${queryParams.toString()}`,
