@@ -1,0 +1,147 @@
+{
+  "manifest_version": "0.2",
+  "name": "GrowthBook",
+  "version": "1.2.0",
+  "description": "MCP Server for interacting with GrowthBook - an open source feature flagging and experimentation platform",
+  "author": {
+    "name": "Ryan Feigenbaum",
+    "email": "ryan@growthbook.io"
+  },
+  "homepage": "https://growthbook.io",
+  "documentation": "https://docs.growthbook.io/integrations/mcp",
+  "icon": "icon.png",
+  "server": {
+    "type": "node",
+    "entry_point": "server/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/server/index.js"],
+      "env": {
+        "GB_API_KEY": "${user_config.GB_API_KEY}",
+        "GB_EMAIL": "${user_config.GB_EMAIL}",
+        "GB_API_URL": "${user_config.GB_API_URL}",
+        "GB_APP_ORIGIN": "${user_config.GB_APP_ORIGIN}"
+      }
+    }
+  },
+  "tools": [
+    {
+      "name": "get_environments",
+      "description": "List all environments (e.g., production, staging) configured in GrowthBook."
+    },
+    {
+      "name": "get_projects",
+      "description": "List all projects in your GrowthBook instance."
+    },
+    {
+      "name": "get_sdk_connections",
+      "description": "List SDK connections (how GrowthBook connects to your apps)."
+    },
+    {
+      "name": "create_sdk_connection",
+      "description": "Create a new SDK connection for your app, specifying language and environment."
+    },
+    {
+      "name": "create_feature_flag",
+      "description": "Create, add, or wrap an element with a feature flag. Accepts key, type, default value, and other metadata."
+    },
+    {
+      "name": "create_force_rule",
+      "description": "Create a feature flag with a targeting condition (e.g., `country = CA`)."
+    },
+    {
+      "name": "get_feature_flags",
+      "description": "List feature flags in your GrowthBook instance."
+    },
+    {
+      "name": "get_single_feature_flag",
+      "description": "Fetch details for a specific feature flag by ID."
+    },
+    {
+      "name": "get_stale_safe_rollouts",
+      "description": "List safe rollout rules that have been rolled back or released. This tools is helpful for removing stale flags from your codebase."
+    },
+    {
+      "name": "generate_flag_types",
+      "description": "Generate TypeScript types for feature flags."
+    },
+    {
+      "name": "get_experiments",
+      "description": "List experiments in GrowthBook."
+    },
+    {
+      "name": "get_experiment",
+      "description": "Fetch details for a specific experiment by ID."
+    },
+    {
+      "name": "get_attributes",
+      "description": "List user attributes tracked in GrowthBook (useful for targeting)."
+    },
+    {
+      "name": "create_experiment",
+      "description": "Creates a feature-flag linked experiment. Note that this tool calls `get_defaults`, which provides a sampling of previous experiments to help the AI agent create the experiment correctly. For better performance, these defaults are saved to the local file system and periodically updated."
+    },
+    {
+      "name": "get_metrics",
+      "description": "List fact and legacy metrics (useful for better understanding experiments)."
+    },
+    {
+      "name": "get_metric",
+      "description": "Fetch a specific fact or legacy metric by ID."
+    },
+    {
+      "name": "get_defaults",
+      "description": "Get default values for experiments including hypothesis, description, datasource, and assignment query. (Runs automatically when the create experiment tool is called.)"
+    },
+    {
+      "name": "set_user_defaults",
+      "description": "Set custom default values for experiments that will be used when creating new experiments."
+    },
+    {
+      "name": "clear_user_defaults",
+      "description": "Clear user-defined defaults and revert to automatic defaults."
+    },
+    {
+      "name": "search_growthbook_docs",
+      "description": "Search the GrowthBook documentation for information on how to use a feature, by keyword or question."
+    }
+  ],
+  "user_config": {
+    "GB_API_KEY": {
+      "type": "string",
+      "title": "GrowthBook API key or PAT",
+      "description": "A GrowthBook API key or PAT. When using a PAT, you can only access tools that your permissions allow.",
+      "required": true,
+      "sensitive": true
+    },
+    "GB_EMAIL": {
+      "type": "string",
+      "title": "GrowthBook email",
+      "description": "Your email address used with GrowthBook. Used when creating feature flags and experiments.",
+      "required": true,
+      "sensitive": false
+    },
+    "GB_API_URL": {
+      "type": "string",
+      "title": "API URL",
+      "description": "Your GrowthBook API URL.",
+      "required": false,
+      "sensitive": false,
+      "default": "https://api.growthbook.io"
+    },
+    "GB_APP_ORIGIN": {
+      "type": "string",
+      "title": "GrowthBook app origin URL",
+      "description": "Your GrowthBook app URL.",
+      "required": false,
+      "sensitive": false,
+      "default": "https://app.growthbook.io"
+    }
+  },
+  "keywords": ["experimentation", "feature flags", "ab testing", "growthbook"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/growthbook/growthbook-mcp"
+  }
+}

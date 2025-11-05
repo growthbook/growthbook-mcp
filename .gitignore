@@ -1,4 +1,5 @@
 build/
+server/
 node_modules/
 .env
 .claude

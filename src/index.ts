@@ -114,4 +114,9 @@ registerMetricsTools({
 // Start receiving messages on stdin and sending messages on stdout
 const transport = new StdioServerTransport();
 
-await server.connect(transport);
+try {
+  await server.connect(transport);
+} catch (error) {
+  console.error(error);
+  process.exit(1);
+}

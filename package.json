@@ -8,15 +8,15 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
     "dev": "tsc --watch",
-    "bump:patch": "pnpm version patch --no-git-tag-version",
-    "bump:minor": "pnpm version minor --no-git-tag-version",
-    "bump:major": "pnpm version major --no-git-tag-version"
+    "bump:patch": "npm version patch --no-git-tag-version",
+    "bump:minor": "npm version minor --no-git-tag-version",
+    "bump:major": "npm version major --no-git-tag-version"
   },
   "bin": {
-    "mcp": "build/index.js"
+    "mcp": "server/index.js"
   },
   "files": [
-    "build"
+    "server"
   ],
   "keywords": [
     "growthbook",
@@ -27,7 +27,6 @@
   ],
   "author": "GrowthBook",
   "license": "MIT",
-  "packageManager": "pnpm@10.6.1",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.2",
     "env-paths": "^3.0.0",
