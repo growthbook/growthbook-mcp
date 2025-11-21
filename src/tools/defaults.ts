@@ -383,6 +383,7 @@ export async function registerDefaultsTools({
   server.tool(
     "get_defaults",
     "Get the default values for experiments, including hypothesis, description, datasource, assignment query, and environments.",
+    {},
     {
       readOnlyHint: true,
     },
@@ -410,6 +411,8 @@ export async function registerDefaultsTools({
       environments: z
         .array(z.string())
         .describe("List of environment IDs to use as defaults"),
+    },
+    {
       readOnlyHint: false,
       destructiveHint: true,
     },
@@ -450,6 +453,7 @@ export async function registerDefaultsTools({
   server.tool(
     "clear_user_defaults",
     "Clear user-defined defaults and revert to automatic defaults.",
+    {},
     {
       readOnlyHint: false,
       destructiveHint: true,

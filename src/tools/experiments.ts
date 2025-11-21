@@ -56,6 +56,8 @@ export function registerExperimentTools({
           "The mode to use to fetch experiments. Default mode returns summary info about experiments. Analyze mode will also fetch experiment results, allowing for better analysis, interpretation, and reporting."
         ),
       ...paginationSchema,
+    },
+    {
       readOnlyHint: true,
     },
     async ({ limit, offset, mostRecent, project, mode }) => {
@@ -207,6 +209,8 @@ export function registerExperimentTools({
         .describe(
           "The mode to use to fetch the experiment. Default mode returns summary info about the experiment. Analyze mode will also fetch experiment results, allowing for better analysis, interpretation, and reporting."
         ),
+    },
+    {
       readOnlyHint: true,
     },
     async ({ experimentId, mode }) => {
@@ -272,6 +276,7 @@ export function registerExperimentTools({
   server.tool(
     "get_attributes",
     "Get all attributes",
+    {},
     {
       readOnlyHint: true,
     },
@@ -358,6 +363,8 @@ export function registerExperimentTools({
         .describe(
           "Set to true to confirm you have called get_defaults and reviewed the output to guide these parameters."
         ),
+    },
+    {
       readOnlyHint: false,
       destructiveHint: false,
     },

@@ -20,6 +20,8 @@ export function registerProjectTools({
     "Fetches all projects from the GrowthBook API",
     {
       ...paginationSchema,
+    },
+    {
       readOnlyHint: true,
     },
     async ({ limit, offset }) => {
