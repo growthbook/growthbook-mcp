@@ -26,6 +26,7 @@ export function registerMetricsTools({
         .describe("The ID of the project to filter metrics by")
         .optional(),
       ...paginationSchema,
+      readOnlyHint: true,
     },
     async ({ limit, offset, project }) => {
       try {
@@ -90,6 +91,7 @@ export function registerMetricsTools({
     "Fetches a metric from the GrowthBook API",
     {
       metricId: z.string().describe("The ID of the metric to get"),
+      readOnlyHint: true,
     },
     async ({ metricId }) => {
       try {

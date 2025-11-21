@@ -13,6 +13,7 @@ export function registerSearchTools({ server }: { server: McpServer }) {
       query: z
         .string()
         .describe("The search query to look up in the GrowthBook docs."),
+      readOnlyHint: true,
     },
     async ({ query }) => {
       const hits = await searchGrowthBookDocs(query);

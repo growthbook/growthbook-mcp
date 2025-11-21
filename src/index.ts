@@ -11,6 +11,7 @@ import { getApiKey, getApiUrl, getAppOrigin } from "./utils.js";
 import { registerSearchTools } from "./tools/search.js";
 import { registerDefaultsTools } from "./tools/defaults.js";
 import { registerMetricsTools } from "./tools/metrics.js";
+import { registerExperimentAnalysisPrompt } from "./prompts/experiment-analysis.js";
 
 export const baseApiUrl = getApiUrl();
 export const apiKey = getApiKey();
@@ -109,6 +110,10 @@ registerMetricsTools({
   apiKey,
   appOrigin,
   user,
+});
+
+registerExperimentAnalysisPrompt({
+  server,
 });
 
 // Start receiving messages on stdin and sending messages on stdout

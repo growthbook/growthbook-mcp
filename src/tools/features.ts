@@ -32,6 +32,8 @@ export function registerFeatureTools({
       description: featureFlagSchema.description.optional().default(""),
       project: featureFlagSchema.project.optional(),
       fileExtension: featureFlagSchema.fileExtension,
+      readOnlyHint: false,
+      destructiveHint: false,
     },
     async ({
       id,
@@ -144,6 +146,7 @@ export function registerFeatureTools({
       value: z
         .string()
         .describe("The type of the value should match the feature type"),
+      readOnlyHint: false,
     },
     async ({ featureId, description, condition, value, fileExtension }) => {
       try {
@@ -223,6 +226,7 @@ export function registerFeatureTools({
     {
       project: featureFlagSchema.project.optional(),
       ...paginationSchema,
+      readOnlyHint: true,
     },
     async ({ limit, offset, project }) => {
       try {
@@ -266,6 +270,7 @@ export function registerFeatureTools({
     "Fetches a specific feature flag from the GrowthBook API",
     {
       id: featureFlagSchema.id,
+      readOnlyHint: true,
     },
     async ({ id }) => {
       try {
@@ -312,6 +317,7 @@ export function registerFeatureTools({
     {
       limit: z.number().optional().default(100),
       offset: z.number().optional().default(0),
+      readOnlyHint: true,
     },
     async ({ limit, offset }) => {
       try {
@@ -378,6 +384,8 @@ export function registerFeatureTools({
       currentWorkingDirectory: z
         .string()
         .describe("The current working directory of the user's project"),
+      readOnlyHint: false,
+      idempotentHint: true,
     },
     async ({ currentWorkingDirectory }) => {
       function runCommand(command: string, cwd: string): Promise<string> {

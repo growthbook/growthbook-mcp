@@ -11,6 +11,26 @@ import { getDefaults } from "./defaults.js";
 
 interface ExperimentTools extends ExtendedToolsInterface {}
 
+type Experiment = {
+  id: string;
+  trackingKey: string;
+  dateCreated: string;
+  dateUpdated: string;
+  name: string;
+  type: "standard";
+  project: string;
+  resultSummary: {
+    status: string;
+    winner: string;
+    conclusions: string;
+    releasedVariationId: string;
+    excludeFromPayload: true;
+  };
+  result?: {
+    [key: string]: any;
+  };
+};
+
 export function registerExperimentTools({
   server,
   baseApiUrl,
@@ -29,9 +49,16 @@ export function registerExperimentTools({
         .string()
         .describe("The ID of the project to filter experiments by")
         .optional(),
+      mode: z
+        .enum(["default", "analyze"])
+        .default("default")
+        .describe(
+          "The mode to use to fetch experiments. Default mode returns summary info about experiments. Analyze mode will also fetch experiment results, allowing for better analysis, interpretation, and reporting."
+        ),
       ...paginationSchema,
+      readOnlyHint: true,
     },
-    async ({ limit, offset, mostRecent, project }) => {
+    async ({ limit, offset, mostRecent, project, mode }) => {
       try {
         // Default behavior
         if (!mostRecent || offset > 0) {
@@ -56,6 +83,30 @@ export function registerExperimentTools({
 
           await handleResNotOk(defaultRes);
           const data = await defaultRes.json();
+          const experiments = data.experiments as Experiment[];
+
+          if (mode === "analyze") {
+            for (const [index, experiment] of experiments.entries()) {
+              try {
+                const resultsRes = await fetch(
+                  `${baseApiUrl}/api/v1/experiments/${experiment.id}/results`,
+                  {
+                    headers: {
+                      Authorization: `Bearer ${apiKey}`,
+                    },
+                  }
+                );
+                await handleResNotOk(resultsRes);
+                const resultsData = await resultsRes.json();
+                experiments[index].result = resultsData.result;
+              } catch (error) {
+                console.error(
+                  `Error fetching results for experiment ${experiment.id} (${experiment.name})`,
+                  error
+                );
+              }
+            }
+          }
 
           return {
             content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
@@ -103,6 +154,32 @@ export function registerExperimentTools({
           Array.isArray(mostRecentData.experiments)
         ) {
           mostRecentData.experiments = mostRecentData.experiments.reverse();
+
+          if (mode === "analyze") {
+            for (const [
+              index,
+              experiment,
+            ] of mostRecentData.experiments.entries()) {
+              try {
+                const resultsRes = await fetch(
+                  `${baseApiUrl}/api/v1/experiments/${experiment.id}/results`,
+                  {
+                    headers: {
+                      Authorization: `Bearer ${apiKey}`,
+                    },
+                  }
+                );
+                await handleResNotOk(resultsRes);
+                const resultsData = await resultsRes.json();
+                mostRecentData.experiments[index].result = resultsData.result;
+              } catch (error) {
+                console.error(
+                  `Error fetching results for experiment ${experiment.id} (${experiment.name})`,
+                  error
+                );
+              }
+            }
+          }
         }
 
         return {
@@ -124,8 +201,15 @@ export function registerExperimentTools({
     "Gets a single experiment from GrowthBook",
     {
       experimentId: z.string().describe("The ID of the experiment to get"),
+      mode: z
+        .enum(["default", "analyze"])
+        .default("default")
+        .describe(
+          "The mode to use to fetch the experiment. Default mode returns summary info about the experiment. Analyze mode will also fetch experiment results, allowing for better analysis, interpretation, and reporting."
+        ),
+      readOnlyHint: true,
     },
-    async ({ experimentId }) => {
+    async ({ experimentId, mode }) => {
       try {
         const res = await fetch(
           `${baseApiUrl}/api/v1/experiments/${experimentId}`,
@@ -139,6 +223,28 @@ export function registerExperimentTools({
 
         await handleResNotOk(res);
         const data = await res.json();
+
+        // If analyze mode, fetch results
+        if (mode === "analyze") {
+          try {
+            const resultsRes = await fetch(
+              `${baseApiUrl}/api/v1/experiments/${experimentId}/results`,
+              {
+                headers: {
+                  Authorization: `Bearer ${apiKey}`,
+                },
+              }
+            );
+            await handleResNotOk(resultsRes);
+            const resultsData = await resultsRes.json();
+            data.result = resultsData.result;
+          } catch (error) {
+            console.error(
+              `Error fetching results for experiment ${experimentId}`,
+              error
+            );
+          }
+        }
 
         const linkToGrowthBook = generateLinkToGrowthBook(
           appOrigin,
@@ -163,31 +269,38 @@ export function registerExperimentTools({
   /**
    * Tool: get_attributes
    */
-  server.tool("get_attributes", "Get all attributes", {}, async () => {
-    try {
-      const queryParams = new URLSearchParams();
-      queryParams.append("limit", "100");
+  server.tool(
+    "get_attributes",
+    "Get all attributes",
+    {
+      readOnlyHint: true,
+    },
+    async () => {
+      try {
+        const queryParams = new URLSearchParams();
+        queryParams.append("limit", "100");
 
-      const res = await fetch(
-        `${baseApiUrl}/api/v1/attributes?${queryParams.toString()}`,
-        {
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+        const res = await fetch(
+          `${baseApiUrl}/api/v1/attributes?${queryParams.toString()}`,
+          {
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
 
-      await handleResNotOk(res);
+        await handleResNotOk(res);
 
-      const data = await res.json();
-      return {
-        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
-      };
-    } catch (error) {
-      throw new Error(`Error fetching attributes: ${error}`);
+        const data = await res.json();
+        return {
+          content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+        };
+      } catch (error) {
+        throw new Error(`Error fetching attributes: ${error}`);
+      }
     }
-  });
+  );
 
   /**
    * Tool: create_experiment
@@ -245,6 +358,8 @@ export function registerExperimentTools({
         .describe(
           "Set to true to confirm you have called get_defaults and reviewed the output to guide these parameters."
         ),
+      readOnlyHint: false,
+      destructiveHint: false,
     },
     async ({
       description,

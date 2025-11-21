@@ -23,6 +23,7 @@ export function registerSdkConnectionTools({
         .describe("The ID of the project to filter SDK connections by")
         .optional(),
       ...paginationSchema,
+      readOnlyHint: true,
     },
     async ({ limit, offset, project }) => {
       try {
@@ -104,6 +105,8 @@ export function registerSdkConnectionTools({
         .array(z.string())
         .describe("The projects to create the SDK connection in")
         .optional(),
+      readOnlyHint: false,
+      destructiveHint: false,
     },
     async ({ name, language, environment, projects }) => {
       if (!environment) {
