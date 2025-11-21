@@ -179,7 +179,12 @@ export async function searchGrowthBookDocs(query: string) {
         "X-Algolia-Application-Id": APPLICATION_ID,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ query }),
+      body: JSON.stringify({
+        query,
+        attributesToSnippet: ["content:20", "text:20"],
+        snippetEllipsisText: "...",
+        hitsPerPage: 5,
+      }),
     });
 
     await handleResNotOk(response);
