@@ -3,7 +3,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { registerEnvironmentTools } from "./tools/environments.js";
-import { registerExperimentTools } from "./tools/experiments.js";
+import { registerExperimentTools } from "./tools/experiments/experiments.js";
 import { registerFeatureTools } from "./tools/features.js";
 import { registerProjectTools } from "./tools/projects.js";
 import { registerSdkConnectionTools } from "./tools/sdk-connections.js";
@@ -11,7 +11,7 @@ import { getApiKey, getApiUrl, getAppOrigin } from "./utils.js";
 import { registerSearchTools } from "./tools/search.js";
 import { registerDefaultsTools } from "./tools/defaults.js";
 import { registerMetricsTools } from "./tools/metrics.js";
-import { registerExperimentAnalysisPrompt } from "./prompts/experiment-analysis.js";
+import { registerExperimentPrompts } from "./prompts/experiment-prompts.js";
 
 export const baseApiUrl = getApiUrl();
 export const apiKey = getApiKey();
@@ -27,6 +27,8 @@ const server = new McpServer(
   {
     name: "GrowthBook MCP",
     version: "1.0.2",
+    title: "GrowthBook MCP",
+    websiteUrl: "https://growthbook.io",
   },
   {
     instructions: `You are a helpful assistant that interacts with GrowthBook, an open source feature flagging and experimentation platform. You can create and manage feature flags, experiments (A/B tests), and other resources associated with GrowthBook.
@@ -57,6 +59,11 @@ const server = new McpServer(
 - Feature flags and experiments require a fileExtension parameter for proper code integration
 - Always review generated GrowthBook links with users so they can launch experiments
 - When experiments are "draft", users must visit GrowthBook to review and launch them`,
+    capabilities: {
+      tools: {},
+      prompts: {},
+      logs: {},
+    },
   }
 );
 
@@ -112,7 +119,7 @@ registerMetricsTools({
   user,
 });
 
-registerExperimentAnalysisPrompt({
+registerExperimentPrompts({
   server,
 });
 

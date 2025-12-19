@@ -261,3 +261,34 @@ export const featureFlagSchema = {
       "The extension of the current file. If it's unclear, ask the user."
     ),
 } as const;
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+const MIN_DELAY_MS = 50;
+
+export async function fetchWithRateLimit(
+  url: string,
+  options: RequestInit,
+  retries = 3
+): Promise<Response> {
+  // Small courtesy delay to avoid hammering
+  await sleep(MIN_DELAY_MS);
+
+  const response = await fetch(url, options);
+
+  // If rate limited, wait and retry
+  if (response.status === 429 && retries > 0) {
+    const resetSeconds = parseInt(
+      response.headers.get("RateLimit-Reset") || "5",
+      10
+    );
+    console.error(
+      `Rate limited, waiting ${resetSeconds}s (${retries} retries left)`
+    );
+    await sleep(resetSeconds * 1000);
+    return fetchWithRateLimit(url, options, retries - 1);
+  }
+
+  return response;
+}

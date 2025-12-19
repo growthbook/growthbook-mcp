@@ -4,6 +4,7 @@ import {
   generateLinkToGrowthBook,
   handleResNotOk,
   paginationSchema,
+  fetchWithRateLimit,
 } from "../utils.js";
 
 interface MetricsTools extends ExtendedToolsInterface {}
@@ -41,7 +42,7 @@ export function registerMetricsTools({
           queryParams.append("projectId", project);
         }
 
-        const metricsRes = await fetch(
+        const metricsRes = await fetchWithRateLimit(
           `${baseApiUrl}/api/v1/metrics?${queryParams.toString()}`,
           {
             headers: {
@@ -55,7 +56,7 @@ export function registerMetricsTools({
 
         const metricsData = await metricsRes.json();
 
-        const factMetricRes = await fetch(
+        const factMetricRes = await fetchWithRateLimit(
           `${baseApiUrl}/api/v1/fact-metrics?${queryParams.toString()}`,
           {
             headers: {
@@ -75,9 +76,7 @@ export function registerMetricsTools({
         };
 
         return {
-          content: [
-            { type: "text", text: JSON.stringify(metricData, null, 2) },
-          ],
+          content: [{ type: "text", text: JSON.stringify(metricData) }],
         };
       } catch (error) {
         throw new Error(`Error fetching metrics: ${error}`);
@@ -102,19 +101,25 @@ export function registerMetricsTools({
         let res;
 
         if (metricId.startsWith("fact__")) {
-          res = await fetch(`${baseApiUrl}/api/v1/fact-metrics/${metricId}`, {
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              "Content-Type": "application/json",
-            },
-          });
+          res = await fetchWithRateLimit(
+            `${baseApiUrl}/api/v1/fact-metrics/${metricId}`,
+            {
+              headers: {
+                Authorization: `Bearer ${apiKey}`,
+                "Content-Type": "application/json",
+              },
+            }
+          );
         } else {
-          res = await fetch(`${baseApiUrl}/api/v1/metrics/${metricId}`, {
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              "Content-Type": "application/json",
-            },
-          });
+          res = await fetchWithRateLimit(
+            `${baseApiUrl}/api/v1/metrics/${metricId}`,
+            {
+              headers: {
+                Authorization: `Bearer ${apiKey}`,
+                "Content-Type": "application/json",
+              },
+            }
+          );
         }
 
         await handleResNotOk(res);
@@ -132,7 +137,7 @@ export function registerMetricsTools({
             {
               type: "text",
               text:
-                JSON.stringify(data, null, 2) +
+                JSON.stringify(data) +
                 `\n**Critical** Show the user the link to the metric in GrowthBook: [View the metric in GrowthBook](${linkToGrowthBook})
           `,
             },

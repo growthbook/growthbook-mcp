@@ -1,4 +1,8 @@
-import { handleResNotOk, type BaseToolsInterface } from "../utils.js";
+import {
+  handleResNotOk,
+  type BaseToolsInterface,
+  fetchWithRateLimit,
+} from "../utils.js";
 
 interface EnvironmentTools extends BaseToolsInterface {}
 
@@ -19,18 +23,21 @@ export function registerEnvironmentTools({
     },
     async () => {
       try {
-        const res = await fetch(`${baseApiUrl}/api/v1/environments`, {
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
-        });
+        const res = await fetchWithRateLimit(
+          `${baseApiUrl}/api/v1/environments`,
+          {
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
 
         await handleResNotOk(res);
 
         const data = await res.json();
         return {
-          content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+          content: [{ type: "text", text: JSON.stringify(data) }],
         };
       } catch (error) {
         throw new Error(`Error fetching environments: ${error}`);
