@@ -46,9 +46,11 @@ export function registerExperimentTools({
     async ({ limit, offset, mostRecent, project, mode }, extra) => {
       const progressToken = extra._meta?.progressToken;
 
+      const totalSteps = mode === "summary" ? 5 : mode === "full" ? 3 : 2;
+
       const reportProgress = async (
         progress: number,
-        total: number,
+
         message?: string
       ) => {
         if (progressToken) {
@@ -57,14 +59,14 @@ export function registerExperimentTools({
             params: {
               progressToken,
               progress,
-              total,
+              total: totalSteps,
               ...(message && { message }),
             },
           });
         }
       };
 
-      await reportProgress(1, 5, "Fetching experiments...");
+      await reportProgress(1, "Fetching experiments...");
 
       try {
         // Default behavior
@@ -78,7 +80,6 @@ export function registerExperimentTools({
             defaultQueryParams.append("projectId", project);
           }
 
-          await reportProgress(1, 5, "Fetching experiments...");
           const defaultRes = await fetchWithRateLimit(
             `${baseApiUrl}/api/v1/experiments?${defaultQueryParams.toString()}`,
             {
@@ -94,7 +95,7 @@ export function registerExperimentTools({
           const experiments = data.experiments as Experiment[];
 
           if (mode === "full" || mode === "summary") {
-            await reportProgress(2, 5, "Fetching experiment results...");
+            await reportProgress(2, "Fetching experiment results...");
             for (const [index, experiment] of experiments.entries()) {
               if (experiment.status === "draft") {
                 experiments[index].result = undefined;
@@ -122,13 +123,11 @@ export function registerExperimentTools({
           }
 
           if (mode === "summary") {
-            await reportProgress(3, 5, "Extracting experiment stats...");
             const summaryExperiments = await handleSummaryMode(
               experiments,
               baseApiUrl,
               apiKey,
-              server,
-              typeof progressToken === "string" ? progressToken : undefined
+              reportProgress
             );
             const summaryExperimentsWithPagination = {
               summary: summaryExperiments,
@@ -147,6 +146,8 @@ export function registerExperimentTools({
               ],
             };
           }
+
+          await reportProgress(2, "Processing results...");
 
           return {
             content: [{ type: "text", text: JSON.stringify(data) }],
@@ -196,7 +197,7 @@ export function registerExperimentTools({
           mostRecentData.experiments = mostRecentData.experiments.reverse();
 
           if (mode === "full" || mode === "summary") {
-            await reportProgress(2, 5, "Fetching experiment results...");
+            await reportProgress(2, "Fetching experiment results...");
             for (const [
               index,
               experiment,
@@ -224,13 +225,11 @@ export function registerExperimentTools({
         }
 
         if (mode === "summary") {
-          await reportProgress(3, 5, "Extracting experiment stats...");
           const summaryExperiments = await handleSummaryMode(
             mostRecentData.experiments,
             baseApiUrl,
             apiKey,
-            server,
-            typeof progressToken === "string" ? progressToken : undefined
+            reportProgress
           );
           const summaryExperimentsWithPagination = {
             summary: summaryExperiments,

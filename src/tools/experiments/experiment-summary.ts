@@ -447,26 +447,9 @@ async function buildExperimentStats(
   experiments: Experiment[],
   baseApiUrl: string,
   apiKey: string,
-  server: McpServer,
-  progressToken?: string
+  reportProgress: (progress: number, message?: string) => Promise<void>
 ): Promise<ExperimentStats> {
-  const reportProgress = async (
-    progress: number,
-    total: number,
-    message?: string
-  ) => {
-    if (progressToken) {
-      await server.server.notification({
-        method: "notifications/progress",
-        params: {
-          progressToken,
-          progress,
-          total,
-          ...(message && { message }),
-        },
-      });
-    }
-  };
+  await reportProgress(3, "Figuring out metrics...");
 
   // Extract all unique metric IDs
   const metricIds = new Set<string>();
@@ -483,7 +466,6 @@ async function buildExperimentStats(
     }
   }
 
-  await reportProgress(4, 5, "Fetching metrics...");
   const metricLookup = await getMetricLookup(baseApiUrl, apiKey, metricIds);
 
   const cards: ExperimentCard[] = [];
@@ -504,6 +486,8 @@ async function buildExperimentStats(
   let srmFailures = 0;
   let guardrailRegressions = 0;
   let experimentsWithResults = 0;
+
+  await reportProgress(4, "Computing experiment stats...");
 
   for (const exp of experiments) {
     const verdictResult = computeVerdict(exp, metricLookup);
@@ -645,10 +629,7 @@ async function buildExperimentStats(
     t.winRate = total > 0 ? round(t.won / total) : null;
   }
 
-  // Overall rates - matching GrowthBook's ExperimentWinRate.tsx:
-  // winRate = wins / (wins + losses + incon)
   const total = byVerdict.won + byVerdict.lost + byVerdict.inconclusive;
-  const totalWithOutcome = byVerdict.won + byVerdict.lost;
 
   // Top winners and losers
   const topWinners = cards
@@ -683,6 +664,7 @@ async function buildExperimentStats(
       hypothesis: c.hypothesis,
     }));
 
+  await reportProgress(5, "Putting on the finishing touches...");
   return {
     total: experiments.length,
     byVerdict,
@@ -733,8 +715,7 @@ export async function handleSummaryMode(
   experiments: Experiment[],
   baseApiUrl: string,
   apiKey: string,
-  server: McpServer,
-  progressToken?: string
+  reportProgress: (progress: number, message?: string) => Promise<void>
 ): Promise<
   ExperimentStats & {
     _meta: {
@@ -755,8 +736,7 @@ export async function handleSummaryMode(
     stoppedExperiments,
     baseApiUrl,
     apiKey,
-    server,
-    progressToken
+    reportProgress
   );
 
   return {
