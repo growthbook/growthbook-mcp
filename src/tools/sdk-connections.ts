@@ -3,6 +3,7 @@ import {
   handleResNotOk,
   type BaseToolsInterface,
   paginationSchema,
+  fetchWithRateLimit,
 } from "../utils.js";
 
 interface SdkConnectionTools extends BaseToolsInterface {}
@@ -38,7 +39,7 @@ export function registerSdkConnectionTools({
           queryParams.append("projectId", project);
         }
 
-        const res = await fetch(
+        const res = await fetchWithRateLimit(
           `${baseApiUrl}/api/v1/sdk-connections?${queryParams.toString()}`,
           {
             headers: {
@@ -53,7 +54,7 @@ export function registerSdkConnectionTools({
         const data = await res.json();
 
         return {
-          content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+          content: [{ type: "text", text: JSON.stringify(data) }],
         };
       } catch (error) {
         throw new Error(`Error fetching sdk connections: ${error}`);
@@ -115,16 +116,19 @@ export function registerSdkConnectionTools({
     async ({ name, language, environment, projects }) => {
       if (!environment) {
         try {
-          const res = await fetch(`${baseApiUrl}/api/v1/environments`, {
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              "Content-Type": "application/json",
-            },
-          });
+          const res = await fetchWithRateLimit(
+            `${baseApiUrl}/api/v1/environments`,
+            {
+              headers: {
+                Authorization: `Bearer ${apiKey}`,
+                "Content-Type": "application/json",
+              },
+            }
+          );
 
           await handleResNotOk(res);
           const data = await res.json();
-          const text = `${JSON.stringify(data, null, 2)}
+          const text = `${JSON.stringify(data)}
     
         Here is the list of environments. Ask the user to select one and use the key in the create_sdk_connection tool.
         `;
@@ -147,21 +151,24 @@ export function registerSdkConnectionTools({
       };
 
       try {
-        const res = await fetch(`${baseApiUrl}/api/v1/sdk-connections`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
-        });
+        const res = await fetchWithRateLimit(
+          `${baseApiUrl}/api/v1/sdk-connections`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+          }
+        );
 
         await handleResNotOk(res);
 
         const data = await res.json();
 
         return {
-          content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+          content: [{ type: "text", text: JSON.stringify(data) }],
         };
       } catch (error) {
         throw new Error(`Error creating sdk connection: ${error}`);

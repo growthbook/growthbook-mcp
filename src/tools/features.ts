@@ -6,6 +6,7 @@ import {
   type ExtendedToolsInterface,
   paginationSchema,
   featureFlagSchema,
+  fetchWithRateLimit,
 } from "../utils.js";
 import { exec } from "child_process";
 import { getDefaults } from "./defaults.js";
@@ -51,7 +52,7 @@ export function registerFeatureTools({
       if (defaults.environments) {
         environments = defaults.environments;
       } else {
-        const envRes = await fetch(
+        const envRes = await fetchWithRateLimit(
           `${baseApiUrl}/api/v1/features/environments`,
           {
             headers: {
@@ -86,7 +87,7 @@ export function registerFeatureTools({
       };
 
       try {
-        const res = await fetch(`${baseApiUrl}/api/v1/features`, {
+        const res = await fetchWithRateLimit(`${baseApiUrl}/api/v1/features`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${apiKey}`,
@@ -104,7 +105,7 @@ export function registerFeatureTools({
           "features",
           id
         );
-        const text = `This is the API response: ${JSON.stringify(data, null, 2)}
+        const text = `This is the API response: ${JSON.stringify(data)}
 
         Additionally, here is a template of what to show to the user:
 
@@ -176,14 +177,17 @@ export function registerFeatureTools({
           }, {} as Record<string, { enabled: boolean; rules: Array<any> }>),
         };
 
-        const res = await fetch(`${baseApiUrl}/api/v1/features/${featureId}`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
-        });
+        const res = await fetchWithRateLimit(
+          `${baseApiUrl}/api/v1/features/${featureId}`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+          }
+        );
 
         await handleResNotOk(res);
 
@@ -196,7 +200,7 @@ export function registerFeatureTools({
         );
         const { docs, language, stub } = getDocsMetadata(fileExtension);
 
-        const text = `This is the API response: ${JSON.stringify(data, null, 2)}
+        const text = `This is the API response: ${JSON.stringify(data)}
       
         Additionally, here is a template of what to show to the user:
 
@@ -245,7 +249,7 @@ export function registerFeatureTools({
           queryParams.append("projectId", project);
         }
 
-        const res = await fetch(
+        const res = await fetchWithRateLimit(
           `${baseApiUrl}/api/v1/features?${queryParams.toString()}`,
           {
             headers: {
@@ -260,7 +264,7 @@ export function registerFeatureTools({
         const data = await res.json();
 
         return {
-          content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+          content: [{ type: "text", text: JSON.stringify(data) }],
         };
       } catch (error) {
         throw new Error(`Error fetching flags: ${error}`);
@@ -282,12 +286,15 @@ export function registerFeatureTools({
     },
     async ({ id }) => {
       try {
-        const res = await fetch(`${baseApiUrl}/api/v1/features/${id}`, {
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
-        });
+        const res = await fetchWithRateLimit(
+          `${baseApiUrl}/api/v1/features/${id}`,
+          {
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
 
         await handleResNotOk(res);
 
@@ -298,7 +305,7 @@ export function registerFeatureTools({
           id
         );
         const text = `
-        ${JSON.stringify(data.feature, null, 2)}
+        ${JSON.stringify(data)}
 
         Share information about the feature flag with the user. In particular, give details about the enabled environments,
         rules for each environment, and the default value. If the feature flag is archived or doesnt exist, inform the user and
@@ -336,7 +343,7 @@ export function registerFeatureTools({
           offset: offset?.toString(),
         });
 
-        const res = await fetch(
+        const res = await fetchWithRateLimit(
           `${baseApiUrl}/api/v1/features?${queryParams.toString()}`,
           {
             headers: {
@@ -366,7 +373,7 @@ export function registerFeatureTools({
         });
 
         const text = `
-        ${JSON.stringify(filteredSafeRollouts, null, 2)}
+        ${JSON.stringify(filteredSafeRollouts)}
 
         Share information about the rolled-back or released safe rollout rules with the user. Safe Rollout rules are stored under
         environmentSettings, keyed by environment and are within the rules array with a type of "safe-rollout". Ask the user if they

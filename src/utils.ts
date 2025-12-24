@@ -166,13 +166,102 @@ export function getDocsMetadata(extension: string) {
   }
 }
 
-export async function searchGrowthBookDocs(query: string) {
+// Algolia search result types
+export interface AlgoliaHit {
+  objectID: string;
+  title?: string;
+  content?: string;
+  text?: string;
+  url?: string;
+  anchor?: string;
+  hierarchy?: {
+    lvl0?: string;
+    lvl1?: string;
+    lvl2?: string;
+    lvl3?: string;
+    lvl4?: string;
+    lvl5?: string;
+    lvl6?: string;
+  };
+  _snippetResult?: {
+    content?: { value: string; matchLevel: string };
+    text?: { value: string; matchLevel: string };
+  };
+  _highlightResult?: {
+    content?: { value: string; matchLevel: string };
+    text?: { value: string; matchLevel: string };
+    title?: { value: string; matchLevel: string };
+  };
+  _rankingInfo?: {
+    promoted: boolean;
+    nbTypos: number;
+    firstMatchedWord: number;
+    proximityDistance?: number;
+    geoDistance?: number;
+    geoPrecision?: number;
+    nbExactWords: number;
+    words: number;
+    filters: number;
+    userScore: number;
+    matchedGeoLocation?: {
+      lat: number;
+      lng: number;
+      distance: number;
+    };
+  };
+}
+
+export interface AlgoliaSearchResponse {
+  hits: AlgoliaHit[];
+  nbHits: number;
+  page: number;
+  nbPages: number;
+  hitsPerPage: number;
+  processingTimeMS: number;
+  query: string;
+  params: string;
+}
+
+export interface SearchResult {
+  title: string;
+  url: string;
+  snippet: string;
+  content?: string;
+  hierarchy?: string[];
+  relevance?: {
+    score: number;
+    typos: number;
+    matchedWords: number;
+  };
+}
+
+export async function searchGrowthBookDocs(
+  query: string,
+  options?: {
+    hitsPerPage?: number;
+    attributesToSnippet?: string[];
+    attributesToHighlight?: string[];
+  }
+): Promise<SearchResult[]> {
   const APPLICATION_ID = "MN7ZMY63CG";
   const API_KEY = "e17ebcbd97bce29ad0bdec269770e9df";
   const INDEX_NAME = "growthbook";
   const url = `https://${APPLICATION_ID}-dsn.algolia.net/1/indexes/${INDEX_NAME}/query`;
+
+  const hitsPerPage = options?.hitsPerPage ?? 5;
+  // Increased snippet length for more context (50 words instead of 30)
+  const attributesToSnippet = options?.attributesToSnippet ?? [
+    "content:50",
+    "text:50",
+  ];
+  const attributesToHighlight = options?.attributesToHighlight ?? [
+    "title",
+    "content",
+    "text",
+  ];
+
   try {
-    const response = await fetch(url, {
+    const response = await fetchWithRateLimit(url, {
       method: "POST",
       headers: {
         "X-Algolia-API-Key": API_KEY,
@@ -181,19 +270,149 @@ export async function searchGrowthBookDocs(query: string) {
       },
       body: JSON.stringify({
         query,
-        attributesToSnippet: ["content:20", "text:20"],
+        attributesToSnippet,
+        attributesToHighlight,
+        // Retrieve all useful attributes for better context
+        attributesToRetrieve: [
+          "title",
+          "content",
+          "text",
+          "url",
+          "anchor",
+          "hierarchy",
+        ],
         snippetEllipsisText: "...",
-        hitsPerPage: 5,
+        hitsPerPage,
+        getRankingInfo: true,
+        distinct: true, // Avoid duplicate results
+        typoTolerance: true,
+        // Better typo handling for technical terms
+        minWordSizefor1Typo: 4,
+        minWordSizefor2Typos: 8,
+        // Enable advanced query syntax for better matching
+        advancedSyntax: true,
+        // Remove stop words only if no results, keep them otherwise for better context
+        removeWordsIfNoResults: "allOptional",
+        // Enable prefix matching for better partial matches
+        queryType: "prefixLast",
+        // Enable word proximity for better phrase matching
+        enableRules: true,
+        // Better handling of special characters in technical docs
+        allowTyposOnNumericTokens: false,
       }),
     });
 
     await handleResNotOk(response);
 
-    const data = await response.json();
+    const data = (await response.json()) as AlgoliaSearchResponse;
     const hits = data.hits || [];
 
-    return hits;
+    return hits.map((hit): SearchResult => {
+      // Extract title from various possible fields (prefer highlighted)
+      const title =
+        hit._highlightResult?.title?.value ||
+        hit.title ||
+        hit.hierarchy?.lvl0 ||
+        hit.hierarchy?.lvl1 ||
+        "Untitled";
+
+      // Build comprehensive snippet from multiple sources
+      // Prioritize snippets that contain query matches, then highlights, then raw content
+      const snippetParts: string[] = [];
+
+      // Add content snippet (most relevant, contains query matches)
+      if (hit._snippetResult?.content?.value) {
+        snippetParts.push(hit._snippetResult.content.value);
+      }
+      // Add text snippet if different from content
+      if (
+        hit._snippetResult?.text?.value &&
+        hit._snippetResult.text.value !== hit._snippetResult?.content?.value
+      ) {
+        snippetParts.push(hit._snippetResult.text.value);
+      }
+      // Add highlighted content for additional context
+      if (
+        hit._highlightResult?.content?.value &&
+        !snippetParts.some((s) =>
+          s.includes(hit._highlightResult!.content!.value)
+        )
+      ) {
+        const highlighted = hit._highlightResult.content.value;
+        // Only add if it adds new information
+        if (!snippetParts.some((s) => s === highlighted)) {
+          snippetParts.push(highlighted);
+        }
+      }
+      // Add highlighted text if different
+      if (
+        hit._highlightResult?.text?.value &&
+        hit._highlightResult.text.value !== hit._highlightResult?.content?.value
+      ) {
+        const highlighted = hit._highlightResult.text.value;
+        if (!snippetParts.some((s) => s === highlighted)) {
+          snippetParts.push(highlighted);
+        }
+      }
+
+      // Combine snippets intelligently, removing duplicates and overlaps
+      let combinedSnippet = "";
+      if (snippetParts.length > 0) {
+        // Join with separator, but avoid repetition
+        combinedSnippet = snippetParts
+          .filter((part, idx, arr) => {
+            // Remove duplicates
+            return arr.indexOf(part) === idx;
+          })
+          .join(" ... ");
+      } else {
+        // Fallback to raw content if no snippets available
+        const rawContent = hit.content || hit.text || "";
+        combinedSnippet = rawContent.substring(0, 300);
+        if (rawContent.length > 300) {
+          combinedSnippet += "...";
+        }
+      }
+
+      // Build URL (handle both full URLs and anchors)
+      let url = hit.url || "";
+      if (hit.anchor && !url.includes("#")) {
+        url = url ? `${url}#${hit.anchor}` : `#${hit.anchor}`;
+      }
+
+      // Extract hierarchy path (breadcrumb)
+      const hierarchy: string[] = [];
+      if (hit.hierarchy) {
+        for (let i = 0; i <= 6; i++) {
+          const level = hit.hierarchy[`lvl${i}` as keyof typeof hit.hierarchy];
+          if (level && !hierarchy.includes(level)) {
+            hierarchy.push(level);
+          }
+        }
+      }
+
+      // Extract relevance information
+      const relevance = hit._rankingInfo
+        ? {
+            score: hit._rankingInfo.userScore,
+            typos: hit._rankingInfo.nbTypos,
+            matchedWords: hit._rankingInfo.nbExactWords,
+          }
+        : undefined;
+
+      return {
+        title: title.trim(),
+        url: url.trim() || "#",
+        snippet: combinedSnippet.trim(),
+        content: hit.content || hit.text,
+        hierarchy: hierarchy.length > 0 ? hierarchy : undefined,
+        relevance,
+      };
+    });
   } catch (error) {
+    // Log error but don't throw - return empty array to allow graceful degradation
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`Error searching GrowthBook docs: ${errorMessage}`);
     return [];
   }
 }
@@ -261,3 +480,34 @@ export const featureFlagSchema = {
       "The extension of the current file. If it's unclear, ask the user."
     ),
 } as const;
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+const MIN_DELAY_MS = 50;
+
+export async function fetchWithRateLimit(
+  url: string,
+  options: RequestInit,
+  retries = 3
+): Promise<Response> {
+  // Small courtesy delay to avoid hammering
+  await sleep(MIN_DELAY_MS);
+
+  const response = await fetch(url, options);
+
+  // If rate limited, wait and retry
+  if (response.status === 429 && retries > 0) {
+    const resetSeconds = parseInt(
+      response.headers.get("RateLimit-Reset") || "5",
+      10
+    );
+    console.error(
+      `Rate limited, waiting ${resetSeconds}s (${retries} retries left)`
+    );
+    await sleep(resetSeconds * 1000);
+    return fetchWithRateLimit(url, options, retries - 1);
+  }
+
+  return response;
+}

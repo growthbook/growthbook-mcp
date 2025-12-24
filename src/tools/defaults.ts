@@ -1,4 +1,8 @@
-import { handleResNotOk, type BaseToolsInterface } from "../utils.js";
+import {
+  handleResNotOk,
+  type BaseToolsInterface,
+  fetchWithRateLimit,
+} from "../utils.js";
 import envPaths from "env-paths";
 import { writeFile, readFile, mkdir, unlink } from "fs/promises";
 import { join } from "path";
@@ -63,7 +67,7 @@ export async function createDefaults(
   baseApiUrl: string
 ): Promise<ExperimentDefaultsResult> {
   try {
-    const experimentsResponse = await fetch(
+    const experimentsResponse = await fetchWithRateLimit(
       `${baseApiUrl}/api/v1/experiments`,
       {
         headers: {
@@ -76,7 +80,7 @@ export async function createDefaults(
 
     if (experimentData.experiments.length === 0) {
       // No experiments: return assignment query and environments if possible
-      const assignmentQueryResponse = await fetch(
+      const assignmentQueryResponse = await fetchWithRateLimit(
         `${baseApiUrl}/api/v1/data-sources`,
         {
           headers: {
@@ -96,7 +100,7 @@ export async function createDefaults(
       const assignmentQuery: string =
         dataSourceData.dataSources[0].assignmentQueries[0].id;
 
-      const environmentsResponse = await fetch(
+      const environmentsResponse = await fetchWithRateLimit(
         `${baseApiUrl}/api/v1/environments`,
         {
           headers: {
@@ -127,7 +131,7 @@ export async function createDefaults(
 
     let experiments: Experiment[] = [];
     if (experimentData.hasMore) {
-      const mostRecentExperiments = await fetch(
+      const mostRecentExperiments = await fetchWithRateLimit(
         `${baseApiUrl}/api/v1/experiments?offset=${
           experimentData.total -
           Math.min(50, experimentData.count + experimentData.offset)
@@ -199,7 +203,7 @@ export async function createDefaults(
     }
 
     // Fetch environments
-    const environmentsResponse = await fetch(
+    const environmentsResponse = await fetchWithRateLimit(
       `${baseApiUrl}/api/v1/environments`,
       {
         headers: {
@@ -283,7 +287,7 @@ export async function getDefaults(
         await mkdir(experimentDefaultsDir, { recursive: true });
         await writeFile(
           experimentDefaultsFile,
-          JSON.stringify(generatedDefaults, null, 2)
+          JSON.stringify(generatedDefaults)
         );
         autoDefaults = {
           name: generatedDefaults.name,
@@ -298,7 +302,7 @@ export async function getDefaults(
         await mkdir(experimentDefaultsDir, { recursive: true });
         await writeFile(
           experimentDefaultsFile,
-          JSON.stringify(generatedDefaults, null, 2)
+          JSON.stringify(generatedDefaults)
         );
         autoDefaults = {
           name: generatedDefaults.name,
@@ -345,7 +349,7 @@ export async function getDefaults(
       await mkdir(experimentDefaultsDir, { recursive: true });
       await writeFile(
         experimentDefaultsFile,
-        JSON.stringify(generatedExperimentDefaults, null, 2)
+        JSON.stringify(generatedExperimentDefaults)
       );
       parsedExperimentDefaults = generatedExperimentDefaults;
     }
@@ -361,7 +365,7 @@ export async function getDefaults(
       await mkdir(experimentDefaultsDir, { recursive: true });
       await writeFile(
         experimentDefaultsFile,
-        JSON.stringify(generatedExperimentDefaults, null, 2)
+        JSON.stringify(generatedExperimentDefaults)
       );
       experimentDefaults = generatedExperimentDefaults;
     } else {
@@ -393,7 +397,7 @@ export async function registerDefaultsTools({
         content: [
           {
             type: "text",
-            text: JSON.stringify(defaults, null, 2),
+            text: JSON.stringify(defaults),
           },
         ],
       };
@@ -427,10 +431,7 @@ export async function registerDefaultsTools({
 
         await mkdir(experimentDefaultsDir, { recursive: true });
 
-        await writeFile(
-          userDefaultsFile,
-          JSON.stringify(userDefaults, null, 2)
-        );
+        await writeFile(userDefaultsFile, JSON.stringify(userDefaults));
 
         return {
           content: [

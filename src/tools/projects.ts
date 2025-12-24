@@ -3,6 +3,7 @@ import {
   handleResNotOk,
   type BaseToolsInterface,
   paginationSchema,
+  fetchWithRateLimit,
 } from "../utils.js";
 
 interface ProjectTools extends BaseToolsInterface {}
@@ -31,7 +32,7 @@ export function registerProjectTools({
       });
 
       try {
-        const res = await fetch(
+        const res = await fetchWithRateLimit(
           `${baseApiUrl}/api/v1/projects?${queryParams.toString()}`,
           {
             headers: {
@@ -45,7 +46,7 @@ export function registerProjectTools({
 
         const data = await res.json();
         return {
-          content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+          content: [{ type: "text", text: JSON.stringify(data) }],
         };
       } catch (error) {
         throw new Error(`Error fetching projects: ${error}`);
