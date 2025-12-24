@@ -305,7 +305,7 @@ export function registerFeatureTools({
           id
         );
         const text = `
-        ${JSON.stringify(data.featureJSON.stringify(data))}
+        ${JSON.stringify(data)}
 
         Share information about the feature flag with the user. In particular, give details about the enabled environments,
         rules for each environment, and the default value. If the feature flag is archived or doesnt exist, inform the user and

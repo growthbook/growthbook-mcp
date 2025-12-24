@@ -225,8 +225,11 @@ export function registerExperimentTools({
         }
 
         if (mode === "summary") {
+          const experiments = Array.isArray(mostRecentData.experiments)
+            ? mostRecentData.experiments
+            : [];
           const summaryExperiments = await handleSummaryMode(
-            mostRecentData.experiments,
+            experiments,
             baseApiUrl,
             apiKey,
             reportProgress
