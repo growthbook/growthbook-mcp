@@ -26,7 +26,7 @@ if (!user) {
 const server = new McpServer(
   {
     name: "GrowthBook MCP",
-    version: "1.0.2",
+    version: "1.4.1",
     title: "GrowthBook MCP",
     websiteUrl: "https://growthbook.io",
   },
@@ -62,7 +62,9 @@ const server = new McpServer(
     capabilities: {
       tools: {},
       prompts: {},
-      logs: {},
+      notifications: {
+        progress: true,
+      },
     },
   }
 );
