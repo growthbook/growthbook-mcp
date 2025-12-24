@@ -201,8 +201,6 @@ A screenshot-optimized slide users can share on social media.
 ### Design Specs
 | Property | Value |
 |----------|-------|
-| Aspect ratio | 1:1 (square) |
-| Ideal dimensions | 1080×1080px equivalent |
 | Background | Holographic gradient: brand colors with subtle transparency |
 | Padding | 48px safe margins |
 | Contrast | High — white text on dark gradient |
@@ -225,26 +223,6 @@ A screenshot-optimized slide users can share on social media.
 - Specific lift percentages
 - Owner/user names
 - Any identifiable business data
-
-### Layout Suggestion
-* This only suggests the arrangment of elements. Ensure spacing, whitespace, text hierarchy all meet best practices.
-```
-┌─────────────────────────────┐
-│                             │
-│      YOUR 2025 WRAPPED      │
-│                             │
-│             12              │
-│         experiments         │
-│                             │
-│   60%    20%    20%         │
-│   wins  learns  inconc.     │
-│                             │
-│      45,000 users           │
-│                             │
-│   ─────────────────────     │
-│   Powered by [GB Logo]      │
-└─────────────────────────────┘
-```
 
 ### Logo Asset
 ```svg
