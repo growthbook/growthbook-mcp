@@ -26,8 +26,6 @@ jobs:
           npm run test --if-present
       - name: Publish to npm
         run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       # MCP publishing (works for all package types)
       - name: Download MCP Publisher
