@@ -12,6 +12,7 @@ import { registerSearchTools } from "./tools/search.js";
 import { registerDefaultsTools } from "./tools/defaults.js";
 import { registerMetricsTools } from "./tools/metrics.js";
 import { registerExperimentPrompts } from "./prompts/experiment-prompts.js";
+import packageDetails from "../package.json" with { type: "json" };
 
 export const baseApiUrl = getApiUrl();
 export const apiKey = getApiKey();
@@ -26,7 +27,7 @@ if (!user) {
 const server = new McpServer(
   {
     name: "GrowthBook MCP",
-    version: "1.4.1",
+    version: packageDetails.version,
     title: "GrowthBook MCP",
     websiteUrl: "https://growthbook.io",
   },
@@ -62,9 +63,6 @@ const server = new McpServer(
     capabilities: {
       tools: {},
       prompts: {},
-      notifications: {
-        progress: true,
-      },
     },
   }
 );
