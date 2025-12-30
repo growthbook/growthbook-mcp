@@ -6,7 +6,6 @@
   "access": "public",
   "homepage": "https://github.com/growthbook/growthbook-mcp",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
     "dev": "tsc --watch",
     "bump:patch": "npm version patch --no-git-tag-version",
