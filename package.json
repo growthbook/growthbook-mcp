@@ -5,6 +5,10 @@
   "description": "MCP Server for interacting with GrowthBook",
   "access": "public",
   "homepage": "https://github.com/growthbook/growthbook-mcp",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/growthbook/growthbook-mcp"
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
