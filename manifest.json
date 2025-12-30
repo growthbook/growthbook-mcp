@@ -1,7 +1,7 @@
 {
   "manifest_version": "0.2",
   "name": "GrowthBook",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "MCP Server for interacting with GrowthBook - an open source feature flagging and experimentation platform",
   "long_description": "The GrowthBook MCP Server enables AI assistants to interact with GrowthBook, an open source feature flagging and experimentation platform. Create feature flags, set up A/B tests, analyze experiment results, and manage your experimentation workflow directly from your AI coding assistant.\n\n## Usage Examples\n\nAsk Claude to:\n1. Create a feature flag called `new-checkout` that defaults to `false`\n2. Summarize my last 20 experiments\n3. Create an A/B test comparing two checkout button colors - control with `#007bff` and variation with `#28a745`\n4. Search the GrowthBook docs for how to set up a fact metric",
   "author": {

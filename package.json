@@ -1,6 +1,7 @@
 {
   "name": "@growthbook/mcp",
-  "version": "1.4.1",
+  "mcpName": "io.github.growthbook/growthbook-mcp",
+  "version": "1.4.2",
   "description": "MCP Server for interacting with GrowthBook",
   "access": "public",
   "homepage": "https://github.com/growthbook/growthbook-mcp",
