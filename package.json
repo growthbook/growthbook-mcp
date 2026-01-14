@@ -1,7 +1,7 @@
 {
   "name": "@growthbook/mcp",
   "mcpName": "io.github.growthbook/growthbook-mcp",
-  "version": "1.4.4",
+  "version": "1.4.5",
   "description": "MCP Server for interacting with GrowthBook",
   "access": "public",
   "homepage": "https://github.com/growthbook/growthbook-mcp",
@@ -12,9 +12,10 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "bump:patch": "npm version patch --no-git-tag-version",
-    "bump:minor": "npm version minor --no-git-tag-version",
-    "bump:major": "npm version major --no-git-tag-version",
+    "sync-version": "node scripts/sync-version.js",
+    "bump:patch": "npm version patch --no-git-tag-version && npm run sync-version",
+    "bump:minor": "npm version minor --no-git-tag-version && npm run sync-version",
+    "bump:major": "npm version major --no-git-tag-version && npm run sync-version",
     "mcpb:build": "npx -y @anthropic-ai/mcpb -- pack"
   },
   "bin": {
