@@ -460,6 +460,9 @@ export function registerExperimentTools({
       // Fetch experiment defaults first and surface to user
       let experimentDefaults = await getDefaults(apiKey, baseApiUrl);
 
+      const stringifyValue = (value: unknown): string =>
+        typeof value === "object" ? JSON.stringify(value) : String(value);
+
       const experimentPayload = {
         name,
         description,
@@ -500,13 +503,15 @@ export function registerExperimentTools({
         const flagPayload = {
           id: flagId,
           owner: user,
-          defaultValue: variations[0].value,
+          defaultValue: stringifyValue(variations[0].value),
           valueType:
             typeof variations[0].value === "string"
               ? "string"
               : typeof variations[0].value === "number"
               ? "number"
-              : "boolean",
+              : typeof variations[0].value === "boolean"
+              ? "boolean"
+              : "json",
           description,
           environments: {
             ...experimentDefaults.environments.reduce((acc, env) => {
@@ -518,7 +523,7 @@ export function registerExperimentTools({
                     experimentId: experimentData.experiment.id,
                     variations: experimentData.experiment.variations.map(
                       (expVariation: { variationId: string }, idx: number) => ({
-                        value: variations[idx].value,
+                        value: stringifyValue(variations[idx].value),
                         variationId: expVariation.variationId,
                       })
                     ),
