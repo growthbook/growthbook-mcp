@@ -395,6 +395,9 @@ export function registerExperimentTools({
         .describe(
           "Experiment hypothesis. Base hypothesis off the examples from get_defaults. If none are available, use a falsifiable statement about what will happen if the experiment succeeds or fails."
         ),
+      valueType: z
+        .enum(["string", "number", "boolean", "json"])
+        .describe("The value type for all experiment variations"),
       variations: z
         .array(
           z.object({
@@ -411,7 +414,7 @@ export function registerExperimentTools({
                 z.record(z.string(), z.any()),
               ])
               .describe(
-                "The value of the control and each of the variations. The value should be a string, number, boolean, or object. If it's an object, it should be a valid JSON object."
+                "The value of this variation. Must match the specified valueType: provide actual booleans (true/false) not strings, actual numbers, strings, or valid JSON objects."
               ),
           })
         )
@@ -441,6 +444,7 @@ export function registerExperimentTools({
       description,
       hypothesis,
       name,
+      valueType,
       variations,
       fileExtension,
       confirmedDefaultsReviewed,
@@ -504,14 +508,7 @@ export function registerExperimentTools({
           id: flagId,
           owner: user,
           defaultValue: stringifyValue(variations[0].value),
-          valueType:
-            typeof variations[0].value === "string"
-              ? "string"
-              : typeof variations[0].value === "number"
-              ? "number"
-              : typeof variations[0].value === "boolean"
-              ? "boolean"
-              : "json",
+          valueType,
           description,
           environments: {
             ...experimentDefaults.environments.reduce((acc, env) => {
