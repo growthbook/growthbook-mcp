@@ -2,6 +2,7 @@ build/
 server/
 node_modules/
 .env
+.npm-cache/
 .claude
 scratch.js
 .DS_Store

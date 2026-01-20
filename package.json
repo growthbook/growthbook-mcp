@@ -12,6 +12,9 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "sync-version": "node scripts/sync-version.js",
     "bump:patch": "npm version patch --no-git-tag-version && npm run sync-version",
     "bump:minor": "npm version minor --no-git-tag-version && npm run sync-version",
@@ -40,7 +43,9 @@
   },
   "devDependencies": {
     "@types/node": "^24.2.1",
-    "typescript": "^5.9.2"
+    "@vitest/coverage-v8": "^3.2.4",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
   },
   "type": "module"
 }
