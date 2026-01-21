@@ -6,26 +6,29 @@ import { searchGrowthBookDocs } from "../utils.js";
  * Tool: search_growthbook_docs
  */
 export function registerSearchTools({ server }: { server: McpServer }) {
-  server.tool(
+  server.registerTool(
     "search_growthbook_docs",
-    "Search the GrowthBook docs on how to use a feature",
     {
-      query: z
-        .string()
-        .min(1)
-        .describe("The search query to look up in the GrowthBook docs."),
-      maxResults: z
-        .number()
-        .min(1)
-        .max(10)
-        .default(5)
-        .optional()
-        .describe(
-          "Maximum number of results to return (1-10, default: 5). More results may provide better context but increase response size."
-        ),
-    },
-    {
-      readOnlyHint: true,
+      title: "Search GrowthBook Docs",
+      description: "Search the GrowthBook docs on how to use a feature",
+      inputSchema: z.object({
+        query: z
+          .string()
+          .min(1)
+          .describe("The search query to look up in the GrowthBook docs."),
+        maxResults: z
+          .number()
+          .min(1)
+          .max(10)
+          .default(5)
+          .optional()
+          .describe(
+            "Maximum number of results to return (1-10, default: 5). More results may provide better context but increase response size."
+          ),
+      }),
+      annotations: {
+        readOnlyHint: true,
+      },
     },
     async ({ query, maxResults = 5 }) => {
       const results = await searchGrowthBookDocs(query, {

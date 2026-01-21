@@ -23,20 +23,16 @@ export function registerFeatureTools({
   /**
    * Tool: create_feature_flag
    */
-  server.tool(
+  server.registerTool(
     "create_feature_flag",
-    "Creates a new feature flag in GrowthBook and modifies the codebase when relevant.",
     {
-      id: featureFlagSchema.id,
-      valueType: featureFlagSchema.valueType,
-      defaultValue: featureFlagSchema.defaultValue,
-      description: featureFlagSchema.description.optional().default(""),
-      project: featureFlagSchema.project.optional(),
-      fileExtension: featureFlagSchema.fileExtension,
-    },
-    {
-      readOnlyHint: false,
-      destructiveHint: false,
+      title: "Create Feature Flag",
+      description: "Creates a new feature flag in GrowthBook and modifies the codebase when relevant.",
+      inputSchema: featureFlagSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+      },
     },
     async ({
       id,
@@ -133,29 +129,25 @@ export function registerFeatureTools({
   /**
    * Tool: create_force_rule
    */
-  server.tool(
+  server.registerTool(
     "create_force_rule",
-    "Create a new force rule on an existing feature. If the existing feature isn't apparent, create a new feature using create_feature_flag first. A force rule sets a feature to a specific value based on a condition. For A/B tests and experiments, use create_experiment instead.",
     {
-      featureId: featureFlagSchema.id,
-      description: featureFlagSchema.description.optional().default(""),
-      fileExtension: featureFlagSchema.fileExtension,
-      condition: z
-        .string()
-        .describe(
-          "Applied to everyone by default. Write conditions in MongoDB-style query syntax."
-        )
-        .optional(),
-      value: z
-        .string()
-        .describe("The type of the value should match the feature type"),
-    },
-    {
-      readOnlyHint: false,
+      title: "Create Force Rule",
+      description: "Create a new force rule on an existing feature. If the existing feature isn't apparent, create a new feature using create_feature_flag first. A force rule sets a feature to a specific value based on a condition. For A/B tests and experiments, use create_experiment instead.",
+      inputSchema: z.object({
+        featureId: featureFlagSchema.id,
+        description: featureFlagSchema.description.optional().default(""),
+        fileExtension: featureFlagSchema.fileExtension,
+        condition: z.string().describe("Applied to everyone by default. Write conditions in MongoDB-style query syntax.").optional(),
+        value: z.string().describe("The type of the value should match the feature type"),
+      }),
+      annotations: {
+        readOnlyHint: false,
+      },
     },
     async ({ featureId, description, condition, value, fileExtension }) => {
       try {
-        // Fetch feature defaults first and surface to user
+        // Fetch feature defaults first
         const defaults = await getDefaults(apiKey, baseApiUrl);
         const defaultEnvironments = defaults.environments;
 
@@ -228,15 +220,19 @@ export function registerFeatureTools({
   /**
    * Tool: get_feature_flags
    */
-  server.tool(
+  server.registerTool(
     "get_feature_flags",
-    "Fetches all feature flags from the GrowthBook API, with optional limit, offset, and project filtering.",
     {
-      project: featureFlagSchema.project.optional(),
-      ...paginationSchema,
-    },
-    {
-      readOnlyHint: true,
+      title: "Get Feature Flags",
+      description:
+        "Fetches all feature flags from the GrowthBook API, with optional limit, offset, and project filtering.",
+      inputSchema: z.object({
+        project: featureFlagSchema.project.optional(),
+        ...paginationSchema,
+      }),
+      annotations: {
+        readOnlyHint: true,
+      },
     },
     async ({ limit, offset, project }) => {
       try {
@@ -275,14 +271,17 @@ export function registerFeatureTools({
   /**
    * Tool: get_single_feature_flag
    */
-  server.tool(
+  server.registerTool(
     "get_single_feature_flag",
-    "Fetches a specific feature flag from the GrowthBook API",
     {
-      id: featureFlagSchema.id,
-    },
-    {
-      readOnlyHint: true,
+      title: "Get Single Feature Flag",
+      description: "Fetches a specific feature flag from the GrowthBook API",
+      inputSchema: z.object({
+        id: featureFlagSchema.id,
+      }),
+      annotations: {
+        readOnlyHint: true,
+      },
     },
     async ({ id }) => {
       try {
@@ -326,15 +325,19 @@ export function registerFeatureTools({
   /**
    * Tool: get_stale_safe_rollouts
    */
-  server.tool(
+  server.registerTool(
     "get_stale_safe_rollouts",
-    "Fetches all complete safe rollouts (rolled-back or released) from the GrowthBook API",
     {
-      limit: z.number().optional().default(100),
-      offset: z.number().optional().default(0),
-    },
-    {
-      readOnlyHint: true,
+      title: "Get Stale Safe Rollouts",
+      description:
+        "Fetches all complete safe rollouts (rolled-back or released) from the GrowthBook API",
+      inputSchema: z.object({
+        limit: z.number().optional().default(100),
+        offset: z.number().optional().default(0),
+      }),
+      annotations: {
+        readOnlyHint: true,
+      },
     },
     async ({ limit, offset }) => {
       try {
@@ -394,17 +397,20 @@ export function registerFeatureTools({
   /**
    * Tool: generate_flag_types
    */
-  server.tool(
+  server.registerTool(
     "generate_flag_types",
-    "Generate types for feature flags",
     {
-      currentWorkingDirectory: z
-        .string()
-        .describe("The current working directory of the user's project"),
-    },
-    {
-      readOnlyHint: false,
-      idempotentHint: true,
+      title: "Generate Flag Types",
+      description: "Generate types for feature flags",
+      inputSchema: z.object({
+        currentWorkingDirectory: z
+          .string()
+          .describe("The current working directory of the user's project"),
+      }),
+      annotations: {
+        readOnlyHint: false,
+        idempotentHint: true,
+      },
     },
     async ({ currentWorkingDirectory }) => {
       function runCommand(command: string, cwd: string): Promise<string> {

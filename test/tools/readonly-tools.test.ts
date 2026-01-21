@@ -8,6 +8,14 @@ type RegisteredTool = {
 function makeServerCapture() {
   const tools: RegisteredTool[] = [];
   const server = {
+    registerTool: (
+      name: string,
+      _config: any,
+      handler: (args: any, extra?: any) => Promise<any>
+    ) => {
+      tools.push({ name, handler });
+    },
+    // Back-compat for older tests / modules (deprecated in SDK)
     tool: (
       name: string,
       _description: string,

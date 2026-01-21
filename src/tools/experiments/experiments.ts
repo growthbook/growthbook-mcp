@@ -24,24 +24,27 @@ export function registerExperimentTools({
   /**
    * Tool: get_experiments
    */
-  server.tool(
+  server.registerTool(
     "get_experiments",
-    "Fetches experiments from the GrowthBook API",
     {
-      project: z
-        .string()
-        .describe("The ID of the project to filter experiments by")
-        .optional(),
-      mode: z
-        .enum(["metadata", "summary", "full"])
-        .default("metadata")
-        .describe(
-          "The mode to use to fetch experiments. Metadata mode returns experiment config without results. Summary mode fetches results and returns pruned key stats for quick analysis. Full mode fetches and returns complete results data. WARNING: Full mode may return large payloads."
-        ),
-      ...paginationSchema,
-    },
-    {
-      readOnlyHint: true,
+      title: "Get Experiments",
+      description: "Fetches experiments from the GrowthBook API",
+      inputSchema: z.object({
+        project: z
+          .string()
+          .describe("The ID of the project to filter experiments by")
+          .optional(),
+        mode: z
+          .enum(["metadata", "summary", "full"])
+          .default("metadata")
+          .describe(
+            "The mode to use to fetch experiments. Metadata mode returns experiment config without results. Summary mode fetches results and returns pruned key stats for quick analysis. Full mode fetches and returns complete results data. WARNING: Full mode may return large payloads."
+          ),
+        ...paginationSchema,
+      }),
+      annotations: {
+        readOnlyHint: true,
+      },
     },
     async ({ limit, offset, mostRecent, project, mode }, extra) => {
       const progressToken = extra._meta?.progressToken;
@@ -264,20 +267,23 @@ export function registerExperimentTools({
   /**
    * Tool: get_experiment
    */
-  server.tool(
+  server.registerTool(
     "get_experiment",
-    "Gets a single experiment from GrowthBook",
     {
-      experimentId: z.string().describe("The ID of the experiment to get"),
-      mode: z
-        .enum(["metadata", "full"])
-        .default("metadata")
-        .describe(
-          "The mode to use to fetch the experiment. Metadata mode returns summary info about the experiment. Full mode fetches results and returns complete results data."
-        ),
-    },
-    {
-      readOnlyHint: true,
+      title: "Get Experiment",
+      description: "Gets a single experiment from GrowthBook",
+      inputSchema: z.object({
+        experimentId: z.string().describe("The ID of the experiment to get"),
+        mode: z
+          .enum(["metadata", "full"])
+          .default("metadata")
+          .describe(
+            "The mode to use to fetch the experiment. Metadata mode returns summary info about the experiment. Full mode fetches results and returns complete results data."
+          ),
+      }),
+      annotations: {
+        readOnlyHint: true,
+      },
     },
     async ({ experimentId, mode }) => {
       try {
@@ -342,12 +348,15 @@ export function registerExperimentTools({
   /**
    * Tool: get_attributes
    */
-  server.tool(
+  server.registerTool(
     "get_attributes",
-    "Get all attributes",
-    {},
     {
-      readOnlyHint: true,
+      title: "Get Attributes",
+      description: "Get all attributes",
+      inputSchema: z.object({}),
+      annotations: {
+        readOnlyHint: true,
+      },
     },
     async () => {
       try {
@@ -379,66 +388,70 @@ export function registerExperimentTools({
   /**
    * Tool: create_experiment
    */
-  server.tool(
+  server.registerTool(
     "create_experiment",
-    "IMPORTANT: Call get_defaults before creating an experiment, and use its output to guide the arguments. Creates a new feature flag and experiment (A/B test).",
     {
-      name: z
-        .string()
-        .describe(
-          "Experiment name. Base name off the examples from get_defaults. If none are available, use a short, descriptive name that captures the essence of the experiment."
-        ),
-      description: z.string().optional().describe("Experiment description."),
-      hypothesis: z
-        .string()
-        .optional()
-        .describe(
-          "Experiment hypothesis. Base hypothesis off the examples from get_defaults. If none are available, use a falsifiable statement about what will happen if the experiment succeeds or fails."
-        ),
-      valueType: z
-        .enum(["string", "number", "boolean", "json"])
-        .describe("The value type for all experiment variations"),
-      variations: z
-        .array(
-          z.object({
-            name: z
-              .string()
-              .describe(
-                "Variation name. Base name off the examples from get_defaults. If none are available, use a short, descriptive name that captures the essence of the variation."
-              ),
-            value: z
-              .union([
-                z.string(),
-                z.number(),
-                z.boolean(),
-                z.record(z.string(), z.any()),
-              ])
-              .describe(
-                "The value of this variation. Must match the specified valueType: provide actual booleans (true/false) not strings, actual numbers, strings, or valid JSON objects."
-              ),
-          })
-        )
-        .describe(
-          "Experiment variations. The key should be the variation name and the value should be the variation value. Look to variations included in preview experiments for guidance on generation. The default or control variation should always be first."
-        ),
-      project: z
-        .string()
-        .describe("The ID of the project to create the experiment in")
-        .optional(),
-      fileExtension: z
-        .enum(SUPPORTED_FILE_EXTENSIONS)
-        .describe(
-          "The extension of the current file. If it's unclear, ask the user."
-        ),
-      confirmedDefaultsReviewed: z
-        .boolean()
-        .describe(
-          "Set to true to confirm you have called get_defaults and reviewed the output to guide these parameters."
-        ),
-    },
-    {
-      readOnlyHint: false,
-      destructiveHint: false,
+      title: "Create Experiment",
+      description:
+        "IMPORTANT: Call get_defaults before creating an experiment, and use its output to guide the arguments. Creates a new feature flag and experiment (A/B test).",
+      inputSchema: z.object({
+        name: z
+          .string()
+          .describe(
+            "Experiment name. Base name off the examples from get_defaults. If none are available, use a short, descriptive name that captures the essence of the experiment."
+          ),
+        description: z.string().optional().describe("Experiment description."),
+        hypothesis: z
+          .string()
+          .optional()
+          .describe(
+            "Experiment hypothesis. Base hypothesis off the examples from get_defaults. If none are available, use a falsifiable statement about what will happen if the experiment succeeds or fails."
+          ),
+        valueType: z
+          .enum(["string", "number", "boolean", "json"])
+          .describe("The value type for all experiment variations"),
+        variations: z
+          .array(
+            z.object({
+              name: z
+                .string()
+                .describe(
+                  "Variation name. Base name off the examples from get_defaults. If none are available, use a short, descriptive name that captures the essence of the variation."
+                ),
+              value: z
+                .union([
+                  z.string(),
+                  z.number(),
+                  z.boolean(),
+                  z.record(z.string(), z.any()),
+                ])
+                .describe(
+                  "The value of this variation. Must match the specified valueType: provide actual booleans (true/false) not strings, actual numbers, strings, or valid JSON objects."
+                ),
+            })
+          )
+          .describe(
+            "Experiment variations. The key should be the variation name and the value should be the variation value. Look to variations included in preview experiments for guidance on generation. The default or control variation should always be first."
+          ),
+        project: z
+          .string()
+          .describe("The ID of the project to create the experiment in")
+          .optional(),
+        fileExtension: z
+          .enum(SUPPORTED_FILE_EXTENSIONS)
+          .describe(
+            "The extension of the current file. If it's unclear, ask the user."
+          ),
+        confirmedDefaultsReviewed: z
+          .boolean()
+          .describe(
+            "Set to true to confirm you have called get_defaults and reviewed the output to guide these parameters."
+          ),
+      }),
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+      },
     },
     async ({
       description,

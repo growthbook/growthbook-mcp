@@ -15,18 +15,22 @@ export function registerSdkConnectionTools({
   /**
    * Tool: get_sdk_connections
    */
-  server.tool(
+  server.registerTool(
     "get_sdk_connections",
-    "Get all SDK connections. SDK connections are how GrowthBook connects to an app. Users need the client key to fetch features and experiments from the API.",
     {
-      project: z
-        .string()
-        .describe("The ID of the project to filter SDK connections by")
-        .optional(),
-      ...paginationSchema,
-    },
-    {
-      readOnlyHint: true,
+      title: "Get SDK Connections",
+      description:
+        "Get all SDK connections. SDK connections are how GrowthBook connects to an app. Users need the client key to fetch features and experiments from the API.",
+      inputSchema: z.object({
+        project: z
+          .string()
+          .describe("The ID of the project to filter SDK connections by")
+          .optional(),
+        ...paginationSchema,
+      }),
+      annotations: {
+        readOnlyHint: true,
+      },
     },
     async ({ limit, offset, project }) => {
       try {
@@ -65,53 +69,57 @@ export function registerSdkConnectionTools({
   /**
    * Tool: create_sdk_connection
    */
-  server.tool(
+  server.registerTool(
     "create_sdk_connection",
-    `Create an SDK connection for a user. Returns an SDK clientKey that can be used to fetch features and experiments.`,
     {
-      name: z
-        .string()
-        .describe(
-          "Name of the SDK connection in GrowthBook. Should reflect the current project."
-        ),
-      language: z
-        .enum([
-          "nocode-webflow",
-          "nocode-wordpress",
-          "nocode-shopify",
-          "nocode-other",
-          "javascript",
-          "nodejs",
-          "react",
-          "php",
-          "ruby",
-          "python",
-          "go",
-          "java",
-          "csharp",
-          "android",
-          "ios",
-          "flutter",
-          "elixir",
-          "edge-cloudflare",
-          "edge-fastly",
-          "edge-lambda",
-          "edge-other",
-          "other",
-        ])
-        .describe("The language or platform for the SDK connection."),
-      environment: z
-        .string()
-        .optional()
-        .describe("The environment associated with the SDK connection."),
-      projects: z
-        .array(z.string())
-        .describe("The projects to create the SDK connection in")
-        .optional(),
-    },
-    {
-      readOnlyHint: false,
-      destructiveHint: false,
+      title: "Create SDK Connection",
+      description:
+        "Create an SDK connection for a user. Returns an SDK clientKey that can be used to fetch features and experiments.",
+      inputSchema: z.object({
+        name: z
+          .string()
+          .describe(
+            "Name of the SDK connection in GrowthBook. Should reflect the current project."
+          ),
+        language: z
+          .enum([
+            "nocode-webflow",
+            "nocode-wordpress",
+            "nocode-shopify",
+            "nocode-other",
+            "javascript",
+            "nodejs",
+            "react",
+            "php",
+            "ruby",
+            "python",
+            "go",
+            "java",
+            "csharp",
+            "android",
+            "ios",
+            "flutter",
+            "elixir",
+            "edge-cloudflare",
+            "edge-fastly",
+            "edge-lambda",
+            "edge-other",
+            "other",
+          ])
+          .describe("The language or platform for the SDK connection."),
+        environment: z
+          .string()
+          .optional()
+          .describe("The environment associated with the SDK connection."),
+        projects: z
+          .array(z.string())
+          .describe("The projects to create the SDK connection in")
+          .optional(),
+      }),
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+      },
     },
     async ({ name, language, environment, projects }) => {
       if (!environment) {

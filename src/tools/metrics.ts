@@ -18,18 +18,22 @@ export function registerMetricsTools({
   /**
    * Tool: get_metrics
    */
-  server.tool(
+  server.registerTool(
     "get_metrics",
-    "Fetches metrics from the GrowthBook API, with optional limit, offset, and project filtering.",
     {
-      project: z
-        .string()
-        .describe("The ID of the project to filter metrics by")
-        .optional(),
-      ...paginationSchema,
-    },
-    {
-      readOnlyHint: true,
+      title: "Get Metrics",
+      description:
+        "Fetches metrics from the GrowthBook API, with optional limit, offset, and project filtering.",
+      inputSchema: z.object({
+        project: z
+          .string()
+          .describe("The ID of the project to filter metrics by")
+          .optional(),
+        ...paginationSchema,
+      }),
+      annotations: {
+        readOnlyHint: true,
+      },
     },
     async ({ limit, offset, project }) => {
       try {
@@ -87,14 +91,17 @@ export function registerMetricsTools({
   /**
    * Tool: get_metric
    */
-  server.tool(
+  server.registerTool(
     "get_metric",
-    "Fetches a metric from the GrowthBook API",
     {
-      metricId: z.string().describe("The ID of the metric to get"),
-    },
-    {
-      readOnlyHint: true,
+      title: "Get Metric",
+      description: "Fetches a metric from the GrowthBook API",
+      inputSchema: z.object({
+        metricId: z.string().describe("The ID of the metric to get"),
+      }),
+      annotations: {
+        readOnlyHint: true,
+      },
     },
     async ({ metricId }) => {
       try {

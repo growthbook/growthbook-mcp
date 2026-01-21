@@ -384,12 +384,16 @@ export async function registerDefaultsTools({
   baseApiUrl,
   apiKey,
 }: BaseToolsInterface) {
-  server.tool(
+  server.registerTool(
     "get_defaults",
-    "Get the default values for experiments, including hypothesis, description, datasource, assignment query, and environments.",
-    {},
     {
-      readOnlyHint: true,
+      title: "Get Defaults",
+      description:
+        "Get the default values for experiments, including hypothesis, description, datasource, assignment query, and environments.",
+      inputSchema: z.object({}),
+      annotations: {
+        readOnlyHint: true,
+      },
     },
     async () => {
       const defaults = await getDefaults(apiKey, baseApiUrl);
@@ -404,21 +408,25 @@ export async function registerDefaultsTools({
     }
   );
 
-  server.tool(
+  server.registerTool(
     "set_user_defaults",
-    "Set user-defined defaults for datasource, assignment query, and environments. These will override the automatic defaults for these fields.",
     {
-      datasourceId: z.string().describe("The data source ID to use as default"),
-      assignmentQueryId: z
-        .string()
-        .describe("The assignment query ID to use as default"),
-      environments: z
-        .array(z.string())
-        .describe("List of environment IDs to use as defaults"),
-    },
-    {
-      readOnlyHint: false,
-      destructiveHint: true,
+      title: "Set User Defaults",
+      description:
+        "Set user-defined defaults for datasource, assignment query, and environments. These will override the automatic defaults for these fields.",
+      inputSchema: z.object({
+        datasourceId: z.string().describe("The data source ID to use as default"),
+        assignmentQueryId: z
+          .string()
+          .describe("The assignment query ID to use as default"),
+        environments: z
+          .array(z.string())
+          .describe("List of environment IDs to use as defaults"),
+      }),
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+      },
     },
     async ({ datasourceId, assignmentQueryId, environments }) => {
       try {
@@ -451,13 +459,16 @@ export async function registerDefaultsTools({
     }
   );
 
-  server.tool(
+  server.registerTool(
     "clear_user_defaults",
-    "Clear user-defined defaults and revert to automatic defaults.",
-    {},
     {
-      readOnlyHint: false,
-      destructiveHint: true,
+      title: "Clear User Defaults",
+      description: "Clear user-defined defaults and revert to automatic defaults.",
+      inputSchema: z.object({}),
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+      },
     },
     async () => {
       try {

@@ -16,14 +16,17 @@ export function registerProjectTools({
   baseApiUrl,
   apiKey,
 }: ProjectTools) {
-  server.tool(
+  server.registerTool(
     "get_projects",
-    "Fetches all projects from the GrowthBook API",
     {
-      ...paginationSchema,
-    },
-    {
-      readOnlyHint: true,
+      title: "Get Projects",
+      description: "Fetches all projects from the GrowthBook API",
+      inputSchema: z.object({
+        ...paginationSchema,
+      }),
+      annotations: {
+        readOnlyHint: true,
+      },
     },
     async ({ limit, offset }) => {
       const queryParams = new URLSearchParams({
