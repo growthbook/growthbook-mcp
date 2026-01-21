@@ -5,6 +5,7 @@ import {
   handleResNotOk,
   paginationSchema,
   fetchWithRateLimit,
+  fetchWithPagination,
 } from "../utils.js";
 
 interface MetricsTools extends ExtendedToolsInterface {}
@@ -35,44 +36,39 @@ export function registerMetricsTools({
         readOnlyHint: true,
       },
     },
-    async ({ limit, offset, project }) => {
+    async ({ limit, offset, mostRecent, project }) => {
       try {
-        const queryParams = new URLSearchParams({
-          limit: limit?.toString(),
-          offset: offset?.toString(),
-        });
+        const additionalParams = project ? { projectId: project } : undefined;
 
-        if (project) {
-          queryParams.append("projectId", project);
+        const metricsData = await fetchWithPagination(
+          baseApiUrl,
+          apiKey,
+          "/api/v1/metrics",
+          limit,
+          offset,
+          mostRecent,
+          additionalParams
+        );
+
+        const factMetricData = await fetchWithPagination(
+          baseApiUrl,
+          apiKey,
+          "/api/v1/fact-metrics",
+          limit,
+          offset,
+          mostRecent,
+          additionalParams
+        );
+
+        // Reverse arrays for mostRecent to show newest-first
+        if (mostRecent && offset === 0) {
+          if (Array.isArray(metricsData.metrics)) {
+            metricsData.metrics = metricsData.metrics.reverse();
+          }
+          if (Array.isArray(factMetricData.factMetrics)) {
+            factMetricData.factMetrics = factMetricData.factMetrics.reverse();
+          }
         }
-
-        const metricsRes = await fetchWithRateLimit(
-          `${baseApiUrl}/api/v1/metrics?${queryParams.toString()}`,
-          {
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        await handleResNotOk(metricsRes);
-
-        const metricsData = await metricsRes.json();
-
-        const factMetricRes = await fetchWithRateLimit(
-          `${baseApiUrl}/api/v1/fact-metrics?${queryParams.toString()}`,
-          {
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        await handleResNotOk(factMetricRes);
-
-        const factMetricData = await factMetricRes.json();
 
         const metricData = {
           metrics: metricsData,

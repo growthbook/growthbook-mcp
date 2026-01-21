@@ -511,3 +511,86 @@ export async function fetchWithRateLimit(
 
   return response;
 }
+
+export async function fetchWithPagination(
+  baseApiUrl: string,
+  apiKey: string,
+  endpoint: string,
+  limit: number,
+  offset: number,
+  mostRecent: boolean,
+  additionalParams?: Record<string, string>
+): Promise<any> {
+  // Default behavior: use provided limit and offset
+  if (!mostRecent || offset > 0) {
+    const queryParams = new URLSearchParams({
+      limit: limit.toString(),
+      offset: offset.toString(),
+    });
+
+    // Add any additional query parameters
+    if (additionalParams) {
+      Object.entries(additionalParams).forEach(([key, value]) => {
+        if (value) {
+          queryParams.append(key, value);
+        }
+      });
+    }
+
+    const res = await fetchWithRateLimit(
+      `${baseApiUrl}${endpoint}?${queryParams.toString()}`,
+      {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    await handleResNotOk(res);
+    return await res.json();
+  }
+
+  // Most recent behavior: fetch total count first, then calculate offset
+  const countRes = await fetchWithRateLimit(
+    `${baseApiUrl}${endpoint}?limit=1`,
+    {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  await handleResNotOk(countRes);
+  const countData = await countRes.json();
+  const total = countData.total;
+  const calculatedOffset = Math.max(0, total - limit);
+
+  const mostRecentQueryParams = new URLSearchParams({
+    limit: limit.toString(),
+    offset: calculatedOffset.toString(),
+  });
+
+  // Add any additional query parameters
+  if (additionalParams) {
+    Object.entries(additionalParams).forEach(([key, value]) => {
+      if (value) {
+        mostRecentQueryParams.append(key, value);
+      }
+    });
+  }
+
+  const mostRecentRes = await fetchWithRateLimit(
+    `${baseApiUrl}${endpoint}?${mostRecentQueryParams.toString()}`,
+    {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  await handleResNotOk(mostRecentRes);
+  return await mostRecentRes.json();
+}

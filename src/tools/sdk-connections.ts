@@ -4,6 +4,7 @@ import {
   type BaseToolsInterface,
   paginationSchema,
   fetchWithRateLimit,
+  fetchWithPagination,
 } from "../utils.js";
 
 interface SdkConnectionTools extends BaseToolsInterface {}
@@ -32,30 +33,22 @@ export function registerSdkConnectionTools({
         readOnlyHint: true,
       },
     },
-    async ({ limit, offset, project }) => {
+    async ({ limit, offset, mostRecent, project }) => {
       try {
-        const queryParams = new URLSearchParams({
-          limit: limit?.toString(),
-          offset: offset?.toString(),
-        });
-
-        if (project) {
-          queryParams.append("projectId", project);
-        }
-
-        const res = await fetchWithRateLimit(
-          `${baseApiUrl}/api/v1/sdk-connections?${queryParams.toString()}`,
-          {
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              "Content-Type": "application/json",
-            },
-          }
+        const data = await fetchWithPagination(
+          baseApiUrl,
+          apiKey,
+          "/api/v1/sdk-connections",
+          limit,
+          offset,
+          mostRecent,
+          project ? { projectId: project } : undefined
         );
 
-        await handleResNotOk(res);
-
-        const data = await res.json();
+        // Reverse connections array for mostRecent to show newest-first
+        if (mostRecent && offset === 0 && Array.isArray(data.connections)) {
+          data.connections = data.connections.reverse();
+        }
 
         return {
           content: [{ type: "text", text: JSON.stringify(data) }],

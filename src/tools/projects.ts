@@ -4,6 +4,7 @@ import {
   type BaseToolsInterface,
   paginationSchema,
   fetchWithRateLimit,
+  fetchWithPagination,
 } from "../utils.js";
 
 interface ProjectTools extends BaseToolsInterface {}
@@ -28,26 +29,22 @@ export function registerProjectTools({
         readOnlyHint: true,
       },
     },
-    async ({ limit, offset }) => {
-      const queryParams = new URLSearchParams({
-        limit: limit.toString(),
-        offset: offset.toString(),
-      });
-
+    async ({ limit, offset, mostRecent }) => {
       try {
-        const res = await fetchWithRateLimit(
-          `${baseApiUrl}/api/v1/projects?${queryParams.toString()}`,
-          {
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              "Content-Type": "application/json",
-            },
-          }
+        const data = await fetchWithPagination(
+          baseApiUrl,
+          apiKey,
+          "/api/v1/projects",
+          limit,
+          offset,
+          mostRecent
         );
 
-        await handleResNotOk(res);
+        // Reverse projects array for mostRecent to show newest-first
+        if (mostRecent && offset === 0 && Array.isArray(data.projects)) {
+          data.projects = data.projects.reverse();
+        }
 
-        const data = await res.json();
         return {
           content: [{ type: "text", text: JSON.stringify(data) }],
         };

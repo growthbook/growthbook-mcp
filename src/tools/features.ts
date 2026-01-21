@@ -7,6 +7,7 @@ import {
   paginationSchema,
   featureFlagSchema,
   fetchWithRateLimit,
+  fetchWithPagination,
 } from "../utils.js";
 import { exec } from "child_process";
 import { getDefaults } from "./defaults.js";
@@ -234,30 +235,22 @@ export function registerFeatureTools({
         readOnlyHint: true,
       },
     },
-    async ({ limit, offset, project }) => {
+    async ({ limit, offset, mostRecent, project }) => {
       try {
-        const queryParams = new URLSearchParams({
-          limit: limit?.toString(),
-          offset: offset?.toString(),
-        });
-
-        if (project) {
-          queryParams.append("projectId", project);
-        }
-
-        const res = await fetchWithRateLimit(
-          `${baseApiUrl}/api/v1/features?${queryParams.toString()}`,
-          {
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              "Content-Type": "application/json",
-            },
-          }
+        const data = await fetchWithPagination(
+          baseApiUrl,
+          apiKey,
+          "/api/v1/features",
+          limit,
+          offset,
+          mostRecent,
+          project ? { projectId: project } : undefined
         );
 
-        await handleResNotOk(res);
-
-        const data = await res.json();
+        // Reverse features array for mostRecent to show newest-first
+        if (mostRecent && offset === 0 && Array.isArray(data.features)) {
+          data.features = data.features.reverse();
+        }
 
         return {
           content: [{ type: "text", text: JSON.stringify(data) }],

@@ -7,6 +7,7 @@ import {
   SUPPORTED_FILE_EXTENSIONS,
   paginationSchema,
   fetchWithRateLimit,
+  fetchWithPagination,
 } from "../../utils.js";
 import { getDefaults } from "../defaults.js";
 import { type Experiment } from "../../types/types.js";
@@ -72,165 +73,53 @@ export function registerExperimentTools({
       await reportProgress(1, "Fetching experiments...");
 
       try {
-        // Default behavior
-        if (!mostRecent || offset > 0) {
-          const defaultQueryParams = new URLSearchParams({
-            limit: limit.toString(),
-            offset: offset.toString(),
-          });
+        const data = await fetchWithPagination(
+          baseApiUrl,
+          apiKey,
+          "/api/v1/experiments",
+          limit,
+          offset,
+          mostRecent,
+          project ? { projectId: project } : undefined
+        );
 
-          if (project) {
-            defaultQueryParams.append("projectId", project);
-          }
+        let experiments = (data.experiments as Experiment[]) || [];
 
-          const defaultRes = await fetchWithRateLimit(
-            `${baseApiUrl}/api/v1/experiments?${defaultQueryParams.toString()}`,
-            {
-              headers: {
-                Authorization: `Bearer ${apiKey}`,
-                "Content-Type": "application/json",
-              },
+        // Reverse experiments array for mostRecent to show newest-first
+        if (mostRecent && offset === 0 && Array.isArray(experiments)) {
+          experiments = experiments.reverse();
+          data.experiments = experiments;
+        }
+
+        if (mode === "full" || mode === "summary") {
+          await reportProgress(2, "Fetching experiment results...");
+          for (const [index, experiment] of experiments.entries()) {
+            if (experiment.status === "draft") {
+              experiments[index].result = undefined;
+              continue;
             }
-          );
-
-          await handleResNotOk(defaultRes);
-          const data = await defaultRes.json();
-          const experiments = data.experiments as Experiment[];
-
-          if (mode === "full" || mode === "summary") {
-            await reportProgress(2, "Fetching experiment results...");
-            for (const [index, experiment] of experiments.entries()) {
-              if (experiment.status === "draft") {
-                experiments[index].result = undefined;
-                continue;
-              }
-              try {
-                const resultsRes = await fetchWithRateLimit(
-                  `${baseApiUrl}/api/v1/experiments/${experiment.id}/results`,
-                  {
-                    headers: {
-                      Authorization: `Bearer ${apiKey}`,
-                    },
-                  }
-                );
-                await handleResNotOk(resultsRes);
-                const resultsData = await resultsRes.json();
-                experiments[index].result = resultsData.result;
-              } catch (error) {
-                console.error(
-                  `Error fetching results for experiment ${experiment.id} (${experiment.name})`,
-                  error
-                );
-              }
-            }
-          }
-
-          if (mode === "summary") {
-            const summaryExperiments = await handleSummaryMode(
-              experiments,
-              baseApiUrl,
-              apiKey,
-              reportProgress
-            );
-            const summaryExperimentsWithPagination = {
-              summary: summaryExperiments,
-              limit: data.limit,
-              offset: data.offset,
-              total: data.total,
-              hasMore: data.hasMore,
-              nextOffset: data.nextOffset,
-            };
-            return {
-              content: [
+            try {
+              const resultsRes = await fetchWithRateLimit(
+                `${baseApiUrl}/api/v1/experiments/${experiment.id}/results`,
                 {
-                  type: "text",
-                  text: JSON.stringify(summaryExperimentsWithPagination),
-                },
-              ],
-            };
-          }
-
-          await reportProgress(2, "Processing results...");
-
-          return {
-            content: [{ type: "text", text: JSON.stringify(data) }],
-          };
-        }
-
-        // Most recent behavior
-        const countRes = await fetchWithRateLimit(
-          `${baseApiUrl}/api/v1/experiments?limit=1`,
-          {
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-            },
-          }
-        );
-
-        await handleResNotOk(countRes);
-        const countData = await countRes.json();
-        const total = countData.total;
-        const calculatedOffset = Math.max(0, total - limit);
-
-        const mostRecentQueryParams = new URLSearchParams({
-          limit: limit.toString(),
-          offset: calculatedOffset.toString(),
-        });
-
-        if (project) {
-          mostRecentQueryParams.append("projectId", project);
-        }
-
-        const mostRecentRes = await fetchWithRateLimit(
-          `${baseApiUrl}/api/v1/experiments?${mostRecentQueryParams.toString()}`,
-          {
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-            },
-          }
-        );
-
-        await handleResNotOk(mostRecentRes);
-        const mostRecentData = await mostRecentRes.json();
-
-        if (
-          mostRecentData.experiments &&
-          Array.isArray(mostRecentData.experiments)
-        ) {
-          mostRecentData.experiments = mostRecentData.experiments.reverse();
-
-          if (mode === "full" || mode === "summary") {
-            await reportProgress(2, "Fetching experiment results...");
-            for (const [
-              index,
-              experiment,
-            ] of mostRecentData.experiments.entries()) {
-              try {
-                const resultsRes = await fetchWithRateLimit(
-                  `${baseApiUrl}/api/v1/experiments/${experiment.id}/results`,
-                  {
-                    headers: {
-                      Authorization: `Bearer ${apiKey}`,
-                    },
-                  }
-                );
-                await handleResNotOk(resultsRes);
-                const resultsData = await resultsRes.json();
-                mostRecentData.experiments[index].result = resultsData.result;
-              } catch (error) {
-                console.error(
-                  `Error fetching results for experiment ${experiment.id} (${experiment.name})`,
-                  error
-                );
-              }
+                  headers: {
+                    Authorization: `Bearer ${apiKey}`,
+                  },
+                }
+              );
+              await handleResNotOk(resultsRes);
+              const resultsData = await resultsRes.json();
+              experiments[index].result = resultsData.result;
+            } catch (error) {
+              console.error(
+                `Error fetching results for experiment ${experiment.id} (${experiment.name})`,
+                error
+              );
             }
           }
         }
 
         if (mode === "summary") {
-          const experiments = Array.isArray(mostRecentData.experiments)
-            ? mostRecentData.experiments
-            : [];
           const summaryExperiments = await handleSummaryMode(
             experiments,
             baseApiUrl,
@@ -239,11 +128,11 @@ export function registerExperimentTools({
           );
           const summaryExperimentsWithPagination = {
             summary: summaryExperiments,
-            limit: mostRecentData.limit,
-            offset: mostRecentData.offset,
-            total: mostRecentData.total,
-            hasMore: mostRecentData.hasMore,
-            nextOffset: mostRecentData.nextOffset,
+            limit: data.limit,
+            offset: data.offset,
+            total: data.total,
+            hasMore: data.hasMore,
+            nextOffset: data.nextOffset,
           };
           return {
             content: [
@@ -255,8 +144,10 @@ export function registerExperimentTools({
           };
         }
 
+        await reportProgress(2, "Processing results...");
+
         return {
-          content: [{ type: "text", text: JSON.stringify(mostRecentData) }],
+          content: [{ type: "text", text: JSON.stringify(data) }],
         };
       } catch (error) {
         throw new Error(`Error fetching experiments: ${error}`);
