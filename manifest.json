@@ -54,11 +54,7 @@
     },
     {
       "name": "get_feature_flags",
-      "description": "List feature flags in your GrowthBook instance."
-    },
-    {
-      "name": "get_single_feature_flag",
-      "description": "Fetch details for a specific feature flag by ID."
+      "description": "List feature flags in your GrowthBook instance. Can also fetch details for a specific feature flag by ID when featureFlagId is provided."
     },
     {
       "name": "get_stale_safe_rollouts",
@@ -70,11 +66,7 @@
     },
     {
       "name": "get_experiments",
-      "description": "List experiments in GrowthBook."
-    },
-    {
-      "name": "get_experiment",
-      "description": "Fetch details for a specific experiment by ID."
+      "description": "List experiments in GrowthBook. Can also fetch details for a specific experiment by ID when experimentId is provided. Supports metadata, summary, and full modes."
     },
     {
       "name": "get_attributes",
@@ -82,15 +74,11 @@
     },
     {
       "name": "create_experiment",
-      "description": "Creates a feature-flag linked experiment. Note that this tool calls `get_defaults`, which provides a sampling of previous experiments to help the AI agent create the experiment correctly. For better performance, these defaults are saved to the local file system and periodically updated."
+      "description": "Creates a new feature flag and experiment (A/B test). Requires calling get_defaults first to guide the arguments."
     },
     {
       "name": "get_metrics",
-      "description": "List fact and legacy metrics (useful for better understanding experiments)."
-    },
-    {
-      "name": "get_metric",
-      "description": "Fetch a specific fact or legacy metric by ID."
+      "description": "List fact and legacy metrics (useful for better understanding experiments). Can also fetch details for a specific metric by ID when metricId is provided."
     },
     {
       "name": "get_defaults",
