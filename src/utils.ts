@@ -34,6 +34,7 @@ export const SUPPORTED_FILE_EXTENSIONS = [
   ".kts",
   ".ktm",
   ".dart",
+  ".rs",
 ] as const;
 
 export type SupportedFileExtension = (typeof SUPPORTED_FILE_EXTENSIONS)[number];
@@ -156,6 +157,12 @@ export function getDocsMetadata(extension: string) {
         language: "flutter",
         stub: getFeatureFlagDocs("flutter"),
         docs: "https://docs.growthbook.io/lib/flutter",
+      };
+    case ".rs":
+      return {
+        language: "rust",
+        stub: getFeatureFlagDocs("rust"),
+        docs: "https://docs.growthbook.io/lib/rust",
       };
     default:
       return {

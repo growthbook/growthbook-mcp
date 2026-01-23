@@ -472,6 +472,92 @@ print('Value: \${result.value}');
 print('On: \${result.on}');
 print('Source: \${result.source}');
 \`\`\``,
+
+  rust: `## Rust Feature Flag Implementation
+
+### Basic Feature Checks
+Use \`is_on()\` and \`is_off()\` for simple boolean checks:
+\`\`\`rust
+use growthbook_rust::client::GrowthBookClientBuilder;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = GrowthBookClientBuilder::new()
+        .api_url("https://cdn.growthbook.io".to_string())
+        .client_key("sdk-abc123".to_string())
+        .build()
+        .await?;
+
+    // Simple boolean check
+    if client.is_on("my-feature", None) {
+        println!("Feature is enabled!");
+    }
+
+    // Check if feature is disabled
+    if client.is_off("maintenance-mode", None) {
+        println!("Service is operational");
+    }
+
+    Ok(())
+}
+\`\`\`
+
+### Feature Values with Type Safety
+Use \`feature_result()\` and \`value_as::<T>()\` for typed values:
+\`\`\`rust
+// Get typed feature value
+let result = client.feature_result("button-color", None);
+if let Ok(color) = result.value_as::<String>() {
+    println!("Button color: {}", color);
+}
+
+// With default fallback
+let timeout = client.feature_result("api-timeout", None)
+    .value_as::<i32>()
+    .unwrap_or(30);
+\`\`\`
+
+### Attributes for Targeting
+Use attributes for user-specific feature evaluation:
+\`\`\`rust
+use growthbook_rust::model_public::{GrowthBookAttribute, GrowthBookAttributeValue};
+
+let mut attrs = Vec::new();
+attrs.push(GrowthBookAttribute::new(
+    "userId".to_string(),
+    GrowthBookAttributeValue::String("user-123".to_string())
+));
+attrs.push(GrowthBookAttribute::new(
+    "plan".to_string(),
+    GrowthBookAttributeValue::String("premium".to_string())
+));
+
+if client.is_on("premium-feature", Some(attrs)) {
+    println!("Premium feature enabled for this user!");
+}
+\`\`\`
+
+### Detailed Feature Evaluation
+Use \`feature_result()\` for comprehensive feature information:
+\`\`\`rust
+let result = client.feature_result("my-feature", None);
+
+// Access the raw value
+println!("Value: {:?}", result.value);
+
+// Check if enabled
+if result.on {
+    println!("Feature is on");
+}
+
+// Understand why this value was assigned
+match result.source {
+    FeatureResultSource::DefaultValue => println!("Using default value"),
+    FeatureResultSource::Force => println!("Forced value from targeting rule"),
+    FeatureResultSource::Experiment => println!("Value from A/B test"),
+    FeatureResultSource::UnknownFeature => println!("Feature not found"),
+}
+\`\`\``,
 };
 
 export function getFeatureFlagDocs(language: string) {
@@ -515,6 +601,9 @@ export function getFeatureFlagDocs(language: string) {
     case "flutter":
     case "dart":
       return FEATURE_FLAG_DOCS.flutter;
+    case "rust":
+    case "rs":
+      return FEATURE_FLAG_DOCS.rust;
     default:
       return "Feature flag documentation not available for this language. Check GrowthBook docs for implementation details.";
   }
