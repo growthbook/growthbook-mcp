@@ -8,6 +8,8 @@ import {
   featureFlagSchema,
   fetchWithRateLimit,
   fetchWithPagination,
+  fetchFeatureFlag,
+  mergeRuleIntoFeatureFlag,
 } from "../utils.js";
 import { exec } from "child_process";
 import { getDefaults } from "./defaults.js";
@@ -28,7 +30,8 @@ export function registerFeatureTools({
     "create_feature_flag",
     {
       title: "Create Feature Flag",
-      description: "Creates a new feature flag in GrowthBook and modifies the codebase when relevant.",
+      description:
+        "Creates a new feature flag in GrowthBook and modifies the codebase when relevant.",
       inputSchema: featureFlagSchema,
       annotations: {
         readOnlyHint: false,
@@ -134,13 +137,21 @@ export function registerFeatureTools({
     "create_force_rule",
     {
       title: "Create Force Rule",
-      description: "Create a new force rule on an existing feature. If the existing feature isn't apparent, create a new feature using create_feature_flag first. A force rule sets a feature to a specific value based on a condition. For A/B tests and experiments, use create_experiment instead.",
+      description:
+        "Create a new force rule on an existing feature. If the existing feature isn't apparent, create a new feature using create_feature_flag first. A force rule sets a feature to a specific value based on a condition. For A/B tests and experiments, use create_experiment instead.",
       inputSchema: z.object({
         featureId: featureFlagSchema.id,
         description: featureFlagSchema.description.optional().default(""),
         fileExtension: featureFlagSchema.fileExtension,
-        condition: z.string().describe("Applied to everyone by default. Write conditions in MongoDB-style query syntax.").optional(),
-        value: z.string().describe("The type of the value should match the feature type"),
+        condition: z
+          .string()
+          .describe(
+            "Applied to everyone by default. Write conditions in MongoDB-style query syntax."
+          )
+          .optional(),
+        value: z
+          .string()
+          .describe("The type of the value should match the feature type"),
       }),
       annotations: {
         readOnlyHint: false,
@@ -148,27 +159,31 @@ export function registerFeatureTools({
     },
     async ({ featureId, description, condition, value, fileExtension }) => {
       try {
+        // Fetch the existing feature flag first to preserve existing rules
+        const existingFeature = await fetchFeatureFlag(
+          baseApiUrl,
+          apiKey,
+          featureId
+        );
+
         // Fetch feature defaults first
         const defaults = await getDefaults(apiKey, baseApiUrl);
         const defaultEnvironments = defaults.environments;
 
-        const payload = {
-          // Loop through the environments and create a rule for each one keyed by environment name
-          environments: defaultEnvironments.reduce((acc, env) => {
-            acc[env] = {
-              enabled: false,
-              rules: [
-                {
-                  type: "force",
-                  description,
-                  condition,
-                  value,
-                },
-              ],
-            };
-            return acc;
-          }, {} as Record<string, { enabled: boolean; rules: Array<any> }>),
+        // Create new force rule
+        const newRule = {
+          type: "force",
+          description,
+          condition,
+          value,
         };
+
+        // Merge new rule into existing feature flag
+        const payload = mergeRuleIntoFeatureFlag(
+          existingFeature,
+          newRule,
+          defaultEnvironments
+        );
 
         const res = await fetchWithRateLimit(
           `${baseApiUrl}/api/v1/features/${featureId}`,
@@ -229,13 +244,52 @@ export function registerFeatureTools({
         "Fetches all feature flags from the GrowthBook API, with optional limit, offset, and project filtering.",
       inputSchema: z.object({
         project: featureFlagSchema.project.optional(),
+        featureFlagId: featureFlagSchema.id.optional(),
         ...paginationSchema,
       }),
       annotations: {
         readOnlyHint: true,
       },
     },
-    async ({ limit, offset, mostRecent, project }) => {
+    async ({ limit, offset, mostRecent, project, featureFlagId }) => {
+      // Fetch single feature flag
+      if (featureFlagId) {
+        try {
+          const res = await fetchWithRateLimit(
+            `${baseApiUrl}/api/v1/features/${featureFlagId}`,
+            {
+              headers: {
+                Authorization: `Bearer ${apiKey}`,
+                "Content-Type": "application/json",
+              },
+            }
+          );
+
+          await handleResNotOk(res);
+
+          const data = await res.json();
+          const linkToGrowthBook = generateLinkToGrowthBook(
+            appOrigin,
+            "features",
+            featureFlagId
+          );
+          const text = `This is the API response: ${JSON.stringify(data)}
+  
+Share information about the feature flag with the user. In particular, give details about the enabled environments,
+rules for each environment, and the default value. If the feature flag is archived or doesn't exist, inform the user and
+ask if they want to remove references to the feature flag from the codebase.
+  
+[View it in GrowthBook](${linkToGrowthBook})`;
+
+          return {
+            content: [{ type: "text", text }],
+          };
+        } catch (error) {
+          throw new Error(`Error fetching flags: ${error}`);
+        }
+      }
+
+      // Fetch multiple feature flags
       try {
         const data = await fetchWithPagination(
           baseApiUrl,
@@ -254,60 +308,6 @@ export function registerFeatureTools({
 
         return {
           content: [{ type: "text", text: JSON.stringify(data) }],
-        };
-      } catch (error) {
-        throw new Error(`Error fetching flags: ${error}`);
-      }
-    }
-  );
-
-  /**
-   * Tool: get_single_feature_flag
-   */
-  server.registerTool(
-    "get_single_feature_flag",
-    {
-      title: "Get Single Feature Flag",
-      description: "Fetches a specific feature flag from the GrowthBook API",
-      inputSchema: z.object({
-        id: featureFlagSchema.id,
-      }),
-      annotations: {
-        readOnlyHint: true,
-      },
-    },
-    async ({ id }) => {
-      try {
-        const res = await fetchWithRateLimit(
-          `${baseApiUrl}/api/v1/features/${id}`,
-          {
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        await handleResNotOk(res);
-
-        const data = await res.json();
-        const linkToGrowthBook = generateLinkToGrowthBook(
-          appOrigin,
-          "features",
-          id
-        );
-        const text = `
-        ${JSON.stringify(data)}
-
-        Share information about the feature flag with the user. In particular, give details about the enabled environments,
-        rules for each environment, and the default value. If the feature flag is archived or doesnt exist, inform the user and
-        ask if they want to remove references to the feature flag from the codebase.
-
-        [View it in GrowthBook](${linkToGrowthBook})
-        `;
-
-        return {
-          content: [{ type: "text", text }],
         };
       } catch (error) {
         throw new Error(`Error fetching flags: ${error}`);

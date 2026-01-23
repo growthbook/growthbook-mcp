@@ -8,6 +8,9 @@ import {
   paginationSchema,
   fetchWithRateLimit,
   fetchWithPagination,
+  featureFlagSchema,
+  fetchFeatureFlag,
+  mergeRuleIntoFeatureFlag,
 } from "../../utils.js";
 import { getDefaults } from "../defaults.js";
 import { type Experiment } from "../../types/types.js";
@@ -41,13 +44,79 @@ export function registerExperimentTools({
           .describe(
             "The mode to use to fetch experiments. Metadata mode returns experiment config without results. Summary mode fetches results and returns pruned key stats for quick analysis. Full mode fetches and returns complete results data. WARNING: Full mode may return large payloads."
           ),
+        experimentId: z
+          .string()
+          .describe("The ID of the experiment to fetch")
+          .optional(),
         ...paginationSchema,
       }),
       annotations: {
         readOnlyHint: true,
       },
     },
-    async ({ limit, offset, mostRecent, project, mode }, extra) => {
+    async (
+      { limit, offset, mostRecent, project, mode, experimentId },
+      extra
+    ) => {
+      if (experimentId) {
+        try {
+          const res = await fetchWithRateLimit(
+            `${baseApiUrl}/api/v1/experiments/${experimentId}`,
+            {
+              headers: {
+                Authorization: `Bearer ${apiKey}`,
+                "Content-Type": "application/json",
+              },
+            }
+          );
+
+          await handleResNotOk(res);
+          const data = await res.json();
+
+          // Fetch results
+          if (mode === "full") {
+            if (data.status === "draft") {
+              data.result = null;
+            }
+            try {
+              const resultsRes = await fetchWithRateLimit(
+                `${baseApiUrl}/api/v1/experiments/${experimentId}/results`,
+                {
+                  headers: {
+                    Authorization: `Bearer ${apiKey}`,
+                  },
+                }
+              );
+              await handleResNotOk(resultsRes);
+              const resultsData = await resultsRes.json();
+              data.result = resultsData.result;
+            } catch (error) {
+              console.error(
+                `Error fetching results for experiment ${experimentId}`,
+                error
+              );
+            }
+          }
+
+          const linkToGrowthBook = generateLinkToGrowthBook(
+            appOrigin,
+            "experiment",
+            experimentId
+          );
+          const text = `
+      ${JSON.stringify(data)}
+      
+      [View the experiment in GrowthBook](${linkToGrowthBook})
+      `;
+
+          return {
+            content: [{ type: "text", text }],
+          };
+        } catch (error) {
+          throw new Error(`Error getting experiment: ${error}`);
+        }
+      }
+
       const progressToken = extra._meta?.progressToken;
 
       const totalSteps = mode === "summary" ? 5 : mode === "full" ? 3 : 2;
@@ -156,87 +225,6 @@ export function registerExperimentTools({
   );
 
   /**
-   * Tool: get_experiment
-   */
-  server.registerTool(
-    "get_experiment",
-    {
-      title: "Get Experiment",
-      description: "Gets a single experiment from GrowthBook",
-      inputSchema: z.object({
-        experimentId: z.string().describe("The ID of the experiment to get"),
-        mode: z
-          .enum(["metadata", "full"])
-          .default("metadata")
-          .describe(
-            "The mode to use to fetch the experiment. Metadata mode returns summary info about the experiment. Full mode fetches results and returns complete results data."
-          ),
-      }),
-      annotations: {
-        readOnlyHint: true,
-      },
-    },
-    async ({ experimentId, mode }) => {
-      try {
-        const res = await fetchWithRateLimit(
-          `${baseApiUrl}/api/v1/experiments/${experimentId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        await handleResNotOk(res);
-        const data = await res.json();
-
-        // If analyze or summary mode, fetch results
-        if (mode === "full") {
-          if (data.status === "draft") {
-            data.result = null;
-          }
-          try {
-            const resultsRes = await fetchWithRateLimit(
-              `${baseApiUrl}/api/v1/experiments/${experimentId}/results`,
-              {
-                headers: {
-                  Authorization: `Bearer ${apiKey}`,
-                },
-              }
-            );
-            await handleResNotOk(resultsRes);
-            const resultsData = await resultsRes.json();
-            data.result = resultsData.result;
-          } catch (error) {
-            console.error(
-              `Error fetching results for experiment ${experimentId}`,
-              error
-            );
-          }
-        }
-
-        const linkToGrowthBook = generateLinkToGrowthBook(
-          appOrigin,
-          "experiment",
-          experimentId
-        );
-        const text = `
-    ${JSON.stringify(data)}
-    
-    [View the experiment in GrowthBook](${linkToGrowthBook})
-    `;
-
-        return {
-          content: [{ type: "text", text }],
-        };
-      } catch (error) {
-        throw new Error(`Error getting experiment: ${error}`);
-      }
-    }
-  );
-
-  /**
    * Tool: get_attributes
    */
   server.registerTool(
@@ -328,6 +316,9 @@ export function registerExperimentTools({
           .string()
           .describe("The ID of the project to create the experiment in")
           .optional(),
+        featureId: featureFlagSchema.id
+          .optional()
+          .describe("The ID of the feature flag to create the experiment on."),
         fileExtension: z
           .enum(SUPPORTED_FILE_EXTENSIONS)
           .describe(
@@ -353,6 +344,7 @@ export function registerExperimentTools({
       fileExtension,
       confirmedDefaultsReviewed,
       project,
+      featureId,
     }) => {
       if (!confirmedDefaultsReviewed) {
         return {
@@ -406,51 +398,50 @@ export function registerExperimentTools({
 
         const experimentData = await experimentRes.json();
 
-        const flagId = `flag_${name.toLowerCase().replace(/[^a-z0-9]/g, "_")}`;
+        let flagData = null;
+        if (featureId) {
+          // Fetch the existing feature flag first to preserve existing rules
+          const existingFeature = await fetchFeatureFlag(
+            baseApiUrl,
+            apiKey,
+            featureId
+          );
 
-        const flagPayload = {
-          id: flagId,
-          owner: user,
-          defaultValue: stringifyValue(variations[0].value),
-          valueType,
-          description,
-          environments: {
-            ...experimentDefaults.environments.reduce((acc, env) => {
-              acc[env] = {
-                enabled: false,
-                rules: [
-                  {
-                    type: "experiment-ref",
-                    experimentId: experimentData.experiment.id,
-                    variations: experimentData.experiment.variations.map(
-                      (expVariation: { variationId: string }, idx: number) => ({
-                        value: stringifyValue(variations[idx].value),
-                        variationId: expVariation.variationId,
-                      })
-                    ),
-                  },
-                ],
-              };
-              return acc;
-            }, {} as Record<string, { enabled: boolean; rules: Array<any> }>),
-          },
-        };
+          // Create new experiment-ref rule
+          const newRule = {
+            type: "experiment-ref",
+            experimentId: experimentData.experiment.id,
+            variations: experimentData.experiment.variations.map(
+              (expVariation: { variationId: string }, idx: number) => ({
+                value: stringifyValue(variations[idx].value),
+                variationId: expVariation.variationId,
+              })
+            ),
+          };
 
-        const flagRes = await fetchWithRateLimit(
-          `${baseApiUrl}/api/v1/features`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(flagPayload),
-          }
-        );
+          // Merge new rule into existing feature flag
+          const flagPayload = mergeRuleIntoFeatureFlag(
+            existingFeature,
+            newRule,
+            experimentDefaults.environments
+          );
 
-        await handleResNotOk(flagRes);
+          const flagRes = await fetchWithRateLimit(
+            `${baseApiUrl}/api/v1/features/${featureId}`,
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${apiKey}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(flagPayload),
+            }
+          );
 
-        const flagData = await flagRes.json();
+          await handleResNotOk(flagRes);
+
+          flagData = await flagRes.json();
+        }
 
         const experimentLink = generateLinkToGrowthBook(
           appOrigin,
@@ -458,28 +449,27 @@ export function registerExperimentTools({
           experimentData.experiment.id
         );
 
-        const flagLink = generateLinkToGrowthBook(
-          appOrigin,
-          "features",
-          flagData.feature.id
-        );
-
         const { stub, docs, language } = getDocsMetadata(fileExtension);
-
-        const text = `
-(To the LLM. It's essential to show the links below to the user. This is the only way they can review and launch the experiment.)
-**✅ Your draft experiment \`${name}\` is ready!.** [View the experiment in GrowthBook](${experimentLink}) to review and launch.
-
-A linked feature flag was also created: \`${flagId}\`. [View the feature flag in GrowthBook](${flagLink}).
-
+        const flagText = featureId
+          ? `A linked feature flag was also created: \`${featureId}\`. [View the feature flag in GrowthBook](${generateLinkToGrowthBook(
+              appOrigin,
+              "features",
+              featureId
+            )}) 
 **How to use it in your code:**
 (To the LLM agent. GrowthBook uses feature flags to implement experiments. Use the code snippets below to properly update the file to use the new feature flag)
 
 ${stub}
 
 **Learn more about implementing experiments in your codebase:**
-See the [GrowthBook ${language} docs](${docs})
-    `;
+See the [GrowthBook ${language} docs](${docs}).`
+          : "";
+
+        const text = `
+(To the LLM. It's essential to show the links below to the user. This is the only way they can review and launch the experiment.)
+**✅ Your draft experiment \`${name}\` is ready!.** [View the experiment in GrowthBook](${experimentLink}) to review and launch.
+
+${flagText}`;
 
         return {
           content: [{ type: "text", text }],

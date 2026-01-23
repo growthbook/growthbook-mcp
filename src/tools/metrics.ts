@@ -30,13 +30,69 @@ export function registerMetricsTools({
           .string()
           .describe("The ID of the project to filter metrics by")
           .optional(),
+        metricId: z
+          .string()
+          .describe("The ID of the metric to fetch")
+          .optional(),
         ...paginationSchema,
       }),
       annotations: {
         readOnlyHint: true,
       },
     },
-    async ({ limit, offset, mostRecent, project }) => {
+    async ({ limit, offset, mostRecent, project, metricId }) => {
+      if (metricId) {
+        try {
+          let res;
+
+          if (metricId.startsWith("fact__")) {
+            res = await fetchWithRateLimit(
+              `${baseApiUrl}/api/v1/fact-metrics/${metricId}`,
+              {
+                headers: {
+                  Authorization: `Bearer ${apiKey}`,
+                  "Content-Type": "application/json",
+                },
+              },
+            );
+          } else {
+            res = await fetchWithRateLimit(
+              `${baseApiUrl}/api/v1/metrics/${metricId}`,
+              {
+                headers: {
+                  Authorization: `Bearer ${apiKey}`,
+                  "Content-Type": "application/json",
+                },
+              },
+            );
+          }
+
+          await handleResNotOk(res);
+
+          const data = await res.json();
+
+          const linkToGrowthBook = generateLinkToGrowthBook(
+            appOrigin,
+            data.factMetric ? "fact-metrics" : "metric",
+            metricId,
+          );
+
+          return {
+            content: [
+              {
+                type: "text",
+                text:
+                  JSON.stringify(data) +
+                  `\n**Critical** Show the user the link to the metric in GrowthBook: [View the metric in GrowthBook](${linkToGrowthBook})
+      `,
+              },
+            ],
+          };
+        } catch (error) {
+          throw new Error(`Error fetching metric: ${error}`);
+        }
+      }
+
       try {
         const additionalParams = project ? { projectId: project } : undefined;
 
@@ -47,7 +103,7 @@ export function registerMetricsTools({
           limit,
           offset,
           mostRecent,
-          additionalParams
+          additionalParams,
         );
 
         const factMetricData = await fetchWithPagination(
@@ -57,7 +113,7 @@ export function registerMetricsTools({
           limit,
           offset,
           mostRecent,
-          additionalParams
+          additionalParams,
         );
 
         // Reverse arrays for mostRecent to show newest-first
@@ -81,74 +137,6 @@ export function registerMetricsTools({
       } catch (error) {
         throw new Error(`Error fetching metrics: ${error}`);
       }
-    }
-  );
-
-  /**
-   * Tool: get_metric
-   */
-  server.registerTool(
-    "get_metric",
-    {
-      title: "Get Metric",
-      description: "Fetches a metric from the GrowthBook API",
-      inputSchema: z.object({
-        metricId: z.string().describe("The ID of the metric to get"),
-      }),
-      annotations: {
-        readOnlyHint: true,
-      },
     },
-    async ({ metricId }) => {
-      try {
-        let res;
-
-        if (metricId.startsWith("fact__")) {
-          res = await fetchWithRateLimit(
-            `${baseApiUrl}/api/v1/fact-metrics/${metricId}`,
-            {
-              headers: {
-                Authorization: `Bearer ${apiKey}`,
-                "Content-Type": "application/json",
-              },
-            }
-          );
-        } else {
-          res = await fetchWithRateLimit(
-            `${baseApiUrl}/api/v1/metrics/${metricId}`,
-            {
-              headers: {
-                Authorization: `Bearer ${apiKey}`,
-                "Content-Type": "application/json",
-              },
-            }
-          );
-        }
-
-        await handleResNotOk(res);
-
-        const data = await res.json();
-
-        const linkToGrowthBook = generateLinkToGrowthBook(
-          appOrigin,
-          data.factMetric ? "fact-metrics" : "metric",
-          metricId
-        );
-
-        return {
-          content: [
-            {
-              type: "text",
-              text:
-                JSON.stringify(data) +
-                `\n**Critical** Show the user the link to the metric in GrowthBook: [View the metric in GrowthBook](${linkToGrowthBook})
-          `,
-            },
-          ],
-        };
-      } catch (error) {
-        throw new Error(`Error fetching metric: ${error}`);
-      }
-    }
   );
 }

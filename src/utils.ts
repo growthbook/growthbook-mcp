@@ -512,6 +512,72 @@ export async function fetchWithRateLimit(
   return response;
 }
 
+/**
+ * Fetches an existing feature flag from the API
+ */
+export async function fetchFeatureFlag(
+  baseApiUrl: string,
+  apiKey: string,
+  featureId: string
+) {
+  const res = await fetchWithRateLimit(
+    `${baseApiUrl}/api/v1/features/${featureId}`,
+    {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  await handleResNotOk(res);
+  const data = await res.json();
+  return data.feature;
+}
+
+/**
+ * Merges a new rule into an existing feature flag's environments.
+ * Preserves all existing environments and rules, adding the new rule
+ * to the specified default environments.
+ */
+export function mergeRuleIntoFeatureFlag(
+  existingFeature: any,
+  newRule: Record<string, any>,
+  defaultEnvironments: string[]
+): Record<string, any> {
+  const existingEnvironments = existingFeature?.environments || {};
+
+  // Start with all existing environments to preserve any that aren't in defaults
+  const environments = Object.keys(existingEnvironments).reduce((acc, env) => {
+    const existingEnv = existingEnvironments[env];
+    const existingRules = existingEnv?.rules || [];
+
+    // Add new rule only to default environments, preserve all other properties
+    if (defaultEnvironments.includes(env)) {
+      acc[env] = {
+        ...existingEnv,
+        rules: [...existingRules, newRule],
+      };
+    } else {
+      // Preserve environment as-is
+      acc[env] = existingEnv;
+    }
+    return acc;
+  }, {} as Record<string, any>);
+
+  // Also ensure all default environments are included (in case they don't exist yet)
+  defaultEnvironments.forEach((env) => {
+    if (!environments[env]) {
+      environments[env] = {
+        enabled: false,
+        rules: [newRule],
+      };
+    }
+  });
+
+  return { environments };
+}
+
 export async function fetchWithPagination(
   baseApiUrl: string,
   apiKey: string,
