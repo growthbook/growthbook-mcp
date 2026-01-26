@@ -1,0 +1,5 @@
+test/
+src/
+scripts/
+scratch.js
+vitest.config.ts

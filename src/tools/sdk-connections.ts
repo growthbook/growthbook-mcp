@@ -21,7 +21,7 @@ export function registerSdkConnectionTools({
     {
       title: "Get SDK Connections",
       description:
-        "Get all SDK connections. SDK connections are how GrowthBook connects to an app. Users need the client key to fetch features and experiments from the API.",
+        "Lists all SDK connections configured in GrowthBook. SDK connections are how GrowthBook connects to an app - users need the client key to fetch features and experiments from the API. Use this to find existing client keys or check SDK configuration before troubleshooting.",
       inputSchema: z.object({
         project: z
           .string()
@@ -67,7 +67,7 @@ export function registerSdkConnectionTools({
     {
       title: "Create SDK Connection",
       description:
-        "Create an SDK connection for a user. Returns an SDK clientKey that can be used to fetch features and experiments.",
+        "Creates an SDK connection and returns the clientKey needed to integrate GrowthBook into an application. Prerequisites: Specify an environment (call get_environments first if unsure). Use for new app integrations; for existing apps use get_sdk_connections to find the existing key.",
       inputSchema: z.object({
         name: z
           .string()

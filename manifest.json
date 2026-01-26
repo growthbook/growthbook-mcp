@@ -16,9 +16,7 @@
     "entry_point": "server/index.js",
     "mcp_config": {
       "command": "node",
-      "args": [
-        "${__dirname}/server/index.js"
-      ],
+      "args": ["${__dirname}/server/index.js"],
       "env": {
         "GB_API_KEY": "${user_config.GB_API_KEY}",
         "GB_EMAIL": "${user_config.GB_EMAIL}",
@@ -34,7 +32,7 @@
     },
     {
       "name": "get_projects",
-      "description": "List all projects in your GrowthBook instance."
+      "description": "List all projects in your GrowthBook organization. Projects organize feature flags, experiments, and metrics into logical groups."
     },
     {
       "name": "get_sdk_connections",
@@ -46,11 +44,11 @@
     },
     {
       "name": "create_feature_flag",
-      "description": "Create, add, or wrap an element with a feature flag. Accepts key, type, default value, and other metadata."
+      "description": "Create a new feature flag in GrowthBook. The flag is created disabled in all environments. Use create_force_rule to add targeting or create_experiment for A/B testing."
     },
     {
       "name": "create_force_rule",
-      "description": "Create a feature flag with a targeting condition (e.g., `country = CA`)."
+      "description": "Add a targeting rule to an existing feature flag to force specific values based on conditions (e.g., enable for users where country = CA)."
     },
     {
       "name": "get_feature_flags",
@@ -66,23 +64,23 @@
     },
     {
       "name": "get_experiments",
-      "description": "List experiments in GrowthBook. Can also fetch details for a specific experiment by ID when experimentId is provided. Supports metadata, summary, and full modes."
+      "description": "List experiments or fetch details for a specific experiment. Supports metadata (default), summary (with stats), and full (complete results) modes."
     },
     {
       "name": "get_attributes",
-      "description": "List user attributes tracked in GrowthBook (useful for targeting)."
+      "description": "List user attributes configured in GrowthBook. Attributes are user properties (country, plan, etc.) used for targeting in feature flags and experiments."
     },
     {
       "name": "create_experiment",
-      "description": "Creates a new feature flag and experiment (A/B test). Requires calling get_defaults first to guide the arguments."
+      "description": "Create a new A/B test experiment. Call get_defaults first to review naming conventions. If testing a feature flag, provide the featureId or create the flag first."
     },
     {
       "name": "get_metrics",
-      "description": "List fact and legacy metrics (useful for better understanding experiments). Can also fetch details for a specific metric by ID when metricId is provided."
+      "description": "List metrics in GrowthBook. Metrics measure experiment success. Includes both fact metrics (modern) and legacy metrics."
     },
     {
       "name": "get_defaults",
-      "description": "Get default values for experiments including hypothesis, description, datasource, and assignment query. (Runs automatically when the create experiment tool is called.)"
+      "description": "Get default configuration and naming examples for creating experiments. Always call this before create_experiment."
     },
     {
       "name": "set_user_defaults",
@@ -94,7 +92,7 @@
     },
     {
       "name": "search_growthbook_docs",
-      "description": "Search the GrowthBook documentation for information on how to use a feature, by keyword or question."
+      "description": "Search official GrowthBook documentation for SDK integration, metrics setup, and experimentation best practices."
     }
   ],
   "prompts": [
@@ -141,12 +139,7 @@
       "default": "https://app.growthbook.io"
     }
   },
-  "keywords": [
-    "experimentation",
-    "feature flags",
-    "ab testing",
-    "growthbook"
-  ],
+  "keywords": ["experimentation", "feature flags", "ab testing", "growthbook"],
   "license": "MIT",
   "repository": {
     "type": "git",

@@ -24,7 +24,7 @@ export function registerMetricsTools({
     {
       title: "Get Metrics",
       description:
-        "Fetches metrics from the GrowthBook API, with optional limit, offset, and project filtering.",
+        "Lists metrics in GrowthBook. Metrics measure experiment success (e.g., conversion rate, revenue per user). Two metric types: Fact metrics (IDs start with 'fact__') are modern and recommended for new setups; Legacy metrics are an older format, still supported. Use this to find metric IDs for analyzing experiments or understand available success measures. Single metric fetch includes full definition and GrowthBook link.",
       inputSchema: z.object({
         project: z
           .string()
@@ -53,7 +53,7 @@ export function registerMetricsTools({
                   Authorization: `Bearer ${apiKey}`,
                   "Content-Type": "application/json",
                 },
-              },
+              }
             );
           } else {
             res = await fetchWithRateLimit(
@@ -63,7 +63,7 @@ export function registerMetricsTools({
                   Authorization: `Bearer ${apiKey}`,
                   "Content-Type": "application/json",
                 },
-              },
+              }
             );
           }
 
@@ -74,7 +74,7 @@ export function registerMetricsTools({
           const linkToGrowthBook = generateLinkToGrowthBook(
             appOrigin,
             data.factMetric ? "fact-metrics" : "metric",
-            metricId,
+            metricId
           );
 
           return {
@@ -103,7 +103,7 @@ export function registerMetricsTools({
           limit,
           offset,
           mostRecent,
-          additionalParams,
+          additionalParams
         );
 
         const factMetricData = await fetchWithPagination(
@@ -113,7 +113,7 @@ export function registerMetricsTools({
           limit,
           offset,
           mostRecent,
-          additionalParams,
+          additionalParams
         );
 
         // Reverse arrays for mostRecent to show newest-first
@@ -137,6 +137,6 @@ export function registerMetricsTools({
       } catch (error) {
         throw new Error(`Error fetching metrics: ${error}`);
       }
-    },
+    }
   );
 }

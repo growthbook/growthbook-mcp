@@ -31,7 +31,7 @@ export function registerFeatureTools({
     {
       title: "Create Feature Flag",
       description:
-        "Creates a new feature flag in GrowthBook and modifies the codebase when relevant.",
+        "Creates a new feature flag in GrowthBook. Feature flags control access to features by returning different values based on rules. Use when adding a toggleable feature to your codebase, creating a flag for A/B testing (then use create_experiment), or setting up gradual rollouts. The flag is created DISABLED in all environments. After creation, use create_force_rule to add targeting conditions, or create_experiment for A/B testing. Returns flag details and SDK integration code snippets for the specified language.",
       inputSchema: featureFlagSchema,
       annotations: {
         readOnlyHint: false,
@@ -138,7 +138,7 @@ export function registerFeatureTools({
     {
       title: "Create Force Rule",
       description:
-        "Create a new force rule on an existing feature. If the existing feature isn't apparent, create a new feature using create_feature_flag first. A force rule sets a feature to a specific value based on a condition. For A/B tests and experiments, use create_experiment instead.",
+        'Adds a targeting rule to an existing feature flag that forces a specific value when conditions are met. Use this for targeting specific users or segments without running an experiment. Example conditions (MongoDB-style syntax): Users in Canada: {"country": "CA"}, Beta testers: {"betaTester": true}, Specific IDs: {"id": {"$in": ["user1", "user2"]}}. Prerequisites: Feature flag must exist - create it first with create_feature_flag if needed. Common operators: $eq, $ne, $in, $nin, $gt, $lt, $regex. Do NOT use for A/B testing - use create_experiment instead for statistical analysis.',
       inputSchema: z.object({
         featureId: featureFlagSchema.id,
         description: featureFlagSchema.description.optional().default(""),
@@ -146,12 +146,14 @@ export function registerFeatureTools({
         condition: z
           .string()
           .describe(
-            "Applied to everyone by default. Write conditions in MongoDB-style query syntax."
+            'MongoDB-style targeting condition. Examples: {"country": "US"}, {"plan": {"$in": ["pro", "enterprise"]}}. Omit to apply to all users.'
           )
           .optional(),
         value: z
           .string()
-          .describe("The type of the value should match the feature type"),
+          .describe(
+            "The value to force when condition matches. Must match the flag's valueType (string, number, boolean, or JSON string)."
+          ),
       }),
       annotations: {
         readOnlyHint: false,
@@ -241,7 +243,7 @@ export function registerFeatureTools({
     {
       title: "Get Feature Flags",
       description:
-        "Fetches all feature flags from the GrowthBook API, with optional limit, offset, and project filtering.",
+        "Lists feature flags in your GrowthBook organization, or fetches details for a specific flag by ID. Use to find existing flags before creating new ones, get a flag's current configuration and rules, or find flag IDs needed for create_force_rule or create_experiment. Single flag fetch (via featureFlagId) returns full config including environment rules. If flag is archived, suggest removing from codebase.",
       inputSchema: z.object({
         project: featureFlagSchema.project.optional(),
         featureFlagId: featureFlagSchema.id.optional(),
@@ -323,7 +325,7 @@ ask if they want to remove references to the feature flag from the codebase.
     {
       title: "Get Stale Safe Rollouts",
       description:
-        "Fetches all complete safe rollouts (rolled-back or released) from the GrowthBook API",
+        "Finds feature flags with completed safe rollout rules that can be cleaned up from your codebase. Safe rollouts gradually increase traffic while monitoring for regressions. Completed rollouts (released or rolled-back) indicate flag code can be simplified: released means the new value won, rolled-back means revert to control value. Use for technical debt cleanup.",
       inputSchema: z.object({
         limit: z.number().optional().default(100),
         offset: z.number().optional().default(0),
@@ -394,7 +396,8 @@ ask if they want to remove references to the feature flag from the codebase.
     "generate_flag_types",
     {
       title: "Generate Flag Types",
-      description: "Generate types for feature flags",
+      description:
+        "Generates TypeScript type definitions for all feature flags. Provides type safety and IDE autocomplete when accessing flags in code. Prerequisites: Target project must be TypeScript; GrowthBook CLI installed via npx (automatic). Run after creating new flags or when flag value types change. Returns the generated types file location.",
       inputSchema: z.object({
         currentWorkingDirectory: z
           .string()

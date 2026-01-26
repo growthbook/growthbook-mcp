@@ -149,7 +149,7 @@ describe("read-only tool handlers (URL + headers)", () => {
     expect(res.content?.[0]?.type).toBe("text");
   });
 
-  it("get_metric routes fact__ ids to /fact-metrics and others to /metrics", async () => {
+  it("get_metrics with metricId routes fact__ ids to /fact-metrics and others to /metrics", async () => {
     vi.useFakeTimers();
     const calls: string[] = [];
     const fetchSpy = vi.fn(async (url: string) => {
@@ -168,7 +168,7 @@ describe("read-only tool handlers (URL + headers)", () => {
       user: "u@example.com",
     });
 
-    const tool = tools.find((t) => t.name === "get_metric")!;
+    const tool = tools.find((t) => t.name === "get_metrics")!;
     const p1 = tool.handler({ metricId: "m1" });
     const p2 = tool.handler({ metricId: "fact__m2" });
     await vi.runAllTimersAsync();

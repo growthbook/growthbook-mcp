@@ -10,7 +10,8 @@ export function registerSearchTools({ server }: { server: McpServer }) {
     "search_growthbook_docs",
     {
       title: "Search GrowthBook Docs",
-      description: "Search the GrowthBook docs on how to use a feature",
+      description:
+        'Searches official GrowthBook documentation for SDK integration, metrics setup, and experimentation best practices. Use when user asks about SDK integration in specific languages, metrics/fact tables/data source setup, experiment best practices, or troubleshooting. Good queries: "React SDK setup", "fact metrics", "sample ratio mismatch", "targeting attributes". Returns documentation snippets with links to full articles.',
       inputSchema: z.object({
         query: z
           .string()

@@ -21,7 +21,8 @@ export function registerProjectTools({
     "get_projects",
     {
       title: "Get Projects",
-      description: "Fetches all projects from the GrowthBook API",
+      description:
+        "Lists all projects in your GrowthBook organization. Projects organize feature flags, experiments, and metrics into logical groups (e.g., by team, product, or app). Use this to find project IDs needed when creating flags or experiments scoped to a project, understand how the organization structures experimentation, or map project IDs to human-readable names. Returns project names, IDs, and metadata.",
       inputSchema: z.object({
         ...paginationSchema,
       }),

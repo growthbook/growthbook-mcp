@@ -32,7 +32,8 @@ export function registerExperimentTools({
     "get_experiments",
     {
       title: "Get Experiments",
-      description: "Fetches experiments from the GrowthBook API",
+      description:
+        "Lists experiments or fetches details for a specific experiment. Supports three modes: metadata (default) returns experiment config without results, good for listing; summary fetches results and returns key statistics including win rate and top performers, good for quick analysis; full returns complete results with all metrics (warning: large payloads). Use this to review recent experiments (mostRecent=true), analyze results, or check experiment status (draft, running, stopped). Single experiment fetch includes a link to view in GrowthBook.",
       inputSchema: z.object({
         project: z
           .string()
@@ -231,7 +232,8 @@ export function registerExperimentTools({
     "get_attributes",
     {
       title: "Get Attributes",
-      description: "Get all attributes",
+      description:
+        "Lists all user attributes configured in GrowthBook. Attributes are user properties (like country, plan type, user ID) used for targeting in feature flags and experiments. Use this to see available attributes for targeting conditions in create_force_rule, understand targeting options when setting up experiments, or verify attribute names before writing conditions. Common examples: id, email, country, plan, deviceType, isEmployee. Attributes must be passed to the GrowthBook SDK at runtime for targeting to work.",
       inputSchema: z.object({}),
       annotations: {
         readOnlyHint: true,
@@ -272,7 +274,7 @@ export function registerExperimentTools({
     {
       title: "Create Experiment",
       description:
-        "IMPORTANT: Call get_defaults before creating an experiment, and use its output to guide the arguments. Creates a new feature flag and experiment (A/B test).",
+        "Creates a new A/B test experiment in GrowthBook. An experiment randomly assigns users to different variations and measures which performs better against your metrics. Prerequisites: 1) Call get_defaults first to review naming conventions and configuration, 2) If testing via a feature flag, provide its featureId OR create the flag first using create_feature_flag. Returns a draft experiment that the user must review and launch in the GrowthBook UI, including a link and SDK integration code. Do NOT use for simple feature toggles (use create_feature_flag) or targeting without measurement (use create_force_rule).",
       inputSchema: z.object({
         name: z
           .string()
@@ -310,7 +312,7 @@ export function registerExperimentTools({
             })
           )
           .describe(
-            "Experiment variations. The key should be the variation name and the value should be the variation value. Look to variations included in preview experiments for guidance on generation. The default or control variation should always be first."
+            'Array of experiment variations. Each has a name (displayed in GrowthBook UI) and value (what users receive). The first variation should be the control/default. Example: [{name: "Control", value: false}, {name: "Treatment", value: true}]'
           ),
         project: z
           .string()
@@ -450,26 +452,16 @@ export function registerExperimentTools({
         );
 
         const { stub, docs, language } = getDocsMetadata(fileExtension);
-        const flagText = featureId
-          ? `A linked feature flag was also created: \`${featureId}\`. [View the feature flag in GrowthBook](${generateLinkToGrowthBook(
-              appOrigin,
-              "features",
-              featureId
-            )}) 
-**How to use it in your code:**
-(To the LLM agent. GrowthBook uses feature flags to implement experiments. Use the code snippets below to properly update the file to use the new feature flag)
-
+        const flagText =
+          featureId &&
+          `**How to implement the feature flag experiment in your code:**
+---
 ${stub}
-
+---
 **Learn more about implementing experiments in your codebase:**
-See the [GrowthBook ${language} docs](${docs}).`
-          : "";
+See the [GrowthBook ${language} docs](${docs}).`;
 
-        const text = `
-(To the LLM. It's essential to show the links below to the user. This is the only way they can review and launch the experiment.)
-**✅ Your draft experiment \`${name}\` is ready!.** [View the experiment in GrowthBook](${experimentLink}) to review and launch.
-
-${flagText}`;
+        const text = `**✅ Your draft experiment \`${name}\` is ready!.** [View the experiment in GrowthBook](${experimentLink}) to review and launch.\n\n${flagText}`;
 
         return {
           content: [{ type: "text", text }],

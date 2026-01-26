@@ -389,7 +389,7 @@ export async function registerDefaultsTools({
     {
       title: "Get Defaults",
       description:
-        "Get the default values for experiments, including hypothesis, description, datasource, assignment query, and environments.",
+        "Retrieves default configuration and naming examples for creating experiments. Analyzes your existing experiments to extract patterns and identifies your most common datasource/assignment query. Always call this before create_experiment - the examples help ensure new experiments follow your organization's conventions. Returns example names, hypotheses, descriptions from existing experiments, default datasource and assignment query IDs, and available environments. User-defined defaults (from set_user_defaults) override automatic detection.",
       inputSchema: z.object({}),
       annotations: {
         readOnlyHint: true,
@@ -413,7 +413,7 @@ export async function registerDefaultsTools({
     {
       title: "Set User Defaults",
       description:
-        "Set user-defined defaults for datasource, assignment query, and environments. These will override the automatic defaults for these fields.",
+        "Sets custom default values for experiment configuration that override automatic detection. Use when automatic defaults select the wrong datasource or assignment query. Find valid IDs by calling get_defaults first. Persists until cleared with clear_user_defaults.",
       inputSchema: z.object({
         datasourceId: z.string().describe("The data source ID to use as default"),
         assignmentQueryId: z

@@ -20,7 +20,7 @@ export function registerEnvironmentTools({
     {
       title: "Get Environments",
       description:
-        "Fetches all environments from the GrowthBook API. GrowthBook comes with one environment by default (production), but you can add as many as you need. Feature flags can be enabled and disabled on a per-environment basis. You can also set the default feature state for any new environment. Additionally, you can scope environments to only be available in specific projects, allowing for further control and segmentation over feature delivery.",
+        "Lists all environments configured in GrowthBook. GrowthBook comes with one environment by default (production), but you can add as many as you need. Feature flags can be enabled and disabled on a per-environment basis. Use this to see available environments before creating SDK connections or configuring feature flags. Environments can be scoped to specific projects for further control.",
       inputSchema: z.object({}),
       annotations: {
         readOnlyHint: true,
