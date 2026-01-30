@@ -63,13 +63,15 @@ export function getApiKey() {
 
 export function getApiUrl() {
   const defaultApiUrl = "https://api.growthbook.io";
-  const userApiUrl = process.env.GB_API_URL;
+  let userApiUrl = process.env.GB_API_URL;
+  userApiUrl = userApiUrl?.trim().replace(/\/+$/, "");
   return `${userApiUrl || defaultApiUrl}`;
 }
 
 export function getAppOrigin() {
   const defaultAppOrigin = "https://app.growthbook.io";
-  const userAppOrigin = process.env.GB_APP_ORIGIN;
+  let userAppOrigin = process.env.GB_APP_ORIGIN;
+  userAppOrigin = userAppOrigin?.trim().replace(/\/+$/, "");
   return `${userAppOrigin || defaultAppOrigin}`;
 }
 
