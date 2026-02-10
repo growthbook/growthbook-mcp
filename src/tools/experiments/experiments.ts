@@ -10,13 +10,148 @@ import {
   fetchWithPagination,
   featureFlagSchema,
   fetchFeatureFlag,
-  mergeRuleIntoFeatureFlag,
 } from "../../utils.js";
 import { getDefaults } from "../defaults.js";
 import { type Experiment } from "../../types/types.js";
 import { handleSummaryMode } from "./experiment-summary.js";
 
 interface ExperimentTools extends ExtendedToolsInterface {}
+
+/**
+ * Interface for buildExperimentPayload options
+ */
+interface BuildExperimentPayloadOptions {
+  name: string;
+  description?: string;
+  hypothesis?: string;
+  user: string;
+  project?: string;
+  hashAttribute?: string;
+  trackingKey?: string;
+  experimentDefaults?: {
+    datasource?: string;
+    assignmentQuery?: string;
+  };
+  variations?: Array<{ name: string }>;
+}
+
+/**
+ * Builds the experiment API payload.
+ * Exported for testing.
+ */
+export function buildExperimentPayload(
+  options: BuildExperimentPayloadOptions
+): Record<string, any> {
+  const {
+    name,
+    description,
+    hypothesis,
+    user,
+    project,
+    hashAttribute,
+    trackingKey,
+    experimentDefaults,
+    variations,
+  } = options;
+
+  const payload: Record<string, any> = {
+    name,
+    description,
+    hypothesis,
+    owner: user,
+    trackingKey: trackingKey ?? name.toLowerCase().replace(/[^a-z0-9]/g, "-"),
+    tags: ["mcp"],
+    datasourceId: experimentDefaults?.datasource,
+    assignmentQueryId: experimentDefaults?.assignmentQuery,
+    ...(project && { project }),
+  };
+
+  // Only include hashAttribute if explicitly provided (backward compatible)
+  if (hashAttribute) {
+    payload.hashAttribute = hashAttribute;
+  }
+
+  // Add variations if provided
+  if (variations) {
+    payload.variations = variations.map((variation, idx) => ({
+      key: idx.toString(),
+      name: variation.name,
+    }));
+  }
+
+  return payload;
+}
+
+/**
+ * Interface for buildFeatureFlagPayload options
+ */
+interface BuildFeatureFlagPayloadOptions {
+  existingFeature: {
+    environments?: Record<string, { enabled?: boolean; rules?: any[] }>;
+  };
+  newRule: Record<string, any>;
+  enabledEnvironments?: string[];
+  defaultEnvironments: string[];
+  environmentConditions?: Record<string, string>;
+}
+
+/**
+ * Builds the feature flag update payload with per-environment rule logic.
+ * Exported for testing.
+ */
+export function buildFeatureFlagPayload(
+  options: BuildFeatureFlagPayloadOptions
+): { environments: Record<string, any> } {
+  const {
+    existingFeature,
+    newRule,
+    enabledEnvironments,
+    defaultEnvironments,
+    environmentConditions,
+  } = options;
+
+  // Use enabledEnvironments if provided, otherwise use defaultEnvironments
+  const targetEnvironments = enabledEnvironments ?? defaultEnvironments;
+  const existingEnvironments = existingFeature?.environments || {};
+
+  const environments: Record<string, any> = {};
+
+  // Process all existing environments
+  for (const [env, envConfig] of Object.entries(existingEnvironments)) {
+    const existingRules = envConfig?.rules || [];
+
+    if (targetEnvironments.includes(env)) {
+      // Add rule with optional per-environment condition
+      const ruleForEnv: Record<string, any> = { ...newRule };
+      if (environmentConditions?.[env]) {
+        ruleForEnv.condition = environmentConditions[env];
+      }
+      environments[env] = {
+        ...envConfig,
+        rules: [...existingRules, ruleForEnv],
+      };
+    } else {
+      // Preserve environment as-is (don't add rule)
+      environments[env] = envConfig;
+    }
+  }
+
+  // Ensure target environments exist even if not in existing feature
+  for (const env of targetEnvironments) {
+    if (!environments[env]) {
+      const ruleForEnv: Record<string, any> = { ...newRule };
+      if (environmentConditions?.[env]) {
+        ruleForEnv.condition = environmentConditions[env];
+      }
+      environments[env] = {
+        enabled: false,
+        rules: [ruleForEnv],
+      };
+    }
+  }
+
+  return { environments };
+}
 
 export function registerExperimentTools({
   server,
@@ -274,7 +409,10 @@ export function registerExperimentTools({
     {
       title: "Create Experiment",
       description:
-        "Creates a new A/B test experiment in GrowthBook. An experiment randomly assigns users to different variations and measures which performs better against your metrics. Prerequisites: 1) Call get_defaults first to review naming conventions and configuration, 2) If testing via a feature flag, provide its featureId OR create the flag first using create_feature_flag. Returns a draft experiment that the user must review and launch in the GrowthBook UI, including a link and SDK integration code. Do NOT use for simple feature toggles (use create_feature_flag) or targeting without measurement (use create_force_rule).",
+        "Creates a new A/B test experiment in GrowthBook. An experiment randomly assigns users to different variations and measures which performs better against your metrics. " +
+        "Prerequisites: 1) Call get_defaults first to review naming conventions and configuration, 2) If testing via a feature flag, provide its featureId OR create the flag first using create_feature_flag. " +
+        "Advanced options: Override hashAttribute for custom user assignment (e.g., 'userId'), set custom trackingKey for analytics, use enabledEnvironments to control which environments get the experiment rule, and environmentConditions for per-environment targeting (e.g., limit production to test users only). " +
+        "Returns a draft experiment that the user must review and launch in the GrowthBook UI, including a link and SDK integration code. Do NOT use for simple feature toggles (use create_feature_flag) or targeting without measurement (use create_force_rule).",
       inputSchema: z.object({
         name: z
           .string()
@@ -331,6 +469,38 @@ export function registerExperimentTools({
           .describe(
             "Set to true to confirm you have called get_defaults and reviewed the output to guide these parameters."
           ),
+        hashAttribute: z
+          .string()
+          .optional()
+          .describe(
+            "The user attribute to use for random assignment (e.g., 'id', 'userId', 'deviceId'). " +
+              "If omitted, GrowthBook uses your organization's default (typically 'id'). " +
+              "Call get_attributes to see available attributes."
+          ),
+        trackingKey: z
+          .string()
+          .optional()
+          .describe(
+            "Unique identifier for analytics/tracking. If omitted, auto-generated from experiment name. " +
+              "Use when you need control over event naming in your analytics system."
+          ),
+        enabledEnvironments: z
+          .array(z.string())
+          .optional()
+          .describe(
+            "Which environments should receive the experiment rule when featureId is provided. " +
+              "If omitted, adds rule to all default environments from get_defaults. " +
+              "Example: ['staging', 'production'] to skip development."
+          ),
+        environmentConditions: z
+          .record(z.string(), z.string())
+          .optional()
+          .describe(
+            "Per-environment targeting conditions as JSON strings (MongoDB-style syntax). " +
+              "Keys are environment IDs, values are condition JSON. " +
+              'Example: { "production": "{\\"is_test_user\\": true}" } to limit production to test users. ' +
+              "Environments not specified get no condition (applies to all users)."
+          ),
       }),
       annotations: {
         readOnlyHint: false,
@@ -347,6 +517,10 @@ export function registerExperimentTools({
       confirmedDefaultsReviewed,
       project,
       featureId,
+      hashAttribute,
+      trackingKey,
+      enabledEnvironments,
+      environmentConditions,
     }) => {
       if (!confirmedDefaultsReviewed) {
         return {
@@ -365,23 +539,21 @@ export function registerExperimentTools({
       const stringifyValue = (value: unknown): string =>
         typeof value === "object" ? JSON.stringify(value) : String(value);
 
-      const experimentPayload = {
+      // Build experiment payload using helper function (supports new optional params)
+      const experimentPayload = buildExperimentPayload({
         name,
         description,
         hypothesis,
-        owner: user,
-        trackingKey: name.toLowerCase().replace(/[^a-z0-9]/g, "-"),
-        tags: ["mcp"],
-        assignmentQueryId: experimentDefaults?.assignmentQuery,
-        datasourceId: experimentDefaults?.datasource,
-        variations: (variations as Array<{ name: string }>).map(
-          (variation: { name: string }, idx: number) => ({
-            key: idx.toString(),
-            name: variation.name,
-          })
-        ),
-        ...(project && { project }),
-      };
+        user,
+        project,
+        hashAttribute,
+        trackingKey,
+        experimentDefaults: {
+          datasource: experimentDefaults?.datasource,
+          assignmentQuery: experimentDefaults?.assignmentQuery,
+        },
+        variations: variations as Array<{ name: string }>,
+      });
 
       try {
         const experimentRes = await fetchWithRateLimit(
@@ -421,12 +593,14 @@ export function registerExperimentTools({
             ),
           };
 
-          // Merge new rule into existing feature flag
-          const flagPayload = mergeRuleIntoFeatureFlag(
+          // Build feature flag payload with per-environment support
+          const flagPayload = buildFeatureFlagPayload({
             existingFeature,
             newRule,
-            experimentDefaults.environments
-          );
+            enabledEnvironments,
+            defaultEnvironments: experimentDefaults.environments,
+            environmentConditions,
+          });
 
           const flagRes = await fetchWithRateLimit(
             `${baseApiUrl}/api/v1/features/${featureId}`,

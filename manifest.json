@@ -74,7 +74,7 @@
     },
     {
       "name": "create_experiment",
-      "description": "Create a new A/B test experiment. Call get_defaults first to review naming conventions. If testing a feature flag, provide the featureId or create the flag first."
+      "description": "Create a new A/B test experiment. Call get_defaults first to review naming conventions. Supports custom hashAttribute for user assignment, trackingKey for analytics, enabledEnvironments to control which environments get the experiment rule, and environmentConditions for per-environment targeting (e.g., limit production to test users only). If testing a feature flag, provide the featureId or create the flag first."
     },
     {
       "name": "get_metrics",
