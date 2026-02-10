@@ -1,7 +1,7 @@
 {
   "name": "@growthbook/mcp",
   "mcpName": "io.github.growthbook/growthbook-mcp",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "MCP Server for interacting with GrowthBook",
   "access": "public",
   "homepage": "https://github.com/growthbook/growthbook-mcp",
@@ -19,7 +19,8 @@
     "bump:patch": "npm version patch --no-git-tag-version && npm run sync-version",
     "bump:minor": "npm version minor --no-git-tag-version && npm run sync-version",
     "bump:major": "npm version major --no-git-tag-version && npm run sync-version",
-    "mcpb:build": "npx -y @anthropic-ai/mcpb -- pack"
+    "mcpb:build": "npx -y @anthropic-ai/mcpb -- pack",
+    "generate-api-types": "npx openapi-typescript https://api.growthbook.io/api/v1/openapi.yaml -o src/api-types.ts"
   },
   "bin": {
     "mcp": "server/index.js"
@@ -37,15 +38,15 @@
   "author": "GrowthBook",
   "license": "MIT",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.17.2",
-    "env-paths": "^3.0.0",
-    "zod": "^3.25.67"
+    "@modelcontextprotocol/sdk": "^1.25.3",
+    "env-paths": "^4.0.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@types/node": "^24.2.1",
-    "@vitest/coverage-v8": "^3.2.4",
+    "@types/node": "^25.1.0",
+    "@vitest/coverage-v8": "^4.0.18",
     "typescript": "^5.9.2",
-    "vitest": "^3.2.4"
+    "vitest": "^4.0.18"
   },
   "type": "module"
 }

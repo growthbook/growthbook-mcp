@@ -270,6 +270,7 @@ export function registerFeatureTools({
           await handleResNotOk(res);
 
           const data = await res.json();
+
           const linkToGrowthBook = generateLinkToGrowthBook(
             appOrigin,
             "features",
@@ -435,7 +436,8 @@ ask if they want to remove references to the feature flag from the codebase.
           content: [
             {
               type: "text",
-              text: `✅ Types generated successfully:\n${output}`,
+              text: `✅ Types generated successfully:\n${output}. Offer to add a script to the project's package.json file to regenerate types when needed. The command is: 
+              "npx -y growthbook@latest features generate-types -u ${baseApiUrl}"`,
             },
           ],
         };
