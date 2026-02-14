@@ -5,6 +5,7 @@ import {
   paginationSchema,
   fetchWithRateLimit,
   fetchWithPagination,
+  buildHeaders,
 } from "../utils.js";
 
 interface SdkConnectionTools extends BaseToolsInterface {}
@@ -120,10 +121,7 @@ export function registerSdkConnectionTools({
           const res = await fetchWithRateLimit(
             `${baseApiUrl}/api/v1/environments`,
             {
-              headers: {
-                Authorization: `Bearer ${apiKey}`,
-                "Content-Type": "application/json",
-              },
+              headers: buildHeaders(apiKey),
             }
           );
 
@@ -156,10 +154,7 @@ export function registerSdkConnectionTools({
           `${baseApiUrl}/api/v1/sdk-connections`,
           {
             method: "POST",
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              "Content-Type": "application/json",
-            },
+            headers: buildHeaders(apiKey),
             body: JSON.stringify(payload),
           }
         );

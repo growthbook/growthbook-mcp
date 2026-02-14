@@ -10,6 +10,7 @@ import {
   fetchWithPagination,
   fetchFeatureFlag,
   mergeRuleIntoFeatureFlag,
+  buildHeaders,
 } from "../utils.js";
 import { exec } from "child_process";
 import { getDefaults } from "./defaults.js";
@@ -55,10 +56,7 @@ export function registerFeatureTools({
         const envRes = await fetchWithRateLimit(
           `${baseApiUrl}/api/v1/features/environments`,
           {
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              "Content-Type": "application/json",
-            },
+            headers: buildHeaders(apiKey),
           }
         );
         await handleResNotOk(envRes);
@@ -89,10 +87,7 @@ export function registerFeatureTools({
       try {
         const res = await fetchWithRateLimit(`${baseApiUrl}/api/v1/features`, {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
+          headers: buildHeaders(apiKey),
           body: JSON.stringify(payload),
         });
 
@@ -191,10 +186,7 @@ export function registerFeatureTools({
           `${baseApiUrl}/api/v1/features/${featureId}`,
           {
             method: "POST",
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              "Content-Type": "application/json",
-            },
+            headers: buildHeaders(apiKey),
             body: JSON.stringify(payload),
           }
         );
@@ -211,7 +203,7 @@ export function registerFeatureTools({
         const { docs, language, stub } = getDocsMetadata(fileExtension);
 
         const text = `This is the API response: ${JSON.stringify(data)}
-      
+
         Additionally, here is a template of what to show to the user:
 
         **✅ Your feature flag \`my-flag-name\` is ready!.**
@@ -260,10 +252,7 @@ export function registerFeatureTools({
           const res = await fetchWithRateLimit(
             `${baseApiUrl}/api/v1/features/${featureFlagId}`,
             {
-              headers: {
-                Authorization: `Bearer ${apiKey}`,
-                "Content-Type": "application/json",
-              },
+              headers: buildHeaders(apiKey),
             }
           );
 
@@ -345,10 +334,7 @@ ask if they want to remove references to the feature flag from the codebase.
         const res = await fetchWithRateLimit(
           `${baseApiUrl}/api/v1/features?${queryParams.toString()}`,
           {
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              "Content-Type": "application/json",
-            },
+            headers: buildHeaders(apiKey),
           }
         );
 

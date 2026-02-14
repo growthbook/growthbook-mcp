@@ -75,6 +75,73 @@ export function getAppOrigin() {
   return `${userAppOrigin || defaultAppOrigin}`;
 }
 
+/**
+ * Parses custom HTTP headers from environment variables with the prefix GB_HTTP_HEADER_*
+ * Converts environment variable names to proper HTTP header format:
+ * GB_HTTP_HEADER_X_TENANT_ID -> X-Tenant-ID
+ * GB_HTTP_HEADER_CF_ACCESS_TOKEN -> Cf-Access-Token
+ *
+ * Example usage:
+ * GB_HTTP_HEADER_X_TENANT_ID=abc123 -> { "X-Tenant-ID": "abc123" }
+ * GB_HTTP_HEADER_CF_ACCESS_TOKEN=<token> -> { "Cf-Access-Token": "<token>" }
+ */
+export function getCustomHeaders(): Record<string, string> {
+  const customHeaders: Record<string, string> = {};
+  const headerPrefix = "GB_HTTP_HEADER_";
+
+  for (const [key, value] of Object.entries(process.env)) {
+    if (key.startsWith(headerPrefix) && value) {
+      // Extract the header name part after the prefix
+      const headerNamePart = key.slice(headerPrefix.length);
+
+      // Convert underscore-separated name to proper HTTP header format
+      // Example: X_TENANT_ID -> X-Tenant-ID, CF_ACCESS_TOKEN -> Cf-Access-Token
+      const headerName = headerNamePart
+        .split("_")
+        .map((part, index) => {
+          // Special handling for common prefixes like X, API, etc.
+          if (part.length === 1 || part === "API" || part === "ID") {
+            return part;
+          }
+          // Capitalize first letter, lowercase the rest
+          return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+        })
+        .join("-");
+
+      customHeaders[headerName] = value;
+    }
+  }
+
+  return customHeaders;
+}
+
+/**
+ * Builds HTTP headers for GrowthBook API requests, merging required headers
+ * with any custom headers configured via GB_HTTP_HEADER_* environment variables.
+ *
+ * Custom headers are applied first, then required headers (Authorization, Content-Type)
+ * are added. This ensures required headers always take precedence.
+ *
+ * @param apiKey - The GrowthBook API key for authorization
+ * @param includeContentType - Whether to include Content-Type header (default: true)
+ * @returns Headers object ready for fetch requests
+ */
+export function buildHeaders(
+  apiKey: string,
+  includeContentType = true
+): Record<string, string> {
+  const headers: Record<string, string> = {
+    ...getCustomHeaders(),
+    Authorization: `Bearer ${apiKey}`,
+  };
+
+  if (includeContentType) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  return headers;
+}
+
 export function getDocsMetadata(extension: string) {
   switch (extension) {
     case ".tsx":
@@ -532,10 +599,7 @@ export async function fetchFeatureFlag(
   const res = await fetchWithRateLimit(
     `${baseApiUrl}/api/v1/features/${featureId}`,
     {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
+      headers: buildHeaders(apiKey),
     }
   );
 
@@ -615,10 +679,7 @@ export async function fetchWithPagination(
     const res = await fetchWithRateLimit(
       `${baseApiUrl}${endpoint}?${queryParams.toString()}`,
       {
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
+        headers: buildHeaders(apiKey),
       }
     );
 
@@ -630,10 +691,7 @@ export async function fetchWithPagination(
   const countRes = await fetchWithRateLimit(
     `${baseApiUrl}${endpoint}?limit=1`,
     {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
+      headers: buildHeaders(apiKey),
     }
   );
 
@@ -659,10 +717,7 @@ export async function fetchWithPagination(
   const mostRecentRes = await fetchWithRateLimit(
     `${baseApiUrl}${endpoint}?${mostRecentQueryParams.toString()}`,
     {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
+      headers: buildHeaders(apiKey),
     }
   );
 

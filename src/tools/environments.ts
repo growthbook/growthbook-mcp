@@ -2,6 +2,7 @@ import {
   handleResNotOk,
   type BaseToolsInterface,
   fetchWithRateLimit,
+  buildHeaders,
 } from "../utils.js";
 import { z } from "zod";
 
@@ -31,10 +32,7 @@ export function registerEnvironmentTools({
         const res = await fetchWithRateLimit(
           `${baseApiUrl}/api/v1/environments`,
           {
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              "Content-Type": "application/json",
-            },
+            headers: buildHeaders(apiKey),
           }
         );
 
