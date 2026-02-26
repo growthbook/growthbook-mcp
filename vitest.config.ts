@@ -9,11 +9,7 @@ export default defineConfig({
     // Cursor's sandbox can block process termination used by child-process pools.
     // Force a threads pool and run in a single thread for reliability.
     pool: "threads",
-    poolOptions: {
-      threads: {
-        singleThread: true,
-      },
-    },
+    maxWorkers: 1,
   },
 });
 
