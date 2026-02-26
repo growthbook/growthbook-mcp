@@ -1,4 +1,4 @@
-import { fetchWithRateLimit, handleResNotOk } from "../../utils.js";
+import { fetchWithRateLimit, handleResNotOk, buildHeaders } from "../../utils.js";
 import { type Experiment } from "../../types/types.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import {
@@ -190,10 +190,7 @@ async function getMetricLookup(
           const res = await fetchWithRateLimit(
             `${baseApiUrl}/api/v1/metrics/${metricId}`,
             {
-              headers: {
-                Authorization: `Bearer ${apiKey}`,
-                "Content-Type": "application/json",
-              },
+              headers: buildHeaders(apiKey),
             }
           );
           await handleResNotOk(res);
@@ -223,10 +220,7 @@ async function getMetricLookup(
           const res = await fetchWithRateLimit(
             `${baseApiUrl}/api/v1/fact-metrics/${metricId}`,
             {
-              headers: {
-                Authorization: `Bearer ${apiKey}`,
-                "Content-Type": "application/json",
-              },
+              headers: buildHeaders(apiKey),
             }
           );
           await handleResNotOk(res);

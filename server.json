@@ -43,6 +43,13 @@
           "format": "string",
           "is_secret": false,
           "name": "GB_APP_ORIGIN"
+        },
+        {
+          "description": "Custom HTTP headers to include in all GrowthBook API requests. Use the pattern GB_HTTP_HEADER_<NAME> where <NAME> is converted to proper HTTP header format. Examples: GB_HTTP_HEADER_X_TENANT_ID=abc123, GB_HTTP_HEADER_CF_ACCESS_TOKEN=<token>. Multiple custom headers can be configured.",
+          "is_required": false,
+          "format": "string",
+          "is_secret": false,
+          "name": "GB_HTTP_HEADER_*"
         }
       ]
     }

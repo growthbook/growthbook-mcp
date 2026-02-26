@@ -2,6 +2,7 @@ import {
   handleResNotOk,
   type BaseToolsInterface,
   fetchWithRateLimit,
+  buildHeaders,
 } from "../utils.js";
 import envPaths from "env-paths";
 import { writeFile, readFile, mkdir, unlink } from "fs/promises";
@@ -70,9 +71,7 @@ export async function createDefaults(
     const experimentsResponse = await fetchWithRateLimit(
       `${baseApiUrl}/api/v1/experiments`,
       {
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-        },
+        headers: buildHeaders(apiKey, false),
       }
     );
     await handleResNotOk(experimentsResponse);
@@ -83,9 +82,7 @@ export async function createDefaults(
       const assignmentQueryResponse = await fetchWithRateLimit(
         `${baseApiUrl}/api/v1/data-sources`,
         {
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-          },
+          headers: buildHeaders(apiKey, false),
         }
       );
       await handleResNotOk(assignmentQueryResponse);
@@ -103,9 +100,7 @@ export async function createDefaults(
       const environmentsResponse = await fetchWithRateLimit(
         `${baseApiUrl}/api/v1/environments`,
         {
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-          },
+          headers: buildHeaders(apiKey, false),
         }
       );
       await handleResNotOk(environmentsResponse);
@@ -137,10 +132,7 @@ export async function createDefaults(
           Math.min(50, experimentData.count + experimentData.offset)
         }&limit=${Math.min(50, experimentData.count + experimentData.offset)}`,
         {
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
+          headers: buildHeaders(apiKey),
         }
       );
       await handleResNotOk(mostRecentExperiments);
@@ -206,9 +198,7 @@ export async function createDefaults(
     const environmentsResponse = await fetchWithRateLimit(
       `${baseApiUrl}/api/v1/environments`,
       {
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-        },
+        headers: buildHeaders(apiKey, false),
       }
     );
     await handleResNotOk(environmentsResponse);

@@ -6,6 +6,7 @@ import {
   paginationSchema,
   fetchWithRateLimit,
   fetchWithPagination,
+  buildHeaders,
 } from "../utils.js";
 
 interface MetricsTools extends ExtendedToolsInterface {}
@@ -49,20 +50,14 @@ export function registerMetricsTools({
             res = await fetchWithRateLimit(
               `${baseApiUrl}/api/v1/fact-metrics/${metricId}`,
               {
-                headers: {
-                  Authorization: `Bearer ${apiKey}`,
-                  "Content-Type": "application/json",
-                },
+                headers: buildHeaders(apiKey),
               }
             );
           } else {
             res = await fetchWithRateLimit(
               `${baseApiUrl}/api/v1/metrics/${metricId}`,
               {
-                headers: {
-                  Authorization: `Bearer ${apiKey}`,
-                  "Content-Type": "application/json",
-                },
+                headers: buildHeaders(apiKey),
               }
             );
           }

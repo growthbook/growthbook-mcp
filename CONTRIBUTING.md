@@ -41,7 +41,8 @@ When configuring your MCP client (e.g., Cursor, VS Code, Claude Desktop), use th
         "GB_API_KEY": "your-api-key",
         "GB_EMAIL": "your-email",
         "GB_API_URL": "your-api-url",
-        "GB_APP_ORIGIN": "your-app-origin"
+        "GB_APP_ORIGIN": "your-app-origin",
+        "GB_HTTP_HEADER_X_TENANT_ID": "optional-tenant-id"
       }
     }
   }

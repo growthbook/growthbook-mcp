@@ -11,6 +11,7 @@ import {
   featureFlagSchema,
   fetchFeatureFlag,
   mergeRuleIntoFeatureFlag,
+  buildHeaders,
 } from "../../utils.js";
 import { getDefaults } from "../defaults.js";
 import { type Experiment } from "../../types/types.js";
@@ -64,10 +65,7 @@ export function registerExperimentTools({
           const res = await fetchWithRateLimit(
             `${baseApiUrl}/api/v1/experiments/${experimentId}`,
             {
-              headers: {
-                Authorization: `Bearer ${apiKey}`,
-                "Content-Type": "application/json",
-              },
+              headers: buildHeaders(apiKey),
             }
           );
 
@@ -83,9 +81,7 @@ export function registerExperimentTools({
               const resultsRes = await fetchWithRateLimit(
                 `${baseApiUrl}/api/v1/experiments/${experimentId}/results`,
                 {
-                  headers: {
-                    Authorization: `Bearer ${apiKey}`,
-                  },
+                  headers: buildHeaders(apiKey, false),
                 }
               );
               await handleResNotOk(resultsRes);
@@ -172,9 +168,7 @@ export function registerExperimentTools({
               const resultsRes = await fetchWithRateLimit(
                 `${baseApiUrl}/api/v1/experiments/${experiment.id}/results`,
                 {
-                  headers: {
-                    Authorization: `Bearer ${apiKey}`,
-                  },
+                  headers: buildHeaders(apiKey, false),
                 }
               );
               await handleResNotOk(resultsRes);
@@ -247,10 +241,7 @@ export function registerExperimentTools({
         const res = await fetchWithRateLimit(
           `${baseApiUrl}/api/v1/attributes?${queryParams.toString()}`,
           {
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              "Content-Type": "application/json",
-            },
+            headers: buildHeaders(apiKey),
           }
         );
 
@@ -388,10 +379,7 @@ export function registerExperimentTools({
           `${baseApiUrl}/api/v1/experiments`,
           {
             method: "POST",
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              "Content-Type": "application/json",
-            },
+            headers: buildHeaders(apiKey),
             body: JSON.stringify(experimentPayload),
           }
         );
@@ -432,10 +420,7 @@ export function registerExperimentTools({
             `${baseApiUrl}/api/v1/features/${featureId}`,
             {
               method: "POST",
-              headers: {
-                Authorization: `Bearer ${apiKey}`,
-                "Content-Type": "application/json",
-              },
+              headers: buildHeaders(apiKey),
               body: JSON.stringify(flagPayload),
             }
           );
