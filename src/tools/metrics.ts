@@ -1,13 +1,19 @@
 import { z } from "zod";
 import {
   ExtendedToolsInterface,
-  generateLinkToGrowthBook,
   handleResNotOk,
   paginationSchema,
   fetchWithRateLimit,
   fetchWithPagination,
   buildHeaders,
 } from "../utils.js";
+import type {
+  ListMetricsResponse,
+  ListFactMetricsResponse,
+  GetMetricResponse,
+  GetFactMetricResponse,
+} from "../api-type-helpers.js";
+import { formatMetricsList, formatMetricDetail, formatApiError } from "../format-responses.js";
 
 interface MetricsTools extends ExtendedToolsInterface {}
 
@@ -64,34 +70,31 @@ export function registerMetricsTools({
 
           await handleResNotOk(res);
 
-          const data = await res.json();
-
-          const linkToGrowthBook = generateLinkToGrowthBook(
-            appOrigin,
-            data.factMetric ? "fact-metrics" : "metric",
-            metricId
-          );
+          const data =
+            metricId.startsWith("fact__")
+              ? ((await res.json()) as GetFactMetricResponse)
+              : ((await res.json()) as GetMetricResponse);
 
           return {
             content: [
               {
                 type: "text",
-                text:
-                  JSON.stringify(data) +
-                  `\n**Critical** Show the user the link to the metric in GrowthBook: [View the metric in GrowthBook](${linkToGrowthBook})
-      `,
+                text: formatMetricDetail(data, appOrigin),
               },
             ],
           };
         } catch (error) {
-          throw new Error(`Error fetching metric: ${error}`);
+          throw new Error(formatApiError(error, `fetching metric '${metricId}'`, [
+            "Check the metric ID is correct. Fact metric IDs start with 'fact__'.",
+            "Use get_metrics without a metricId to list all available metrics.",
+          ]));
         }
       }
 
       try {
         const additionalParams = project ? { projectId: project } : undefined;
 
-        const metricsData = await fetchWithPagination(
+        const metricsData = (await fetchWithPagination(
           baseApiUrl,
           apiKey,
           "/api/v1/metrics",
@@ -99,9 +102,9 @@ export function registerMetricsTools({
           offset,
           mostRecent,
           additionalParams
-        );
+        )) as ListMetricsResponse;
 
-        const factMetricData = await fetchWithPagination(
+        const factMetricData = (await fetchWithPagination(
           baseApiUrl,
           apiKey,
           "/api/v1/fact-metrics",
@@ -109,7 +112,7 @@ export function registerMetricsTools({
           offset,
           mostRecent,
           additionalParams
-        );
+        )) as ListFactMetricsResponse;
 
         // Reverse arrays for mostRecent to show newest-first
         if (mostRecent && offset === 0) {
@@ -121,16 +124,13 @@ export function registerMetricsTools({
           }
         }
 
-        const metricData = {
-          metrics: metricsData,
-          factMetrics: factMetricData,
-        };
-
         return {
-          content: [{ type: "text", text: JSON.stringify(metricData) }],
+          content: [{ type: "text", text: formatMetricsList(metricsData, factMetricData) }],
         };
       } catch (error) {
-        throw new Error(`Error fetching metrics: ${error}`);
+        throw new Error(formatApiError(error, "fetching metrics", [
+          "Check that your GB_API_KEY has permission to read metrics.",
+        ]));
       }
     }
   );

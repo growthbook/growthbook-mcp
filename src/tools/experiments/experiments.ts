@@ -1,6 +1,5 @@
 import { z } from "zod";
 import {
-  generateLinkToGrowthBook,
   getDocsMetadata,
   handleResNotOk,
   type ExtendedToolsInterface,
@@ -13,6 +12,19 @@ import {
   mergeRuleIntoFeatureFlag,
   buildHeaders,
 } from "../../utils.js";
+import type {
+  ListExperimentsResponse,
+  GetExperimentResponse,
+  PostExperimentResponse,
+  ListAttributesResponse,
+} from "../../api-type-helpers.js";
+import {
+  formatExperimentList,
+  formatExperimentDetail,
+  formatExperimentCreated,
+  formatAttributes,
+  formatApiError,
+} from "../../format-responses.js";
 import { getDefaults } from "../defaults.js";
 import { type Experiment } from "../../types/types.js";
 import { handleSummaryMode } from "./experiment-summary.js";
@@ -70,47 +82,43 @@ export function registerExperimentTools({
           );
 
           await handleResNotOk(res);
-          const data = await res.json();
+          const data = (await res.json()) as GetExperimentResponse;
+          const dataWithResult = data as GetExperimentResponse & {
+            result?: unknown;
+          };
 
           // Fetch results
           if (mode === "full") {
-            if (data.status === "draft") {
-              data.result = null;
-            }
-            try {
-              const resultsRes = await fetchWithRateLimit(
-                `${baseApiUrl}/api/v1/experiments/${experimentId}/results`,
-                {
-                  headers: buildHeaders(apiKey, false),
-                }
-              );
-              await handleResNotOk(resultsRes);
-              const resultsData = await resultsRes.json();
-              data.result = resultsData.result;
-            } catch (error) {
-              console.error(
-                `Error fetching results for experiment ${experimentId}`,
-                error
-              );
+            if (data.experiment.status === "draft") {
+              dataWithResult.result = null;
+            } else {
+              try {
+                const resultsRes = await fetchWithRateLimit(
+                  `${baseApiUrl}/api/v1/experiments/${experimentId}/results`,
+                  {
+                    headers: buildHeaders(apiKey, false),
+                  }
+                );
+                await handleResNotOk(resultsRes);
+                const resultsData = await resultsRes.json();
+                dataWithResult.result = resultsData.result;
+              } catch (error) {
+                console.error(
+                  `Error fetching results for experiment ${experimentId}`,
+                  error
+                );
+              }
             }
           }
 
-          const linkToGrowthBook = generateLinkToGrowthBook(
-            appOrigin,
-            "experiment",
-            experimentId
-          );
-          const text = `
-      ${JSON.stringify(data)}
-      
-      [View the experiment in GrowthBook](${linkToGrowthBook})
-      `;
-
           return {
-            content: [{ type: "text", text }],
+            content: [{ type: "text", text: formatExperimentDetail(dataWithResult, appOrigin) }],
           };
         } catch (error) {
-          throw new Error(`Error getting experiment: ${error}`);
+          throw new Error(formatApiError(error, `fetching experiment '${experimentId}'`, [
+            "Check the experiment ID is correct.",
+            "Use get_experiments without an experimentId to list all available experiments.",
+          ]));
         }
       }
 
@@ -139,7 +147,7 @@ export function registerExperimentTools({
       await reportProgress(1, "Fetching experiments...");
 
       try {
-        const data = await fetchWithPagination(
+        const data = (await fetchWithPagination(
           baseApiUrl,
           apiKey,
           "/api/v1/experiments",
@@ -147,14 +155,14 @@ export function registerExperimentTools({
           offset,
           mostRecent,
           project ? { projectId: project } : undefined
-        );
+        )) as ListExperimentsResponse;
 
-        let experiments = (data.experiments as Experiment[]) || [];
+        let experiments: Experiment[] = (data.experiments as Experiment[]) || [];
 
         // Reverse experiments array for mostRecent to show newest-first
         if (mostRecent && offset === 0 && Array.isArray(experiments)) {
           experiments = experiments.reverse();
-          data.experiments = experiments;
+          data.experiments = experiments as ListExperimentsResponse["experiments"];
         }
 
         if (mode === "full" || mode === "summary") {
@@ -211,10 +219,12 @@ export function registerExperimentTools({
         await reportProgress(2, "Processing results...");
 
         return {
-          content: [{ type: "text", text: JSON.stringify(data) }],
+          content: [{ type: "text", text: formatExperimentList(data) }],
         };
       } catch (error) {
-        throw new Error(`Error fetching experiments: ${error}`);
+        throw new Error(formatApiError(error, "fetching experiments", [
+          "Check that your GB_API_KEY has permission to read experiments.",
+        ]));
       }
     }
   );
@@ -247,12 +257,14 @@ export function registerExperimentTools({
 
         await handleResNotOk(res);
 
-        const data = await res.json();
+        const data = (await res.json()) as ListAttributesResponse;
         return {
-          content: [{ type: "text", text: JSON.stringify(data) }],
+          content: [{ type: "text", text: formatAttributes(data) }],
         };
       } catch (error) {
-        throw new Error(`Error fetching attributes: ${error}`);
+        throw new Error(formatApiError(error, "fetching attributes", [
+          "Check that your GB_API_KEY has permission to read attributes.",
+        ]));
       }
     }
   );
@@ -386,7 +398,8 @@ export function registerExperimentTools({
 
         await handleResNotOk(experimentRes);
 
-        const experimentData = await experimentRes.json();
+        const experimentData =
+          (await experimentRes.json()) as PostExperimentResponse;
 
         let flagData = null;
         if (featureId) {
@@ -428,31 +441,19 @@ export function registerExperimentTools({
           await handleResNotOk(flagRes);
 
           flagData = await flagRes.json();
-        }
-
-        const experimentLink = generateLinkToGrowthBook(
-          appOrigin,
-          "experiment",
-          experimentData.experiment.id
-        );
+        } // flagData is UpdateFeatureResponse when featureId was set
 
         const { stub, docs, language } = getDocsMetadata(fileExtension);
-        const flagText =
-          featureId &&
-          `**How to implement the feature flag experiment in your code:**
----
-${stub}
----
-**Learn more about implementing experiments in your codebase:**
-See the [GrowthBook ${language} docs](${docs}).`;
-
-        const text = `**✅ Your draft experiment \`${name}\` is ready!.** [View the experiment in GrowthBook](${experimentLink}) to review and launch.\n\n${flagText}`;
 
         return {
-          content: [{ type: "text", text }],
+          content: [{ type: "text", text: formatExperimentCreated(experimentData, appOrigin, featureId ? stub : undefined, language, docs) }],
         };
       } catch (error) {
-        throw new Error(`Error creating experiment: ${error}`);
+        throw new Error(formatApiError(error, `creating experiment '${name}'`, [
+          "Call get_defaults first and use the returned datasource/assignment query IDs.",
+          "If linking to a feature flag, verify the flag exists with get_feature_flags.",
+          "Check that variation values match the specified valueType.",
+        ]));
       }
     }
   );

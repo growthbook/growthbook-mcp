@@ -2,7 +2,6 @@ import { z } from "zod";
 import {
   getDocsMetadata,
   handleResNotOk,
-  generateLinkToGrowthBook,
   type ExtendedToolsInterface,
   paginationSchema,
   featureFlagSchema,
@@ -12,6 +11,14 @@ import {
   mergeRuleIntoFeatureFlag,
   buildHeaders,
 } from "../utils.js";
+import {
+  formatFeatureFlagList,
+  formatFeatureFlagDetail,
+  formatFeatureFlagCreated,
+  formatForceRuleCreated,
+  formatStaleSafeRollouts,
+  formatApiError,
+} from "../format-responses.js";
 import { exec } from "child_process";
 import { getDefaults } from "./defaults.js";
 
@@ -95,32 +102,29 @@ export function registerFeatureTools({
 
         const data = await res.json();
         const { docs, language, stub } = getDocsMetadata(fileExtension);
-        const linkToGrowthBook = generateLinkToGrowthBook(
-          appOrigin,
-          "features",
-          id
-        );
-        const text = `This is the API response: ${JSON.stringify(data)}
-
-        Additionally, here is a template of what to show to the user:
-
-        **✅ Your feature flag \`my-flag-name\` is ready!**
-        [View it in GrowthBook](${linkToGrowthBook})
-
-        **How to use it in your code:**
-        (To the LLM agent. Use the text below to properly add the feature flag to the codebase. Also, surface the relevant docs/implemenation to the user)
-
-        ${stub}
-
-        **Want to learn more?**
-        See the [GrowthBook ${language} docs](${docs})
-      `;
 
         return {
-          content: [{ type: "text", text }],
+          content: [
+            {
+              type: "text",
+              text: formatFeatureFlagCreated(
+                data,
+                appOrigin,
+                stub,
+                language,
+                docs
+              ),
+            },
+          ],
         };
       } catch (error) {
-        throw new Error(`Error creating feature flag: ${error}`);
+        throw new Error(
+          formatApiError(error, `creating feature flag '${id}'`, [
+            "Check the id is valid (letters, numbers, _, -, ., :, | only).",
+            "A flag with this id may already exist — use get_feature_flags to check.",
+            "If scoping to a project, verify the project id with get_projects.",
+          ])
+        );
       }
     }
   );
@@ -194,35 +198,31 @@ export function registerFeatureTools({
         await handleResNotOk(res);
 
         const data = await res.json();
-
-        const linkToGrowthBook = generateLinkToGrowthBook(
-          appOrigin,
-          "features",
-          featureId
-        );
         const { docs, language, stub } = getDocsMetadata(fileExtension);
 
-        const text = `This is the API response: ${JSON.stringify(data)}
-
-        Additionally, here is a template of what to show to the user:
-
-        **✅ Your feature flag \`my-flag-name\` is ready!.**
-        [View it in GrowthBook](${linkToGrowthBook})
-    
-        **How to use it in your code:**
-        (To the LLM agent. Use the text below to properly add the feature flag to the codebase. Also, surface the relevant docs/implemenation to the user)
-
-        ${stub}
-
-        **Want to learn more?**
-        See the [GrowthBook ${language} docs](${docs})
-      `;
-
         return {
-          content: [{ type: "text", text }],
+          content: [
+            {
+              type: "text",
+              text: formatForceRuleCreated(
+                data,
+                appOrigin,
+                featureId,
+                stub,
+                language,
+                docs
+              ),
+            },
+          ],
         };
       } catch (error) {
-        throw new Error(`Error creating force rule: ${error}`);
+        throw new Error(
+          formatApiError(error, `adding rule to '${featureId}'`, [
+            `Check that feature flag '${featureId}' exists — use get_feature_flags to verify.`,
+            'Ensure the value matches the flag\'s valueType (e.g. "true" for boolean flags).',
+            'For condition syntax, use MongoDB-style JSON: {"country": "US"}',
+          ])
+        );
       }
     }
   );
@@ -260,24 +260,18 @@ export function registerFeatureTools({
 
           const data = await res.json();
 
-          const linkToGrowthBook = generateLinkToGrowthBook(
-            appOrigin,
-            "features",
-            featureFlagId
-          );
-          const text = `This is the API response: ${JSON.stringify(data)}
-  
-Share information about the feature flag with the user. In particular, give details about the enabled environments,
-rules for each environment, and the default value. If the feature flag is archived or doesn't exist, inform the user and
-ask if they want to remove references to the feature flag from the codebase.
-  
-[View it in GrowthBook](${linkToGrowthBook})`;
-
           return {
-            content: [{ type: "text", text }],
+            content: [
+              { type: "text", text: formatFeatureFlagDetail(data, appOrigin) },
+            ],
           };
         } catch (error) {
-          throw new Error(`Error fetching flags: ${error}`);
+          throw new Error(
+            formatApiError(error, `fetching feature flag '${featureFlagId}'`, [
+              "Check the feature flag id is correct.",
+              "Use get_feature_flags without a featureFlagId to list all available flags.",
+            ])
+          );
         }
       }
 
@@ -299,10 +293,14 @@ ask if they want to remove references to the feature flag from the codebase.
         }
 
         return {
-          content: [{ type: "text", text: JSON.stringify(data) }],
+          content: [{ type: "text", text: formatFeatureFlagList(data) }],
         };
       } catch (error) {
-        throw new Error(`Error fetching flags: ${error}`);
+        throw new Error(
+          formatApiError(error, "fetching feature flags", [
+            "Check that your GB_API_KEY has permission to read features.",
+          ])
+        );
       }
     }
   );
@@ -357,21 +355,20 @@ ask if they want to remove references to the feature flag from the codebase.
           });
         });
 
-        const text = `
-        ${JSON.stringify(filteredSafeRollouts)}
-
-        Share information about the rolled-back or released safe rollout rules with the user. Safe Rollout rules are stored under
-        environmentSettings, keyed by environment and are within the rules array with a type of "safe-rollout". Ask the user if they
-        would like to remove references to the feature associated with the rolled-back or released safe rollout rules and if they do,
-        remove the references and associated GrowthBook code and replace the values with controlValue if the safe rollout rule is rolled-back or with the
-        variationValue if the safe rollout is released. In addition to the current file, you may need to update other files in the codebase.
-        `;
-
         return {
-          content: [{ type: "text", text }],
+          content: [
+            {
+              type: "text",
+              text: formatStaleSafeRollouts(filteredSafeRollouts),
+            },
+          ],
         };
       } catch (error) {
-        throw new Error(`Error fetching stale safe rollouts: ${error}`);
+        throw new Error(
+          formatApiError(error, "fetching stale safe rollouts", [
+            "Check that your GB_API_KEY has permission to read features.",
+          ])
+        );
       }
     }
   );

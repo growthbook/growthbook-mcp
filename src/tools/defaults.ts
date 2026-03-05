@@ -4,6 +4,12 @@ import {
   fetchWithRateLimit,
   buildHeaders,
 } from "../utils.js";
+import type {
+  ListExperimentsResponse,
+  ListDataSourcesResponse,
+  ListEnvironmentsResponse,
+} from "../api-type-helpers.js";
+import { formatDefaults, formatApiError } from "../format-responses.js";
 import envPaths from "env-paths";
 import { writeFile, readFile, mkdir, unlink } from "fs/promises";
 import { join } from "path";
@@ -75,9 +81,10 @@ export async function createDefaults(
       }
     );
     await handleResNotOk(experimentsResponse);
-    const experimentData = await experimentsResponse.json();
+    const experimentData =
+      (await experimentsResponse.json()) as ListExperimentsResponse;
 
-    if (experimentData.experiments.length === 0) {
+    if (experimentData.experiments?.length === 0) {
       // No experiments: return assignment query and environments if possible
       const assignmentQueryResponse = await fetchWithRateLimit(
         `${baseApiUrl}/api/v1/data-sources`,
@@ -86,16 +93,17 @@ export async function createDefaults(
         }
       );
       await handleResNotOk(assignmentQueryResponse);
-      const dataSourceData = await assignmentQueryResponse.json();
+      const dataSourceData =
+        (await assignmentQueryResponse.json()) as ListDataSourcesResponse;
 
-      if (dataSourceData.dataSources.length === 0) {
+      if (dataSourceData.dataSources?.length === 0) {
         throw new Error(
           "No data source or assignment query found. Experiments require a data source/assignment query. Set these up in the GrowthBook and try again."
         );
       }
 
       const assignmentQuery: string =
-        dataSourceData.dataSources[0].assignmentQueries[0].id;
+        dataSourceData.dataSources![0].assignmentQueries![0].id;
 
       const environmentsResponse = await fetchWithRateLimit(
         `${baseApiUrl}/api/v1/environments`,
@@ -104,8 +112,9 @@ export async function createDefaults(
         }
       );
       await handleResNotOk(environmentsResponse);
-      const environmentsData = await environmentsResponse.json();
-      const environments: string[] = environmentsData.environments.map(
+      const environmentsData =
+        (await environmentsResponse.json()) as ListEnvironmentsResponse;
+      const environments: string[] = (environmentsData.environments || []).map(
         ({ id }: { id: string }) => id
       );
 
@@ -128,18 +137,19 @@ export async function createDefaults(
     if (experimentData.hasMore) {
       const mostRecentExperiments = await fetchWithRateLimit(
         `${baseApiUrl}/api/v1/experiments?offset=${
-          experimentData.total -
-          Math.min(50, experimentData.count + experimentData.offset)
-        }&limit=${Math.min(50, experimentData.count + experimentData.offset)}`,
+          experimentData.total! -
+          Math.min(50, (experimentData.count ?? 0) + (experimentData.offset ?? 0))
+        }&limit=${Math.min(50, (experimentData.count ?? 0) + (experimentData.offset ?? 0))}`,
         {
           headers: buildHeaders(apiKey),
         }
       );
       await handleResNotOk(mostRecentExperiments);
-      const mostRecentExperimentData = await mostRecentExperiments.json();
-      experiments = mostRecentExperimentData.experiments as Experiment[];
+      const mostRecentExperimentData =
+        (await mostRecentExperiments.json()) as ListExperimentsResponse;
+      experiments = (mostRecentExperimentData.experiments || []) as Experiment[];
     } else {
-      experiments = experimentData.experiments as Experiment[];
+      experiments = (experimentData.experiments || []) as Experiment[];
     }
 
     // Aggregate experiment stats
@@ -202,8 +212,9 @@ export async function createDefaults(
       }
     );
     await handleResNotOk(environmentsResponse);
-    const environmentsData = await environmentsResponse.json();
-    const environments: string[] = environmentsData.environments.map(
+    const environmentsData =
+      (await environmentsResponse.json()) as ListEnvironmentsResponse;
+    const environments: string[] = (environmentsData.environments || []).map(
       ({ id }: { id: string }) => id
     );
 
@@ -391,7 +402,7 @@ export async function registerDefaultsTools({
         content: [
           {
             type: "text",
-            text: JSON.stringify(defaults),
+            text: formatDefaults(defaults),
           },
         ],
       };

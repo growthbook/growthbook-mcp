@@ -1,11 +1,11 @@
 import { z } from "zod";
 import {
-  handleResNotOk,
   type BaseToolsInterface,
   paginationSchema,
-  fetchWithRateLimit,
   fetchWithPagination,
 } from "../utils.js";
+import type { ListProjectsResponse } from "../api-type-helpers.js";
+import { formatProjects, formatApiError } from "../format-responses.js";
 
 interface ProjectTools extends BaseToolsInterface {}
 
@@ -32,25 +32,28 @@ export function registerProjectTools({
     },
     async ({ limit, offset, mostRecent }) => {
       try {
-        const data = await fetchWithPagination(
+        const data = (await fetchWithPagination(
           baseApiUrl,
           apiKey,
           "/api/v1/projects",
           limit,
           offset,
           mostRecent
-        );
+        )) as ListProjectsResponse;
 
-        // Reverse projects array for mostRecent to show newest-first
         if (mostRecent && offset === 0 && Array.isArray(data.projects)) {
           data.projects = data.projects.reverse();
         }
 
         return {
-          content: [{ type: "text", text: JSON.stringify(data) }],
+          content: [{ type: "text", text: formatProjects(data) }],
         };
       } catch (error) {
-        throw new Error(`Error fetching projects: ${error}`);
+        throw new Error(
+          formatApiError(error, "fetching projects", [
+            "Check that your GB_API_KEY has permission to read projects.",
+          ])
+        );
       }
     }
   );

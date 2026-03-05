@@ -724,3 +724,10 @@ export async function fetchWithPagination(
   await handleResNotOk(mostRecentRes);
   return await mostRecentRes.json();
 }
+
+export function formatList(items: string[]): string {
+  return new Intl.ListFormat("en", {
+    style: "long",
+    type: "conjunction",
+  }).format(items);
+}

@@ -4,6 +4,8 @@ import {
   fetchWithRateLimit,
   buildHeaders,
 } from "../utils.js";
+import type { ListEnvironmentsResponse } from "../api-type-helpers.js";
+import { formatEnvironments, formatApiError } from "../format-responses.js";
 import { z } from "zod";
 
 interface EnvironmentTools extends BaseToolsInterface {}
@@ -38,12 +40,14 @@ export function registerEnvironmentTools({
 
         await handleResNotOk(res);
 
-        const data = await res.json();
+        const data = (await res.json()) as ListEnvironmentsResponse;
         return {
-          content: [{ type: "text", text: JSON.stringify(data) }],
+          content: [{ type: "text", text: formatEnvironments(data) }],
         };
       } catch (error) {
-        throw new Error(`Error fetching environments: ${error}`);
+        throw new Error(formatApiError(error, "fetching environments", [
+          "Check that your GB_API_KEY has permission to read environments.",
+        ]));
       }
     }
   );

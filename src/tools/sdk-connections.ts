@@ -7,6 +7,11 @@ import {
   fetchWithPagination,
   buildHeaders,
 } from "../utils.js";
+import type {
+  ListSdkConnectionsResponse,
+  CreateSdkConnectionResponse,
+} from "../api-type-helpers.js";
+import { formatSdkConnections, formatEnvironments, formatApiError } from "../format-responses.js";
 
 interface SdkConnectionTools extends BaseToolsInterface {}
 export function registerSdkConnectionTools({
@@ -36,7 +41,7 @@ export function registerSdkConnectionTools({
     },
     async ({ limit, offset, mostRecent, project }) => {
       try {
-        const data = await fetchWithPagination(
+        const data = (await fetchWithPagination(
           baseApiUrl,
           apiKey,
           "/api/v1/sdk-connections",
@@ -44,7 +49,7 @@ export function registerSdkConnectionTools({
           offset,
           mostRecent,
           project ? { projectId: project } : undefined
-        );
+        )) as ListSdkConnectionsResponse;
 
         // Reverse connections array for mostRecent to show newest-first
         if (mostRecent && offset === 0 && Array.isArray(data.connections)) {
@@ -52,10 +57,12 @@ export function registerSdkConnectionTools({
         }
 
         return {
-          content: [{ type: "text", text: JSON.stringify(data) }],
+          content: [{ type: "text", text: formatSdkConnections(data) }],
         };
       } catch (error) {
-        throw new Error(`Error fetching sdk connections: ${error}`);
+        throw new Error(formatApiError(error, "fetching SDK connections", [
+          "Check that your GB_API_KEY has permission to read SDK connections.",
+        ]));
       }
     }
   );
@@ -127,13 +134,15 @@ export function registerSdkConnectionTools({
 
           await handleResNotOk(res);
           const data = await res.json();
-          const text = `${JSON.stringify(data)}
-    
-        Here is the list of environments. Ask the user to select one and use the key in the create_sdk_connection tool.
-        `;
-
           return {
-            content: [{ type: "text", text }],
+            content: [
+              {
+                type: "text",
+                text:
+                  formatEnvironments(data) +
+                  "\n\nAsk the user to select an environment, then call create_sdk_connection with the chosen environment id.",
+              },
+            ],
           };
         } catch (error) {
           return {
@@ -161,13 +170,23 @@ export function registerSdkConnectionTools({
 
         await handleResNotOk(res);
 
-        const data = await res.json();
+        const data =
+          (await res.json()) as CreateSdkConnectionResponse;
 
+        const conn = data.sdkConnection;
+        const text = conn
+          ? `**SDK connection \`${conn.name}\` created.**\nClient key: \`${conn.key}\`\nEnvironment: ${conn.environment}\nLanguage(s): ${conn.languages.join(
+              ", "
+            )}`
+          : `SDK connection created.\n${JSON.stringify(data)}`;
         return {
-          content: [{ type: "text", text: JSON.stringify(data) }],
+          content: [{ type: "text", text }],
         };
       } catch (error) {
-        throw new Error(`Error creating sdk connection: ${error}`);
+        throw new Error(formatApiError(error, "creating SDK connection", [
+          "Ensure the environment exists — use get_environments to check available environments.",
+          "Check that the language parameter is a valid SDK language.",
+        ]));
       }
     }
   );
