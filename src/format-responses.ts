@@ -1,4 +1,5 @@
 import { formatList, generateLinkToGrowthBook } from "./utils.js";
+import type { MetricLookup } from "./tools/experiments/summary-logic.js";
 import type {
   ListSdkConnectionsResponse,
   ListProjectsResponse,
@@ -17,6 +18,23 @@ import type {
   GetFactMetricResponse,
   Feature,
 } from "./api-type-helpers.js";
+
+// Helper to resolve a metric ID to a display name using an optional lookup
+function resolveMetric(metricId: string, metricLookup?: MetricLookup): string {
+  if (!metricLookup) return `\`${metricId}\``;
+  const info = metricLookup.get(metricId);
+  if (!info) return `\`${metricId}\``;
+  const inverse = info.inverse ? " (inverse)" : "";
+  return `**${info.name}** (\`${metricId}\`, ${info.type}${inverse})`;
+}
+
+function resolveMetricList(
+  metrics: { metricId: string }[] | undefined,
+  metricLookup?: MetricLookup
+): string {
+  if (!metrics?.length) return "none";
+  return metrics.map((g) => resolveMetric(g.metricId, metricLookup)).join(", ");
+}
 
 // ─── Projects ───────────────────────────────────────────────────────
 export function formatProjects(data: ListProjectsResponse): string {
@@ -307,7 +325,8 @@ export function formatExperimentDetail(
   data:
     | (GetExperimentResponse & { result?: unknown })
     | GetExperimentResponse["experiment"],
-  appOrigin: string
+  appOrigin: string,
+  metricLookup?: MetricLookup
 ): string {
   const e =
     "experiment" in data && data.experiment
@@ -321,11 +340,6 @@ export function formatExperimentDetail(
         .map((v) => `${v.name} (key: \`${v.key}\`, variationId: \`${v.variationId}\`)`)
         .join(", ")
     : "none";
-  const goals = e.settings?.goals?.map((g) => g.metricId).join(", ") || "none";
-  const guardrails =
-    e.settings?.guardrails?.map((g) => g.metricId).join(", ") || "none";
-  const secondaryMetrics =
-    e.settings?.secondaryMetrics?.map((g) => g.metricId).join(", ") || "none";
 
   const parts: string[] = [
     `**Experiment: ${e.name}** (id: \`${e.id}\`, status: ${e.status}, type: ${e.type || "standard"})`,
@@ -335,9 +349,10 @@ export function formatExperimentDetail(
   if (e.hypothesis) parts.push(`Hypothesis: ${e.hypothesis}`);
   if (e.description) parts.push(`Description: ${e.description}`);
   parts.push(`Variations: ${variations}`);
-  parts.push(`Goal metrics: ${goals}`);
-  if (secondaryMetrics !== "none") parts.push(`Secondary metrics: ${secondaryMetrics}`);
-  parts.push(`Guardrail metrics: ${guardrails}`);
+  parts.push(`Goal metrics: ${resolveMetricList(e.settings?.goals, metricLookup)}`);
+  const secondary = resolveMetricList(e.settings?.secondaryMetrics, metricLookup);
+  if (secondary !== "none") parts.push(`Secondary metrics: ${secondary}`);
+  parts.push(`Guardrail metrics: ${resolveMetricList(e.settings?.guardrails, metricLookup)}`);
   if (e.trackingKey) parts.push(`Tracking key: \`${e.trackingKey}\``);
   if (e.hashAttribute) parts.push(`Hash attribute: \`${e.hashAttribute}\``);
   if (e.project) parts.push(`Project: ${e.project}`);

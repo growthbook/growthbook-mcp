@@ -27,7 +27,7 @@ import {
 } from "../../format-responses.js";
 import { getDefaults } from "../defaults.js";
 import { type Experiment } from "../../types/types.js";
-import { handleSummaryMode } from "./experiment-summary.js";
+import { handleSummaryMode, getMetricLookup } from "./experiment-summary.js";
 
 interface ExperimentTools extends ExtendedToolsInterface {}
 
@@ -87,8 +87,8 @@ export function registerExperimentTools({
             result?: unknown;
           };
 
-          // Fetch results
           if (mode === "full") {
+            // Fetch results
             if (data.experiment.status === "draft") {
               dataWithResult.result = null;
             } else {
@@ -109,6 +109,25 @@ export function registerExperimentTools({
                 );
               }
             }
+
+            // Resolve metric IDs to names
+            const metricIds = new Set<string>();
+            for (const g of data.experiment.settings?.goals || []) metricIds.add(g.metricId);
+            for (const g of data.experiment.settings?.guardrails || []) metricIds.add(g.metricId);
+            for (const g of data.experiment.settings?.secondaryMetrics || []) metricIds.add(g.metricId);
+            const metricLookup = await getMetricLookup(baseApiUrl, apiKey, metricIds);
+
+            // Multi-block response: curated summary first, raw results second
+            const content: { type: "text"; text: string }[] = [
+              { type: "text", text: formatExperimentDetail(dataWithResult, appOrigin, metricLookup) },
+            ];
+            if (dataWithResult.result) {
+              content.push({
+                type: "text",
+                text: `**Full results data (raw):**\n\`\`\`json\n${JSON.stringify(dataWithResult.result, null, 2)}\n\`\`\``,
+              });
+            }
+            return { content };
           }
 
           return {
@@ -217,6 +236,13 @@ export function registerExperimentTools({
         }
 
         await reportProgress(2, "Processing results...");
+
+        // Full mode: return raw JSON since users expect complete results data
+        if (mode === "full") {
+          return {
+            content: [{ type: "text", text: JSON.stringify(data) }],
+          };
+        }
 
         return {
           content: [{ type: "text", text: formatExperimentList(data) }],

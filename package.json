@@ -20,7 +20,7 @@
     "bump:minor": "npm version minor --no-git-tag-version && npm run sync-version",
     "bump:major": "npm version major --no-git-tag-version && npm run sync-version",
     "mcpb:build": "npx -y @anthropic-ai/mcpb -- pack",
-    "generate-api-types": "npx openapi-typescript https://api.growthbook.io/api/v1/openapi.yaml -o src/api-types.ts"
+    "generate-api-types": "npx openapi-typescript https://api.growthbook.io/api/v1/openapi.yaml -o src/api-types.d.ts"
   },
   "bin": {
     "mcp": "server/index.js"

@@ -144,7 +144,7 @@ async function processBatch<T, R>(
   return results;
 }
 
-async function getMetricLookup(
+export async function getMetricLookup(
   baseApiUrl: string,
   apiKey: string,
   metricIds: Set<string>
