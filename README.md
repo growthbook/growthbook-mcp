@@ -19,22 +19,4 @@ Use the following env variables to configure the MCP server.
 | GB_APP_ORIGIN | Optional | Your GrowthBook app URL Defaults to `https://app.growthbook.io`.  |
 | GB_HTTP_HEADER_* | Optional | Custom HTTP headers to include in all GrowthBook API requests. Use the pattern `GB_HTTP_HEADER_<NAME>` where `<NAME>` is converted to proper HTTP header format (underscores become hyphens). Examples: `GB_HTTP_HEADER_X_TENANT_ID=abc123` becomes `X-Tenant-ID: abc123`, `GB_HTTP_HEADER_CF_ACCESS_TOKEN=<token>` becomes `Cf-Access-Token: <token>`. Multiple custom headers can be configured. |
 
-**Custom Headers Examples**
-
-For multi-tenant deployments or proxy configurations, you can add custom headers:
-
-```bash
-# Multi-tenant identification
-GB_HTTP_HEADER_X_TENANT_ID=tenant-123
-
-# Cloudflare Access proxy authentication
-GB_HTTP_HEADER_CF_ACCESS_TOKEN=eyJhbGciOiJSUzI1NiIs...
-```
-
-**Security Best Practices**
-- Always use HTTPS for API communication (default for GrowthBook Cloud)
-- Store API keys and sensitive headers in environment variables, never hardcode them
-- Use the Authorization header (via GB_API_KEY) for authentication
-- Custom headers are useful for multi-tenant scenarios, proxy routing, or additional context
-
 Add the MCP server to your AI tool of choice. See the [official docs](https://docs.growthbook.io/integrations/mcp) for complete a complete guide.

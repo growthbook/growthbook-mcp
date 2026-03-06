@@ -11,12 +11,13 @@ import {
   mergeRuleIntoFeatureFlag,
   buildHeaders,
 } from "../utils.js";
+import type { GetStaleFeatureResponse } from "../api-type-helpers.js";
 import {
   formatFeatureFlagList,
   formatFeatureFlagDetail,
   formatFeatureFlagCreated,
   formatForceRuleCreated,
-  formatStaleSafeRollouts,
+  formatStaleFeatureFlags,
   formatApiError,
 } from "../format-responses.js";
 import { exec } from "child_process";
@@ -306,31 +307,52 @@ export function registerFeatureTools({
   );
 
   /**
-   * Tool: get_stale_safe_rollouts
+   * Tool: get_stale_feature_flags
    */
   server.registerTool(
-    "get_stale_safe_rollouts",
+    "get_stale_feature_flags",
     {
-      title: "Get Stale Safe Rollouts",
+      title: "Get Stale Feature Flags",
       description:
-        "Finds feature flags with completed safe rollout rules that can be cleaned up from your codebase. Safe rollouts gradually increase traffic while monitoring for regressions. Completed rollouts (released or rolled-back) indicate flag code can be simplified: released means the new value won, rolled-back means revert to control value. Use for technical debt cleanup.",
+        "Given a list of feature flag IDs, checks whether each one is stale and returns cleanup guidance including replacement values and SDK search patterns. You MUST provide featureIds — gather them first from the user, from the current file context, or by grepping the codebase for SDK patterns (isOn, getFeatureValue, useFeatureIsOn, useFeatureValue, evalFeature).",
       inputSchema: z.object({
-        limit: z.number().optional().default(100),
-        offset: z.number().optional().default(0),
+        featureIds: z
+          .array(z.string())
+          .optional()
+          .describe(
+            "REQUIRED. One or more feature flag IDs to check (e.g. [\"my-feature\", \"dark-mode\"]). Gather IDs first from the user, from code context, or by grepping for SDK usage patterns."
+          ),
       }),
       annotations: {
         readOnlyHint: true,
       },
     },
-    async ({ limit, offset }) => {
+    async ({ featureIds }) => {
       try {
-        const queryParams = new URLSearchParams({
-          limit: limit?.toString(),
-          offset: offset?.toString(),
-        });
+        if (!featureIds?.length) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: [
+                  "**featureIds is required.** This tool checks specific flags — it does not list all stale flags.",
+                  "",
+                  "To gather feature flag IDs, try one of these approaches:",
+                  "1. **Ask the user** which flags they want to check",
+                  "2. **Extract from current file context** — look for flag IDs in the open file",
+                  "3. **Grep the codebase** for GrowthBook SDK patterns:",
+                  '   `grep -rn "isOn\\|getFeatureValue\\|useFeatureIsOn\\|useFeatureValue\\|evalFeature" --include="*.{ts,tsx,js,jsx,py,go,rb}"`',
+                  "",
+                  "Then call this tool again with the discovered flag IDs.",
+                ].join("\n"),
+              },
+            ],
+          };
+        }
 
+        const ids = featureIds.join(",");
         const res = await fetchWithRateLimit(
-          `${baseApiUrl}/api/v1/features?${queryParams.toString()}`,
+          `${baseApiUrl}/api/v1/stale-features?ids=${encodeURIComponent(ids)}`,
           {
             headers: buildHeaders(apiKey),
           }
@@ -338,34 +360,17 @@ export function registerFeatureTools({
 
         await handleResNotOk(res);
 
-        const data = await res.json();
+        const data = (await res.json()) as GetStaleFeatureResponse;
 
-        const filteredSafeRollouts = data.features.filter((feature: any) => {
-          const envs: Record<string, any> = feature.environments;
-          if (!envs) return false;
-          return Object.values(envs).some((env: any) => {
-            const rules = env.rules;
-            if (!rules) return false;
-            return rules.some((rule: any) => {
-              return (
-                rule.type === "safe-rollout" &&
-                (rule.status === "rolled-back" || rule.status === "released")
-              );
-            });
-          });
-        });
+        const text = formatStaleFeatureFlags(data, featureIds);
 
         return {
-          content: [
-            {
-              type: "text",
-              text: formatStaleSafeRollouts(filteredSafeRollouts),
-            },
-          ],
+          content: [{ type: "text", text }],
         };
       } catch (error) {
         throw new Error(
-          formatApiError(error, "fetching stale safe rollouts", [
+          formatApiError(error, "checking stale features", [
+            "Check that the feature IDs are correct.",
             "Check that your GB_API_KEY has permission to read features.",
           ])
         );

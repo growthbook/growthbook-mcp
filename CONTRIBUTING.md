@@ -58,6 +58,10 @@ GrowthBook MCP is now ready to use 🤖
 - After making code changes, re-run `pnpm build` to rebuild.
 - Restart the server to pick up your changes.
 
+**Tip**
+Run this prompt to have an agent try all tools:
+`I want to test all of GrowthBook's MCP tools (I'm the developer and just connected a new version)`
+
 ## Submitting Pull Requests
 
 1. Fork the repository and create your branch.
@@ -78,3 +82,17 @@ For a better development and debugging experience, try the [MCP Inspector](https
 ```bash
 npx @modelcontextprotocol/inspector -e GB_API_KEY=<value> -e GB_EMAIL=<email> -e GB_API_URL=http://localhost:3100 -e GB_APP_ORIGIN=http://localhost:3000 node server/index.js
 ```
+
+## Submitting to Anthropic's Directory
+
+1. Build with `mcpb:build`
+2. Try uploading the build locally to Claude Desktop. Try out new prompts and tools to catch any permission errors.
+3. Complete the submission form: https://docs.google.com/forms/d/e/1FAIpQLScHtjkiCNjpqnWtFLIQStChXlvVcvX8NPXkMfjtYPDPymgang/viewform
+
+### Existing Values
+
+**MCP Server Description**
+Query and analyze your GrowthBook feature flags and experiments. Review experiment results, check flag configurations, examine metrics, and get insights on A/B test performance. Search documentation and understand your experimentation platform through natural conversation.
+
+**Desktop Extension GitHub Link**
+https://github.com/growthbook/growthbook-mcp

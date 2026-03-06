@@ -17,6 +17,7 @@ import type {
   GetMetricResponse,
   GetFactMetricResponse,
   Feature,
+  GetStaleFeatureResponse,
 } from "./api-type-helpers.js";
 
 // Helper to resolve a metric ID to a display name using an optional lookup
@@ -553,41 +554,132 @@ export function formatDefaults(defaults: any): string {
   return parts.join("\n");
 }
 
-// ─── Stale Safe Rollouts ────────────────────────────────────────────
-export function formatStaleSafeRollouts(features: Feature[]): string {
-  if (features.length === 0) {
-    return "No completed safe rollouts found. No cleanup needed.";
+// ─── Stale Features ─────────────────────────────────────────────────
+
+// Common SDK patterns to search for when removing a flag from the codebase
+const SDK_PATTERNS = [
+  // JS/TS/React
+  "isOn",
+  "getFeatureValue",
+  "useFeatureIsOn",
+  "useFeatureValue",
+  "evalFeature",
+  // Python
+  "is_on",
+  "get_feature_value",
+  // Go / Ruby / other
+  "IsOn",
+  "GetFeatureValue",
+  "feature_is_on",
+];
+
+function buildSearchPatterns(flagId: string): string {
+  return SDK_PATTERNS.map((fn) => `${fn}("${flagId}")`).join(", ");
+}
+
+export function formatStaleFeatureFlags(
+  data: GetStaleFeatureResponse,
+  requestedIds: string[]
+): string {
+  const features = data.features || {};
+  const foundIds = Object.keys(features);
+
+  if (foundIds.length === 0) {
+    return "No features found for the given IDs. Check that the feature IDs are correct and your API key has access.";
   }
 
-  const parts: string[] = [
-    `**${features.length} feature flag(s) with completed safe rollouts:**`,
-    "",
-  ];
+  const parts: string[] = [`**${foundIds.length} feature flag(s) checked:**`, ""];
 
-  for (const f of features) {
-    parts.push(`- **${f.id}** (${f.valueType})`);
-    const envs = f.environments || {};
-    for (const [env, config] of Object.entries(envs)) {
-      const rules = config?.rules || [];
-      for (const rule of rules) {
-        if (
-          rule.type === "safe-rollout" &&
-          (rule.status === "released" || rule.status === "rolled-back")
-        ) {
-          const action =
-            rule.status === "released"
-              ? `RELEASED — replace flag with variation value`
-              : `ROLLED BACK — replace flag with control value`;
-          parts.push(`  ${env}: ${action}`);
+  let staleCount = 0;
+  for (const id of requestedIds) {
+    const f = features[id];
+    if (!f) {
+      parts.push(`- **\`${id}\`**: NOT FOUND`);
+      continue;
+    }
+
+    if (f.neverStale) {
+      parts.push(
+        `- **\`${f.featureId}\`**: NOT STALE (stale detection disabled)`
+      );
+      continue;
+    }
+
+    if (!f.isStale) {
+      parts.push(
+        `- **\`${f.featureId}\`**: NOT STALE${f.staleReason ? ` (${f.staleReason})` : ""}`
+      );
+      continue;
+    }
+
+    // ── Stale flag: include replacement guidance ──
+    staleCount++;
+
+    const envEntries = f.staleByEnv ? Object.entries(f.staleByEnv) : [];
+    const envsWithValues = envEntries.filter(
+      ([, e]) => e.evaluatesTo !== undefined
+    );
+
+    let replacementValue: string | undefined;
+    let envNote: string;
+
+    if (envsWithValues.length === 0) {
+      replacementValue = undefined;
+      envNote =
+        "No deterministic value available — ask the user what the replacement should be.";
+    } else {
+      const values = new Set(envsWithValues.map(([, e]) => e.evaluatesTo));
+      if (values.size === 1) {
+        replacementValue = envsWithValues[0][1].evaluatesTo;
+        envNote = `All environments agree.`;
+      } else {
+        // Environments disagree — default to production
+        const prod = envsWithValues.find(([env]) => env === "production");
+        if (prod) {
+          replacementValue = prod[1].evaluatesTo;
+          const others = envsWithValues
+            .map(([env, e]) => `${env}=\`${e.evaluatesTo}\``)
+            .join(", ");
+          envNote = `Environments disagree (${others}). Using production value. Confirm with the user if a different environment should be used.`;
+        } else {
+          replacementValue = envsWithValues[0][1].evaluatesTo;
+          const others = envsWithValues
+            .map(([env, e]) => `${env}=\`${e.evaluatesTo}\``)
+            .join(", ");
+          envNote = `Environments disagree (${others}). No production environment found, using ${envsWithValues[0][0]}. Confirm with the user which environment to use.`;
         }
       }
     }
+
+    if (replacementValue !== undefined) {
+      parts.push(
+        `- **\`${f.featureId}\`**: STALE (${f.staleReason}) — replace with: \`${replacementValue}\``
+      );
+    } else {
+      parts.push(
+        `- **\`${f.featureId}\`**: STALE (${f.staleReason}) — needs manual review`
+      );
+    }
+    parts.push(`  ${envNote}`);
+    parts.push(`  Search for: ${buildSearchPatterns(id)}`);
+    parts.push("");
   }
 
-  parts.push("");
-  parts.push(
-    "For released rollouts, remove the feature flag code and use the variation value directly. For rolled-back rollouts, revert to the control value."
-  );
+  // Summary
+  const notFound = requestedIds.filter((id) => !features[id]);
+  if (notFound.length > 0) {
+    parts.push(
+      `${notFound.length} flag(s) not found: ${notFound.map((id) => `\`${id}\``).join(", ")}`
+    );
+  }
+
+  if (staleCount > 0) {
+    parts.push(
+      `**${staleCount} flag(s) ready for cleanup.** For each stale flag, find usages with the search patterns above, replace the flag check with the resolved value, and remove dead code branches. Confirm changes with the user before modifying files.`
+    );
+  } else {
+    parts.push("No stale flags found. All checked features are active.");
+  }
 
   return parts.join("\n");
 }

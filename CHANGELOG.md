@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.7.0] - 2026-03-06
+
+### Added
+
+- `get_stale_feature_flags` tool — checks whether feature flags are stale and returns cleanup guidance including replacement values and SDK search patterns
+- Agent-friendly response formatting for all tools following Anthropic's "Writing tools for agents" guidance
+- Rich detail views for feature flags (full rule details, prerequisites, schedules) and experiments (phases, metrics, linked features, result summaries)
+- Metric resolution in experiment full mode — shows metric names, types, and inverse status
+- Multi-block MCP responses for experiment full mode (curated summary + raw results)
+
+### Changed
+
+- Replaced raw JSON responses with curated, agent-optimized formatting across all tools
+- Tiered response detail: list views are scannable summaries, detail views include full configuration
+
+### Removed
+
+- `get_stale_safe_rollouts` tool — superseded by `get_stale_feature_flags` which covers all stale flag scenarios
+
+## [1.6.0] - 2026-02-26
+
+### Added
+
+- Custom HTTP headers support via `GB_HTTP_HEADER_*` environment variables (#32). Useful for multi-tenant deployments and proxy authentication (e.g. Cloudflare Access)
+
 ## [1.5.1] - 2026-02-03
 
 ### Changed
@@ -117,7 +142,7 @@ All notable changes to this project will be documented in this file.
   - `get_feature` - Get a single feature flag
   - `search` - Search for feature flags
   - `create_force_rule` - Create force rules for features
-  - `get_stale_safe_rollouts` - Get stale safe rollout rules
+  - `get_stale_safe_rollouts` - Get stale safe rollout rules (removed in 1.7.0, replaced by `get_stale_feature_flags`)
   - `generate_types` - Generate TypeScript types for feature flags
 - Experiment tools:
   - `get_experiment` - Get experiment details

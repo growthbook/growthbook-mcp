@@ -80,6 +80,10 @@ export type ListFactMetricsResponse =
 export type GetFactMetricResponse =
   Paths["/fact-metrics/{id}"]["get"]["responses"][200]["content"]["application/json"];
 
+// Stale features
+export type GetStaleFeatureResponse =
+  Paths["/stale-features"]["get"]["responses"][200]["content"]["application/json"];
+
 // Data sources (used by defaults)
 export type ListDataSourcesResponse =
   Paths["/data-sources"]["get"]["responses"][200]["content"]["application/json"];
