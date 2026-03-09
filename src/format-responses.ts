@@ -556,27 +556,6 @@ export function formatDefaults(defaults: any): string {
 
 // ─── Stale Features ─────────────────────────────────────────────────
 
-// Common SDK patterns to search for when removing a flag from the codebase
-const SDK_PATTERNS = [
-  // JS/TS/React
-  "isOn",
-  "getFeatureValue",
-  "useFeatureIsOn",
-  "useFeatureValue",
-  "evalFeature",
-  // Python
-  "is_on",
-  "get_feature_value",
-  // Go / Ruby / other
-  "IsOn",
-  "GetFeatureValue",
-  "feature_is_on",
-];
-
-function buildSearchPatterns(flagId: string): string {
-  return SDK_PATTERNS.map((fn) => `${fn}("${flagId}")`).join(", ");
-}
-
 export function formatStaleFeatureFlags(
   data: GetStaleFeatureResponse,
   requestedIds: string[]
@@ -661,7 +640,7 @@ export function formatStaleFeatureFlags(
       );
     }
     parts.push(`  ${envNote}`);
-    parts.push(`  Search for: ${buildSearchPatterns(id)}`);
+    parts.push(`  Search for \`${id}\` in relevant source files to find usages.`);
     parts.push("");
   }
 

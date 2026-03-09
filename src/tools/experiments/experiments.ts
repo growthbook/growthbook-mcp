@@ -360,6 +360,12 @@ export function registerExperimentTools({
           .describe(
             "Set to true to confirm you have called get_defaults and reviewed the output to guide these parameters."
           ),
+        customFields: z
+          .record(z.string(), z.string())
+          .optional()
+          .describe(
+            "Custom field values as key-value pairs. Keys are custom field IDs, values are string representations (e.g. {\"priority\": \"high\", \"team\": \"growth\"})."
+          ),
       }),
       annotations: {
         readOnlyHint: false,
@@ -376,6 +382,7 @@ export function registerExperimentTools({
       confirmedDefaultsReviewed,
       project,
       featureId,
+      customFields,
     }) => {
       if (!confirmedDefaultsReviewed) {
         return {
@@ -410,6 +417,7 @@ export function registerExperimentTools({
           })
         ),
         ...(project && { project }),
+        ...(customFields && { customFields }),
       };
 
       try {

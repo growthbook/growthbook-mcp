@@ -54,6 +54,7 @@ export function registerFeatureTools({
       description,
       project,
       fileExtension,
+      customFields,
     }) => {
       // get environments
       let environments = [];
@@ -90,6 +91,7 @@ export function registerFeatureTools({
           {}
         ),
         ...(project && { project }),
+        ...(customFields && { customFields }),
       };
 
       try {
@@ -314,13 +316,13 @@ export function registerFeatureTools({
     {
       title: "Get Stale Feature Flags",
       description:
-        "Given a list of feature flag IDs, checks whether each one is stale and returns cleanup guidance including replacement values and SDK search patterns. You MUST provide featureIds — gather them first from the user, from the current file context, or by grepping the codebase for SDK patterns (isOn, getFeatureValue, useFeatureIsOn, useFeatureValue, evalFeature).",
+        "Given a list of feature flag IDs, checks whether each one is stale and returns cleanup guidance including replacement values and SDK search patterns. You MUST provide featureIds — gather them first from the user, from the current file context, or by using the get_feature_flags tool to list all flags and then searching the codebase for those flag IDs to determine which are present.",
       inputSchema: z.object({
         featureIds: z
           .array(z.string())
           .optional()
           .describe(
-            "REQUIRED. One or more feature flag IDs to check (e.g. [\"my-feature\", \"dark-mode\"]). Gather IDs first from the user, from code context, or by grepping for SDK usage patterns."
+            "REQUIRED. One or more feature flag IDs to check (e.g. [\"my-feature\", \"dark-mode\"]). Gather IDs first from the user, from code context, or by using get_feature_flags to list flags and searching the codebase for those IDs."
           ),
       }),
       annotations: {
@@ -340,8 +342,7 @@ export function registerFeatureTools({
                   "To gather feature flag IDs, try one of these approaches:",
                   "1. **Ask the user** which flags they want to check",
                   "2. **Extract from current file context** — look for flag IDs in the open file",
-                  "3. **Grep the codebase** for GrowthBook SDK patterns:",
-                  '   `grep -rn "isOn\\|getFeatureValue\\|useFeatureIsOn\\|useFeatureValue\\|evalFeature" --include="*.{ts,tsx,js,jsx,py,go,rb}"`',
+                  "3. **Use the `get_feature_flags` tool** to list all flags, then search the codebase for those flag IDs to determine which are present",
                   "",
                   "Then call this tool again with the discovered flag IDs.",
                 ].join("\n"),

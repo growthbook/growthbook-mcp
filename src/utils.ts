@@ -555,6 +555,12 @@ export const featureFlagSchema = {
     .describe(
       "The extension of the current file. If it's unclear, ask the user."
     ),
+  customFields: z
+    .record(z.string(), z.string())
+    .optional()
+    .describe(
+      "Custom field values as key-value pairs. Keys are custom field IDs, values are string representations (e.g. {\"priority\": \"high\", \"team\": \"growth\"})."
+    ),
 } as const;
 
 function sleep(ms: number) {
