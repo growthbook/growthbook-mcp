@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.8.1] - 2026-03-09
+
+Re-publish of 1.8.0 to include `list_feature_keys` tool in npm package.
+
 ## [1.8.0] - 2026-03-09
 
 ### Added
