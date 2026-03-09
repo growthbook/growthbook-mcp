@@ -238,7 +238,7 @@ export function registerFeatureTools({
     {
       title: "Get Feature Flags",
       description:
-        "Lists feature flags in your GrowthBook organization, or fetches details for a specific flag by ID. Use to find existing flags before creating new ones, get a flag's current configuration and rules, or find flag IDs needed for create_force_rule or create_experiment. Single flag fetch (via featureFlagId) returns full config including environment rules. If flag is archived, suggest removing from codebase.",
+        "Lists feature flags with full details (rules, environments, values) or fetches a single flag by ID. Returns up to 100 flags per page. Use to inspect flag configuration, rules, and status. For a lightweight list of all flag IDs (no limit), use list_feature_keys instead.",
       inputSchema: z.object({
         project: featureFlagSchema.project.optional(),
         featureFlagId: featureFlagSchema.id.optional(),
@@ -309,6 +309,59 @@ export function registerFeatureTools({
   );
 
   /**
+   * Tool: list_feature_keys
+   */
+  server.registerTool(
+    "list_feature_keys",
+    {
+      title: "List Feature Keys",
+      description:
+        "Returns all feature flag IDs (keys only, no details) in your GrowthBook organization. Useful for discovering flag IDs when you need to check a large number of flags — for example, before calling get_stale_feature_flags. Optionally filter by project.",
+      inputSchema: z.object({
+        projectId: z
+          .string()
+          .optional()
+          .describe("Filter by project ID to only return flags in that project."),
+      }),
+      annotations: {
+        readOnlyHint: true,
+      },
+    },
+    async ({ projectId }) => {
+      try {
+        const queryParams = projectId
+          ? `?projectId=${encodeURIComponent(projectId)}`
+          : "";
+        const res = await fetchWithRateLimit(
+          `${baseApiUrl}/api/v1/feature-keys${queryParams}`,
+          {
+            headers: buildHeaders(apiKey),
+          }
+        );
+
+        await handleResNotOk(res);
+
+        const keys = (await res.json()) as string[];
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `**${keys.length} feature flag(s) found${projectId ? ` in project \`${projectId}\`` : ""}:**\n\n${keys.map((k) => `\`${k}\``).join(", ")}`,
+            },
+          ],
+        };
+      } catch (error) {
+        throw new Error(
+          formatApiError(error, "fetching feature keys", [
+            "Check that your GB_API_KEY has permission to read features.",
+          ])
+        );
+      }
+    }
+  );
+
+  /**
    * Tool: get_stale_feature_flags
    */
   server.registerTool(
@@ -316,13 +369,13 @@ export function registerFeatureTools({
     {
       title: "Get Stale Feature Flags",
       description:
-        "Given a list of feature flag IDs, checks whether each one is stale and returns cleanup guidance including replacement values and SDK search patterns. You MUST provide featureIds — gather them first from the user, from the current file context, or by using the get_feature_flags tool to list all flags and then searching the codebase for those flag IDs to determine which are present.",
+        "Given a list of feature flag IDs, checks whether each one is stale and returns cleanup guidance including replacement values and SDK search patterns. You MUST provide featureIds — gather them first from the user, from the current file context, or by using list_feature_keys to get all flag IDs and then searching the codebase for those IDs to determine which are present.",
       inputSchema: z.object({
         featureIds: z
           .array(z.string())
           .optional()
           .describe(
-            "REQUIRED. One or more feature flag IDs to check (e.g. [\"my-feature\", \"dark-mode\"]). Gather IDs first from the user, from code context, or by using get_feature_flags to list flags and searching the codebase for those IDs."
+            "REQUIRED. One or more feature flag IDs to check (e.g. [\"my-feature\", \"dark-mode\"]). Gather IDs first from the user, from code context, or by using list_feature_keys to get all flag IDs and searching the codebase for those IDs."
           ),
       }),
       annotations: {
@@ -342,7 +395,7 @@ export function registerFeatureTools({
                   "To gather feature flag IDs, try one of these approaches:",
                   "1. **Ask the user** which flags they want to check",
                   "2. **Extract from current file context** — look for flag IDs in the open file",
-                  "3. **Use the `get_feature_flags` tool** to list all flags, then search the codebase for those flag IDs to determine which are present",
+                  "3. **Use the `list_feature_keys` tool** to get all flag IDs, then search the codebase for those IDs to determine which are present",
                   "",
                   "Then call this tool again with the discovered flag IDs.",
                 ].join("\n"),

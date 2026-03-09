@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.8.0] - 2026-03-09
+
+### Added
+
+- `list_feature_keys` tool — returns all feature flag IDs (keys only, no details) with no pagination limit, useful for large orgs before calling `get_stale_feature_flags`
+- `customFields` parameter for `create_feature_flag` and `create_experiment` tools — pass custom field values as key-value pairs
+- `CLAUDE.md` — codebase guide for AI agents with build commands, architecture, and contribution patterns
+
+### Changed
+
+- `get_stale_feature_flags` now references `list_feature_keys` for flag ID discovery instead of SDK-specific grep patterns
+- Tool descriptions are now language-agnostic — removed JS-specific SDK method references (e.g. `isOn`, `getFeatureValue`)
+- `get_feature_flags` description now mentions 100-item limit and references `list_feature_keys` for larger orgs
+
 ## [1.7.0] - 2026-03-06
 
 ### Added

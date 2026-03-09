@@ -57,6 +57,10 @@
       "description": "List feature flags in your GrowthBook instance. Can also fetch details for a specific feature flag by ID when featureFlagId is provided."
     },
     {
+      "name": "list_feature_keys",
+      "description": "Returns all feature flag IDs (keys only) in your GrowthBook organization. Useful for discovering flags before checking staleness. Optionally filter by project."
+    },
+    {
       "name": "get_stale_feature_flags",
       "description": "Given a list of feature flag IDs, checks whether each one is stale and returns cleanup guidance including replacement values and SDK search patterns. Requires featureIds."
     },
