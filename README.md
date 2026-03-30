@@ -20,3 +20,7 @@ Use the following env variables to configure the MCP server.
 | GB_HTTP_HEADER_* | Optional | Custom HTTP headers to include in all GrowthBook API requests. Use the pattern `GB_HTTP_HEADER_<NAME>` where `<NAME>` is converted to proper HTTP header format (underscores become hyphens). Examples: `GB_HTTP_HEADER_X_TENANT_ID=abc123` becomes `X-Tenant-ID: abc123`, `GB_HTTP_HEADER_CF_ACCESS_TOKEN=<token>` becomes `Cf-Access-Token: <token>`. Multiple custom headers can be configured. |
 
 Add the MCP server to your AI tool of choice. See the [official docs](https://docs.growthbook.io/integrations/mcp) for complete a complete guide.
+## Hosted deployment
+
+A hosted deployment is available on [Fronteir AI](https://fronteir.ai/mcp/growthbook-growthbook-mcp).
+
