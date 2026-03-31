@@ -99,6 +99,10 @@
     {
       "name": "search_growthbook_docs",
       "description": "Search official GrowthBook documentation for SDK integration, metrics setup, and experimentation best practices."
+    },
+    {
+      "name": "create_metric_exploration",
+      "description": "Chart an existing GrowthBook metric over time. Returns chart data and a link to view the visualization."
     }
   ],
   "prompts": [
