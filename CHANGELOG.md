@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- `create_metric_exploration` tool — chart metric data over time with configurable date ranges and chart types, returns visualization data and a link to view in GrowthBook
+
 ## [1.8.1] - 2026-03-09
 
 Re-publish of 1.8.0 to include `list_feature_keys` tool in npm package.

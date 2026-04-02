@@ -99,6 +99,10 @@
     {
       "name": "search_growthbook_docs",
       "description": "Search official GrowthBook documentation for SDK integration, metrics setup, and experimentation best practices."
+    },
+    {
+      "name": "create_metric_exploration",
+      "description": "Chart an existing GrowthBook fact metric (IDs starting with 'fact__') over time. Legacy/standard metrics (IDs starting with 'met_') are not supported. Returns chart data and a link to view the visualization. If the query is still running, retry after 10-15 seconds."
     }
   ],
   "prompts": [

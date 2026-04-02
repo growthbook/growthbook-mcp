@@ -90,3 +90,11 @@ export type ListDataSourcesResponse =
 
 // Component schema aliases (for formatters that work with single entities or arrays)
 export type Feature = Components["schemas"]["Feature"];
+
+// Product Analytics Explorations
+export type CreateExplorationResponse =
+  Paths["/product-analytics/metric-exploration"]["post"]["responses"][200]["content"]["application/json"];
+export type CreateFactTableExplorationResponse =
+  Paths["/product-analytics/fact-table-exploration"]["post"]["responses"][200]["content"]["application/json"];
+export type CreateDataSourceExplorationResponse =
+  Paths["/product-analytics/data-source-exploration"]["post"]["responses"][200]["content"]["application/json"];
