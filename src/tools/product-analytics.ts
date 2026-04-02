@@ -15,29 +15,33 @@ interface ProductAnalyticsTools extends BaseToolsInterface {
   appOrigin: string;
 }
 
-async function resolveMetricDatasource(
+async function resolveFactMetricDatasource(
   baseApiUrl: string,
   apiKey: string,
   metricId: string
 ): Promise<{ datasource: string; metricName: string }> {
-  const isFactMetric = metricId.startsWith("fact__");
-  const endpoint = isFactMetric
-    ? `${baseApiUrl}/api/v1/fact-metrics/${metricId}`
-    : `${baseApiUrl}/api/v1/metrics/${metricId}`;
+  if (!metricId.startsWith("fact__")) {
+    throw new Error(
+      `Metric explorations only support fact metrics (IDs starting with 'fact__'). ` +
+        `The metric '${metricId}' is a standard metric. ` +
+        `Use get_metrics to find a fact metric ID instead.`
+    );
+  }
 
-  const res = await fetchWithRateLimit(endpoint, {
-    headers: buildHeaders(apiKey),
-  });
+  const res = await fetchWithRateLimit(
+    `${baseApiUrl}/api/v1/fact-metrics/${metricId}`,
+    { headers: buildHeaders(apiKey) }
+  );
   await handleResNotOk(res);
   const data = await res.json();
 
-  const metric = isFactMetric ? data.factMetric : data.metric;
-  const datasource = isFactMetric ? metric.datasource : metric.datasourceId;
+  const metric = data.factMetric;
+  const datasource = metric.datasource;
   const metricName = metric.name || metricId;
 
   if (!datasource) {
     throw new Error(
-      `Metric '${metricId}' does not have a datasource configured.`
+      `Fact metric '${metricId}' does not have a datasource configured.`
     );
   }
 
@@ -80,12 +84,12 @@ export function registerProductAnalyticsTools({
     {
       title: "Create Metric Exploration",
       description:
-        "Charts an existing GrowthBook metric, either as a time series or a cumulative chart. Requires a metricId — use `get_metrics` to find one. Returns chart data and a link to view the visualization in GrowthBook. If no metric matches what the user wants to chart, consider using `create_fact_table_exploration` or `create_data_source_exploration` instead (when available).",
+        "Charts an existing GrowthBook fact metric (IDs starting with 'fact__'), either as a time series or a cumulative chart. Requires a fact metric ID — use `get_metrics` to find one. Standard (non-fact) metrics are not supported. Returns chart data and a link to view the visualization in GrowthBook. If no fact metric matches what the user wants to chart, consider using `create_fact_table_exploration` or `create_data_source_exploration` instead (when available).",
       inputSchema: z.object({
         metricId: z
           .string()
           .describe(
-            "The ID of the metric to chart. Use get_metrics to find available metric IDs."
+            "The ID of the fact metric to chart (must start with 'fact__'). Standard metrics are not supported. Use get_metrics to find available fact metric IDs."
           ),
         dateRange: z
           .enum([
@@ -149,7 +153,9 @@ export function registerProductAnalyticsTools({
         dateGranularity: z
           .enum(["auto", "hour", "day", "week", "month", "year"])
           .default("auto")
-          .describe("Granularity for the date dimension."),
+          .describe(
+            "Granularity for the date dimension. Depending on the amount of time scanned, the granularity might be automatically adjusted to a less granular level to reduce the number of data points."
+          ),
         dimensions: z
           .array(
             z.discriminatedUnion("dimensionType", [
@@ -261,7 +267,7 @@ export function registerProductAnalyticsTools({
       name,
     }) => {
       try {
-        const { datasource, metricName } = await resolveMetricDatasource(
+        const { datasource, metricName } = await resolveFactMetricDatasource(
           baseApiUrl,
           apiKey,
           metricId
@@ -328,9 +334,9 @@ export function registerProductAnalyticsTools({
             error,
             `creating metric exploration for '${metricId}'`,
             [
-              "Check that the metric ID is correct — use get_metrics to list available metrics.",
-              "Fact metric IDs start with 'fact__'.",
-              "If no metric matches, consider charting from a fact table or data source instead.",
+              "Only fact metrics are supported — IDs must start with 'fact__'.",
+              "Use get_metrics to find available fact metric IDs.",
+              "If no fact metric matches, consider charting from a fact table or data source instead.",
             ]
           )
         );

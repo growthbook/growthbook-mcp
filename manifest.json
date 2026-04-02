@@ -102,7 +102,7 @@
     },
     {
       "name": "create_metric_exploration",
-      "description": "Chart an existing GrowthBook metric over time. Returns chart data and a link to view the visualization."
+      "description": "Chart an existing GrowthBook fact metric (IDs starting with 'fact__') over time. Returns chart data and a link to view the visualization."
     }
   ],
   "prompts": [
