@@ -44,6 +44,31 @@ async function resolveMetricDatasource(
   return { datasource, metricName };
 }
 
+const TIMESERIES_CHART_TYPES = new Set(["line", "area", "timeseries-table"]);
+
+function buildDimensions(
+  dimensions: Array<Record<string, unknown>> | undefined,
+  chartType: string,
+  dateGranularity: string
+): Array<Record<string, unknown>> {
+  const dims = (dimensions || []).map((d) => {
+    if (d.dimensionType === "date" && !d.column) {
+      return { ...d, column: "date" };
+    }
+    return d;
+  });
+  const hasDateDimension = dims.some((d) => d.dimensionType === "date");
+
+  if (!hasDateDimension && TIMESERIES_CHART_TYPES.has(chartType)) {
+    return [
+      { dimensionType: "date", column: "date", dateGranularity },
+      ...dims,
+    ];
+  }
+
+  return dims;
+}
+
 export function registerProductAnalyticsTools({
   server,
   baseApiUrl,
@@ -55,7 +80,7 @@ export function registerProductAnalyticsTools({
     {
       title: "Create Metric Exploration",
       description:
-        "Charts an existing GrowthBook metric over time. Requires a metricId — use `get_metrics` to find one. Returns chart data and a link to view the visualization in GrowthBook. If no metric matches what the user wants to chart, consider using `create_fact_table_exploration` or `create_data_source_exploration` instead (when available).",
+        "Charts an existing GrowthBook metric, either as a time series or a cumulative chart. Requires a metricId — use `get_metrics` to find one. Returns chart data and a link to view the visualization in GrowthBook. If no metric matches what the user wants to chart, consider using `create_fact_table_exploration` or `create_data_source_exploration` instead (when available).",
       inputSchema: z.object({
         metricId: z
           .string()
@@ -99,6 +124,12 @@ export function registerProductAnalyticsTools({
           .describe(
             "End date for custom date range (ISO 8601 format, e.g. '2025-03-31'). Only used when dateRange is 'customDateRange'."
           ),
+        cache: z
+          .enum(["preferred", "required", "never"])
+          .default("preferred")
+          .describe(
+            "Cache behavior: 'preferred' (default) returns cached results if available, otherwise runs a new query; 'never' always runs a fresh query; 'required' only returns cached results or null if none exist."
+          ),
         chartType: z
           .enum([
             "line",
@@ -112,7 +143,9 @@ export function registerProductAnalyticsTools({
             "bigNumber",
           ])
           .default("line")
-          .describe("The type of chart to render."),
+          .describe(
+            "The type of chart to render. Chart mode vs time series: line, area, and timeseries-table charts are always timeseries — these must include a date dimension. Bar charts (bar, stackedBar, horizontalBar, stackedHorizontalBar), the plain table chart, and bigNumber are cumulative — thesedo not use a date dimension. When switching between timeseries and cumulative chart types, add or remove the date dimension accordingly"
+          ),
         dateGranularity: z
           .enum(["auto", "hour", "day", "week", "month", "year"])
           .default("auto")
@@ -120,6 +153,16 @@ export function registerProductAnalyticsTools({
         dimensions: z
           .array(
             z.discriminatedUnion("dimensionType", [
+              z.object({
+                dimensionType: z.literal("date"),
+                column: z
+                  .string()
+                  .default("date")
+                  .describe("Date column name."),
+                dateGranularity: z
+                  .enum(["auto", "hour", "day", "week", "month", "year"])
+                  .describe("Granularity for the date axis."),
+              }),
               z.object({
                 dimensionType: z.literal("dynamic"),
                 column: z
@@ -191,7 +234,7 @@ export function registerProductAnalyticsTools({
           )
           .optional()
           .describe(
-            "Additional dimensions to break down the data. The date dimension is always included automatically. Use 'dynamic' for top-N grouping (e.g. top 10 countries), 'static' for specific values (e.g. only US, CA, UK), or 'slice' for custom named segments with filters."
+            "Dimensions to break down the data. For timeseries charts (line, area, timeseries-table), a date dimension is auto-included if not explicitly provided. For cumulative charts (bar, table, bigNumber), omit the date dimension. Types: 'date' for time axis, 'dynamic' for top-N grouping, 'static' for specific values, 'slice' for custom named segments."
           ),
         name: z
           .string()
@@ -204,7 +247,19 @@ export function registerProductAnalyticsTools({
         readOnlyHint: false,
       },
     },
-    async ({ metricId, dateRange, lookbackValue, lookbackUnit, startDate, endDate, chartType, dateGranularity, dimensions, name }) => {
+    async ({
+      metricId,
+      dateRange,
+      lookbackValue,
+      lookbackUnit,
+      startDate,
+      endDate,
+      cache,
+      chartType,
+      dateGranularity,
+      dimensions,
+      name,
+    }) => {
       try {
         const { datasource, metricName } = await resolveMetricDatasource(
           baseApiUrl,
@@ -220,19 +275,15 @@ export function registerProductAnalyticsTools({
           chartType,
           dateRange: {
             predefined: dateRange,
-            lookbackValue: dateRange === "customLookback" ? (lookbackValue ?? null) : null,
-            lookbackUnit: dateRange === "customLookback" ? (lookbackUnit ?? null) : null,
-            startDate: dateRange === "customDateRange" ? (startDate ?? null) : null,
-            endDate: dateRange === "customDateRange" ? (endDate ?? null) : null,
+            lookbackValue:
+              dateRange === "customLookback" ? lookbackValue ?? null : null,
+            lookbackUnit:
+              dateRange === "customLookback" ? lookbackUnit ?? null : null,
+            startDate:
+              dateRange === "customDateRange" ? startDate ?? null : null,
+            endDate: dateRange === "customDateRange" ? endDate ?? null : null,
           },
-          dimensions: [
-            {
-              dimensionType: "date" as const,
-              column: null,
-              dateGranularity,
-            },
-            ...(dimensions || []),
-          ],
+          dimensions: buildDimensions(dimensions, chartType, dateGranularity),
           dataset: {
             type: "metric" as const,
             values: [
@@ -249,7 +300,7 @@ export function registerProductAnalyticsTools({
         };
 
         const res = await fetchWithRateLimit(
-          `${baseApiUrl}/api/v1/product-analytics/metric-exploration`,
+          `${baseApiUrl}/api/v1/product-analytics/metric-exploration?cache=${cache}`,
           {
             method: "POST",
             headers: buildHeaders(apiKey),
@@ -273,11 +324,15 @@ export function registerProductAnalyticsTools({
         };
       } catch (error) {
         throw new Error(
-          formatApiError(error, `creating metric exploration for '${metricId}'`, [
-            "Check that the metric ID is correct — use get_metrics to list available metrics.",
-            "Fact metric IDs start with 'fact__'.",
-            "If no metric matches, consider charting from a fact table or data source instead.",
-          ])
+          formatApiError(
+            error,
+            `creating metric exploration for '${metricId}'`,
+            [
+              "Check that the metric ID is correct — use get_metrics to list available metrics.",
+              "Fact metric IDs start with 'fact__'.",
+              "If no metric matches, consider charting from a fact table or data source instead.",
+            ]
+          )
         );
       }
     }
