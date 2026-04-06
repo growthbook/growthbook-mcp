@@ -84,9 +84,10 @@ export function registerProductAnalyticsTools({
     {
       title: "Create Metric Exploration",
       description:
+        "This tool can be used to answer questions about Fact Metrics in GrowthBook. " +
         "Charts an existing GrowthBook fact metric (IDs starting with 'fact__'), either as a time series or a cumulative chart. " +
         "Legacy/standard metrics (IDs starting with 'met_') are NOT supported and will return an error — only fact metrics can be charted. " +
-        "Use `get_metrics` to find a fact metric ID. If the user references a metric by name, match it to a fact metric first — prefer fact metrics over legacy equivalents. " +
+        "Use `get_metrics` to find a fact metric ID. If the user references a metric by name, match it to a fact metric. This tool does not support legacy metrics. " +
         "Returns chart data and a link to view the visualization in GrowthBook. " +
         "The underlying query may take time to execute. If the response indicates the query is still running, wait 10–15 seconds and retry with cache 'preferred' to pick up the completed result. " +
         "If no fact metric matches what the user wants to chart, consider using `create_fact_table_exploration` or `create_data_source_exploration` instead (when available).",
@@ -95,8 +96,8 @@ export function registerProductAnalyticsTools({
           .string()
           .describe(
             "The ID of the fact metric to chart (must start with 'fact__'). Legacy/standard metrics (IDs starting with 'met_') are not supported. " +
-            "Use get_metrics to find available metrics, then match the user's intent to the closest fact metric by name. " +
-            "If no fact metric matches but a legacy metric does, inform the user that only fact metrics can be charted."
+              "Use get_metrics to find available metrics, then match the user's intent to the closest fact metric by name. " +
+              "If no fact metric matches but a legacy metric does, inform the user that only fact metrics can be charted."
           ),
         dateRange: z
           .enum([
@@ -248,8 +249,8 @@ export function registerProductAnalyticsTools({
           .optional()
           .describe(
             "Dimensions to break down the data. For timeseries charts (line, area, timeseries-table), a date dimension is auto-included if not explicitly provided. For cumulative charts (bar, table, bigNumber), omit the date dimension. " +
-            "Types: 'date' for time axis, 'dynamic' for top-N grouping, 'static' for specific values, 'slice' for custom named segments. " +
-            "Prefer 'dynamic' over 'static' for group-by dimensions — 'static' and 'slice' dimensions work in the API response but are not yet fully supported in the GrowthBook UI chart view. Use 'dynamic' for results that render correctly in both the API and the GrowthBook link."
+              "Types: 'date' for time axis, 'dynamic' for top-N grouping, 'static' for specific values, 'slice' for custom named segments. " +
+              "Prefer 'dynamic' over 'static' for group-by dimensions — 'static' and 'slice' dimensions work in the API response but are not yet fully supported in the GrowthBook UI chart view. Use 'dynamic' for results that render correctly in both the API and the GrowthBook link."
           ),
         name: z
           .string()
