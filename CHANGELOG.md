@@ -6,7 +6,13 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- `get_fact_table` tool — fetch a single fact table by id (columns, SQL, datasource, user id types) for analytics and metric configuration
+- `list_fact_tables` tool — list fact tables with pagination and optional project or data source filters; use ids for product analytics and fact metrics workflows
 - `create_metric_exploration` tool — chart metric data over time with configurable date ranges and chart types, returns visualization data and a link to view in GrowthBook
+
+### Changed
+
+- `get_fact_table` — column details are shown as per-column JSON (all keys returned by the API, including deleted columns). Tool description notes that omitted boolean fields on a column object should be read as false.
 
 ## [1.8.1] - 2026-03-09
 

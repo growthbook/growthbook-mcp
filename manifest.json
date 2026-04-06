@@ -85,6 +85,14 @@
       "description": "List metrics in GrowthBook. Metrics measure experiment success. Includes both fact metrics (modern) and legacy metrics."
     },
     {
+      "name": "list_fact_tables",
+      "description": "List GrowthBook fact tables with optional filters by project or data source. Returns ids and datasource ids; use get_fact_table for full schema and SQL."
+    },
+    {
+      "name": "get_fact_table",
+      "description": "Fetch one fact table by id: datasource, user id types, full column objects as JSON (API keys only), and SQL. Omitted booleans on columns mean false. Use after list_fact_tables."
+    },
+    {
       "name": "get_defaults",
       "description": "Get default configuration and naming examples for creating experiments. Always call this before create_experiment."
     },
