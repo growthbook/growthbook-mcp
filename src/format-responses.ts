@@ -773,33 +773,53 @@ export function formatStaleFeatureFlags(
 }
 
 // ─── Product Analytics Explorations ─────────────────────────────────
-export function formatMetricExploration(
-  data: {
-    exploration: {
-      id: string;
-      status: "running" | "success" | "error";
-      dateStart: string;
-      dateEnd: string;
-      error?: string | null;
-      result: {
-        rows: {
-          dimensions: (string | null)[];
-          values: { metricId: string; numerator: number | null; denominator: number | null }[];
-        }[];
+
+/** Exploration API responses (metric, fact-table, data-source) share this shape */
+type ExplorationResultPayload = {
+  exploration: {
+    id: string;
+    status: "running" | "success" | "error";
+    dateStart: string;
+    dateEnd: string;
+    error?: string | null;
+    result: {
+      rows: {
+        dimensions: (string | null)[];
+        values: { metricId: string; numerator: number | null; denominator: number | null }[];
+      }[];
+    };
+    config?: {
+      dataset?: {
+        values?: { name?: string }[];
       };
-    } | null;
-    query: {
-      status: "running" | "queued" | "failed" | "partially-succeeded" | "succeeded";
-    } | null;
-    explorationUrl?: string;
-    message?: string;
-  },
-  metricName: string
+    };
+  } | null;
+  query: {
+    status: "running" | "queued" | "failed" | "partially-succeeded" | "succeeded";
+  } | null;
+  explorationUrl?: string;
+  message?: string;
+};
+
+function explorationValueColumnLabels(data: ExplorationResultPayload): string[] {
+  const values = data.exploration?.config?.dataset?.values;
+  if (Array.isArray(values) && values.length > 0) {
+    return values.map((v, i) =>
+      typeof v.name === "string" && v.name.length > 0 ? v.name : `Series ${i + 1}`
+    );
+  }
+  return ["Value"];
+}
+
+/** Formats metric, fact-table, or data-source exploration results for agents */
+export function formatExplorationResult(
+  data: ExplorationResultPayload,
+  title: string
 ): string {
   const parts: string[] = [];
 
   if (!data.exploration) {
-    parts.push(`**Metric exploration for ${metricName} could not be created.**`);
+    parts.push(`**Exploration for ${title} could not be created.**`);
     if (data.message) parts.push(data.message);
     if (data.query) parts.push(`Query status: ${data.query.status}`);
     return parts.join("\n");
@@ -808,20 +828,19 @@ export function formatMetricExploration(
   const { exploration } = data;
 
   if (exploration.status === "running") {
-    parts.push(`**Metric exploration for ${metricName} is still running.**`);
+    parts.push(`**Exploration for ${title} is still running.**`);
     parts.push(`Query status: ${data.query?.status || "unknown"}`);
     parts.push("The query has not completed yet. Try again shortly.");
     return parts.join("\n");
   }
 
   if (exploration.status === "error") {
-    parts.push(`**Metric exploration for ${metricName} failed.**`);
+    parts.push(`**Exploration for ${title} failed.**`);
     if (exploration.error) parts.push(`Error: ${exploration.error}`);
     return parts.join("\n");
   }
 
-  // Success
-  parts.push(`**Metric exploration: ${metricName}**`);
+  parts.push(`**Exploration: ${title}**`);
   parts.push(`Date range: ${exploration.dateStart} to ${exploration.dateEnd}`);
 
   const rows = exploration.result?.rows || [];
@@ -830,34 +849,43 @@ export function formatMetricExploration(
   if (rows.length > 0) {
     const dimCount = rows[0].dimensions.length;
     const hasBreakdown = dimCount > 1;
+    const valueLabels = explorationValueColumnLabels(data);
+    const nValues = Math.max(1, rows[0].values?.length ?? 0);
+    const valueHeads = Array.from({ length: nValues }, (_, i) => {
+      return valueLabels[i] ?? `Series ${i + 1}`;
+    });
+    const valueSep = Array(nValues).fill("-------").join("|");
 
     parts.push("");
 
     if (hasBreakdown) {
-      parts.push("| Date | Dimension | Value |");
-      parts.push("|------|-----------|-------|");
+      parts.push(`| Date | Dimension | ${valueHeads.join(" | ")} |`);
+      parts.push(`|------|-----------|${valueSep}|`);
     } else {
-      parts.push("| Date | Value |");
-      parts.push("|------|-------|");
+      parts.push(`| Date | ${valueHeads.join(" | ")} |`);
+      parts.push(`|------|${valueSep}|`);
     }
 
     const displayRows = rows.slice(0, 30);
     for (const row of displayRows) {
-      const date = row.dimensions[0] ?? "—";
-      const value = row.values[0]?.numerator;
-      const formatted = value != null ? value.toLocaleString() : "—";
+      const primary = row.dimensions[0] ?? "—";
+      const valueCells: string[] = [];
+      for (let i = 0; i < nValues; i++) {
+        const v = row.values[i]?.numerator;
+        valueCells.push(v != null ? v.toLocaleString() : "—");
+      }
 
       if (hasBreakdown) {
         const dimension = row.dimensions.slice(1).join(", ") || "—";
-        parts.push(`| ${date} | ${dimension} | ${formatted} |`);
+        parts.push(`| ${primary} | ${dimension} | ${valueCells.join(" | ")} |`);
       } else {
-        parts.push(`| ${date} | ${formatted} |`);
+        parts.push(`| ${primary} | ${valueCells.join(" | ")} |`);
       }
     }
 
     if (rows.length > 30) {
-      const cols = hasBreakdown ? "| ... | ... |" : "| ... |";
-      parts.push(`${cols} *(${rows.length - 30} more rows)* |`);
+      parts.push("");
+      parts.push(`*(${rows.length - 30} more rows not shown)*`);
     }
   }
 

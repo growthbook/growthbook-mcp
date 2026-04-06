@@ -9,10 +9,14 @@ All notable changes to this project will be documented in this file.
 - `get_fact_table` tool — fetch a single fact table by id (columns, SQL, datasource, user id types) for analytics and metric configuration
 - `list_fact_tables` tool — list fact tables with pagination and optional project or data source filters; use ids for product analytics and fact metrics workflows
 - `create_metric_exploration` tool — chart metric data over time with configurable date ranges and chart types, returns visualization data and a link to view in GrowthBook
+- `create_fact_table_exploration` tool — run product-analytics queries directly against a fact table (row count, unit count, sum of a column) with the same chart and date-range options as metric exploration
 
 ### Changed
 
 - `get_fact_table` — column details are shown as per-column JSON (all keys returned by the API, including deleted columns). Tool description notes that omitted boolean fields on a column object should be read as false.
+- `create_metric_exploration` — supports multiple fact metrics on one chart via optional `metrics[]` (same datasource required); single-series callers still use `metricId` and optional `name`. Tool and manifest descriptions updated.
+- `create_fact_table_exploration` — descriptions clarify that the `series` array can include multiple entries for one chart (tool, manifest, and Zod field description).
+
 
 ## [1.8.1] - 2026-03-09
 
