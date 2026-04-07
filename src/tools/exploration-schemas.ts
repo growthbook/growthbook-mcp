@@ -249,6 +249,54 @@ export type FactTableExplorationSeries = z.infer<
   typeof factTableExplorationSeriesSchema
 >;
 
+/** One series for data-source exploration `dataset.values[]` */
+export const dataSourceExplorationSeriesSchema = z.discriminatedUnion("valueType", [
+  z.object({
+    name: z
+      .string()
+      .describe("Legend label for this series in the chart and API results."),
+    valueType: z.literal("count"),
+    unit: z.string().nullable().optional().describe("Optional unit label for display."),
+    rowFilters: z
+      .array(explorationRowFilterSchema)
+      .default([])
+      .describe("Filters applied to rows before aggregating."),
+  }),
+  z.object({
+    name: z.string().describe("Legend label for this series."),
+    valueType: z.literal("unit_count"),
+    unit: z.string().nullable().optional(),
+    rowFilters: z.array(explorationRowFilterSchema).default([]),
+  }),
+  z.object({
+    name: z.string().describe("Legend label for this series."),
+    valueType: z.literal("sum"),
+    valueColumn: z
+      .string()
+      .min(1)
+      .describe(
+        "Numeric column to sum. Use get_datasource_schema with a tableId to list valid column names and types."
+      ),
+    unit: z.string().nullable().optional(),
+    rowFilters: z.array(explorationRowFilterSchema).default([]),
+  }),
+]);
+
+export type DataSourceExplorationSeries = z.infer<
+  typeof dataSourceExplorationSeriesSchema
+>;
+
+export function mapDataSourceSeriesToPayload(series: DataSourceExplorationSeries) {
+  return {
+    name: series.name,
+    type: "data_source" as const,
+    valueType: series.valueType,
+    valueColumn: series.valueType === "sum" ? series.valueColumn : null,
+    unit: series.unit ?? null,
+    rowFilters: series.rowFilters,
+  };
+}
+
 /** One fact metric series for metric exploration `dataset.values[]` */
 export const metricExplorationEntrySchema = z.object({
   metricId: z

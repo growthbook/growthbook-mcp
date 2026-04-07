@@ -104,3 +104,24 @@ export type CreateFactTableExplorationResponse =
   Paths["/product-analytics/fact-table-exploration"]["post"]["responses"][200]["content"]["application/json"];
 export type CreateDataSourceExplorationResponse =
   Paths["/product-analytics/data-source-exploration"]["post"]["responses"][200]["content"]["application/json"];
+
+// Information schema endpoints (new — pending OpenAPI spec regeneration)
+export type DatasourceInformationSchemaResponse = {
+  tables: Array<{
+    id: string;
+    path: string;
+    name?: string;
+    numColumns?: number;
+  }>;
+};
+
+export type TableInformationSchemaResponse = {
+  table: {
+    id: string;
+    path: string;
+    columns: Array<{
+      columnName: string;
+      dataType: "string" | "number" | "date" | "boolean" | "other";
+    }>;
+  };
+};
