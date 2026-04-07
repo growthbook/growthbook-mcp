@@ -58,9 +58,9 @@ async function fetchTableInfoSchema(
   tableId: string
 ): Promise<TableInformationSchemaResponse> {
   const res = await fetchWithRateLimit(
-    `${baseApiUrl}/api/v1/data-sources/${encodeURIComponent(
-      datasourceId
-    )}/tables/${encodeURIComponent(tableId)}/information-schema`,
+    `${baseApiUrl}/api/v1/information-schema-tables/${encodeURIComponent(
+      tableId
+    )}`,
     { headers: buildHeaders(apiKey) }
   );
   await handleResNotOk(res);
@@ -433,17 +433,30 @@ export function registerProductAnalyticsTools({
     },
     async () => {
       try {
-        const res = await fetchWithRateLimit(
-          `${baseApiUrl}/api/v1/data-sources`,
-          { headers: buildHeaders(apiKey) }
-        );
-        await handleResNotOk(res);
-        const data = (await res.json()) as ListDataSourcesResponse;
+        const allSources: ListDataSourcesResponse["dataSources"] = [];
+        let offset = 0;
+        const limit = 100;
+        let hasMore = true;
+
+        while (hasMore) {
+          const res = await fetchWithRateLimit(
+            `${baseApiUrl}/api/v1/data-sources?limit=${limit}&offset=${offset}`,
+            { headers: buildHeaders(apiKey) }
+          );
+          await handleResNotOk(res);
+          const data = (await res.json()) as ListDataSourcesResponse;
+          allSources.push(...(data.dataSources || []));
+          hasMore = data.hasMore ?? false;
+          offset = data.nextOffset ?? offset + limit;
+        }
+
         return {
           content: [
             {
               type: "text" as const,
-              text: formatDatasourcesList(data),
+              text: formatDatasourcesList({
+                dataSources: allSources,
+              } as ListDataSourcesResponse),
             },
           ],
         };
@@ -564,7 +577,25 @@ export function registerProductAnalyticsTools({
     tableId: z
       .string()
       .describe(
-        "The table ID to query. Use get_datasource_schema with a datasourceId to discover available table IDs."
+        "The table ID (e.g. tbl_...) to query — NOT the table path. " +
+          "Use get_datasource_schema with a datasourceId to list tables and get their IDs. " +
+          "The table ID and table path are distinct: the ID is the GrowthBook identifier, the path is the fully-qualified table name in the database."
+      ),
+    tablePath: z
+      .string()
+      .optional()
+      .describe(
+        "The fully-qualified table path in the database (e.g. 'project.dataset.table' or 'schema.table'). " +
+          "Resolved automatically from the information schema when omitted. " +
+          "Provide this explicitly when you already know the path (e.g. from get_fact_table SQL or get_datasource_schema output) to skip the schema lookup."
+      ),
+    timestampColumn: z
+      .string()
+      .optional()
+      .describe(
+        "The timestamp column name for this table. " +
+          "Resolved automatically from the information schema when omitted; defaults to 'timestamp' if auto-detection fails. " +
+          "Provide this explicitly when you already know the column name (e.g. from get_fact_table or get_datasource_schema output)."
       ),
     series: z
       .array(dataSourceExplorationSeriesSchema)
@@ -584,9 +615,12 @@ export function registerProductAnalyticsTools({
         "Runs a GrowthBook product-analytics query directly against a raw data source table. " +
         "Use this only when neither `create_metric_exploration` nor `create_fact_table_exploration` can satisfy the request. " +
         "Requires a datasourceId and tableId — use `list_datasources` then `get_datasource_schema` to discover these. " +
-        "If there are tables with the same name in different datasources, ask the user to specify which data source they want to use." +
-        "If there are multiple timestamp columns on a particular table, ask the user to specify which timestamp column they want to use." +
-        "Automatically fetches the table's column types and timestamp column from the information schema before running the query. " +
+        "Note: tableId is the GrowthBook table identifier (e.g. tbl_...); tablePath is the fully-qualified database table name (e.g. project.dataset.table). These are distinct — always use the ID from get_datasource_schema, not the path. " +
+        "You may optionally supply tablePath and timestampColumn directly (e.g. from get_datasource_schema or get_fact_table output) to skip the automatic schema lookup. " +
+        "Don't assume you know what data source the user wants to use. Ask the user to specify the data source they want to use, but give them options to choose from. " +
+        "If there are tables with the same name in different datasources, ask the user to specify which data source they want to use. " +
+        "If there are multiple timestamp columns on a particular table, ask the user to specify which timestamp column they want to use. " +
+        "Attempts to auto-fetch column types, table path, and timestamp column from the information schema; falls back gracefully if unavailable. " +
         "Returns chart data and a link to view the visualization in GrowthBook. " +
         "If the response indicates the query is still running, wait 10–15 seconds and retry with cache 'preferred'.",
       inputSchema: dataSourceExplorationInputSchema,
@@ -598,6 +632,8 @@ export function registerProductAnalyticsTools({
       const {
         datasourceId,
         tableId,
+        tablePath: inputTablePath,
+        timestampColumn: inputTimestampColumn,
         series,
         dateRange,
         lookbackValue,
@@ -611,30 +647,37 @@ export function registerProductAnalyticsTools({
       } = input;
 
       try {
-        const tableSchemaData = await fetchTableInfoSchema(
-          baseApiUrl,
-          apiKey,
-          datasourceId,
-          tableId
-        );
-
-        const tableInfo = tableSchemaData.table;
-        const columns = tableInfo?.columns || [];
-
-        const columnTypes: Record<
+        let columnTypes: Record<
           string,
           "string" | "number" | "date" | "boolean" | "other"
         > = {};
-        for (const col of columns) {
-          columnTypes[col.columnName] = col.dataType;
+        let timestampColumn = inputTimestampColumn ?? "timestamp";
+        let path = inputTablePath ?? tableId;
+
+        try {
+          const tableSchemaData = await fetchTableInfoSchema(
+            baseApiUrl,
+            apiKey,
+            datasourceId,
+            tableId
+          );
+          const tableInfo = tableSchemaData.table;
+          const columns = tableInfo?.columns || [];
+          for (const col of columns) {
+            columnTypes[col.columnName] = col.dataType;
+          }
+          if (!inputTimestampColumn) {
+            timestampColumn =
+              columns.find((c) => c.columnName === "timestamp")?.columnName ??
+              columns.find((c) => c.dataType === "date")?.columnName ??
+              "timestamp";
+          }
+          if (!inputTablePath) {
+            path = tableInfo?.path ?? tableId;
+          }
+        } catch {
+          // Information schema unavailable — proceed with provided/default values
         }
-
-        const timestampColumn =
-          columns.find((c) => c.columnName === "timestamp")?.columnName ??
-          columns.find((c) => c.dataType === "date")?.columnName ??
-          "timestamp";
-
-        const path = tableInfo?.path ?? tableId;
 
         const payload = {
           datasource: datasourceId,
