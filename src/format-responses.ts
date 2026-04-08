@@ -66,7 +66,14 @@ export function formatProjects(data: ListProjectsResponse): string {
 export function formatFactTablesList(data: ListFactTablesResponse): string {
   const tables = data.factTables || [];
   if (tables.length === 0) {
-    return "No fact tables found for the current filters.";
+    return (
+      "No fact tables found for the current filters.\n\n" +
+      "To answer product analytics questions without fact tables, use `create_data_source_exploration` directly:\n" +
+      "1. Call `list_datasources` to find available data source IDs.\n" +
+      "2. Call `get_datasource_schema` with the datasource ID to list tables.\n" +
+      "3. Call `get_datasource_schema` again with a tableId to inspect columns.\n" +
+      "4. Call `create_data_source_exploration` with the datasourceId, tableId, and a series definition."
+    );
   }
 
   const lines = tables.map((t) => {

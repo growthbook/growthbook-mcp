@@ -631,7 +631,7 @@ export function registerProductAnalyticsTools({
       .array(dataSourceExplorationSeriesSchema)
       .min(1)
       .describe(
-        "One or more series to plot. Each series can be a row count, distinct unit count, or sum of a numeric column. " +
+        "One or more series to plot. Each series can be a row count ('count') or sum of a numeric column ('sum'). " +
           "Use get_datasource_schema with a tableId to discover valid column names and types. " +
           "For valueType 'sum', valueColumn must be a numeric column."
       ),
@@ -643,7 +643,7 @@ export function registerProductAnalyticsTools({
       title: "Create Data Source Exploration",
       description:
         "Runs a GrowthBook product-analytics query directly against a raw data source table. " +
-        "Use this only when neither `create_metric_exploration` nor `create_fact_table_exploration` can satisfy the request. " +
+        "Use this when neither `create_metric_exploration` nor `create_fact_table_exploration` can satisfy the request — including when no fact tables exist (i.e. `list_fact_tables` returns empty). " +
         "Requires a datasourceId and tableId — use `list_datasources` then `get_datasource_schema` to discover these. " +
         "Note: tableId is the GrowthBook table identifier (e.g. tbl_...); tablePath is the fully-qualified database table name (e.g. project.dataset.table). These are distinct — always use the ID from get_datasource_schema, not the path. " +
         "You may optionally supply tablePath and timestampColumn directly (e.g. from get_datasource_schema or get_fact_table output) to skip the automatic schema lookup. " +

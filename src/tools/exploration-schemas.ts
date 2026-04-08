@@ -264,12 +264,6 @@ export const dataSourceExplorationSeriesSchema = z.discriminatedUnion("valueType
   }),
   z.object({
     name: z.string().describe("Legend label for this series."),
-    valueType: z.literal("unit_count"),
-    unit: z.string().nullable().optional(),
-    rowFilters: z.array(explorationRowFilterSchema).default([]),
-  }),
-  z.object({
-    name: z.string().describe("Legend label for this series."),
     valueType: z.literal("sum"),
     valueColumn: z
       .string()

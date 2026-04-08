@@ -126,7 +126,7 @@
     },
     {
       "name": "create_data_source_exploration",
-      "description": "Run a GrowthBook product-analytics query directly against a raw data source table. Use only when create_metric_exploration and create_fact_table_exploration cannot satisfy the request. Requires datasourceId and tableId — use list_datasources then get_datasource_schema to discover these. Automatically fetches column types and timestamp column before running the query."
+      "description": "Run a GrowthBook product-analytics query directly against a raw data source table. Use only when create_metric_exploration and create_fact_table_exploration cannot satisfy the request. Requires datasourceId and tableId — use list_datasources then get_datasource_schema to discover these. Supports count and sum series. Automatically fetches column types and timestamp column before running the query."
     }
   ],
   "prompts": [
