@@ -12,6 +12,7 @@ import type {
   GetFactTableResponse,
   ListDataSourcesResponse,
   DatasourceInformationSchemaResponse,
+  DatasourceInformationSchemaTable,
   TableInformationSchemaResponse,
 } from "../api-type-helpers.js";
 import {
@@ -36,11 +37,22 @@ interface ProductAnalyticsTools extends BaseToolsInterface {
   appOrigin: string;
 }
 
+type NormalizedDataType = "string" | "number" | "date" | "boolean" | "other";
+
+function mapSqlDataType(raw: string): NormalizedDataType {
+  const t = raw.toLowerCase();
+  if (t.includes("char") || t.includes("text") || t.includes("uuid") || t.includes("enum")) return "string";
+  if (t.includes("int") || t.includes("numeric") || t.includes("decimal") || t.includes("float") || t.includes("double") || t.includes("real") || t.includes("money")) return "number";
+  if (t.includes("timestamp") || t.includes("date") || t.includes("time")) return "date";
+  if (t.includes("bool")) return "boolean";
+  return "other";
+}
+
 async function fetchDatasourceInfoSchema(
   baseApiUrl: string,
   apiKey: string,
   datasourceId: string
-): Promise<DatasourceInformationSchemaResponse> {
+): Promise<DatasourceInformationSchemaTable[]> {
   const res = await fetchWithRateLimit(
     `${baseApiUrl}/api/v1/data-sources/${encodeURIComponent(
       datasourceId
@@ -48,7 +60,16 @@ async function fetchDatasourceInfoSchema(
     { headers: buildHeaders(apiKey) }
   );
   await handleResNotOk(res);
-  return (await res.json()) as DatasourceInformationSchemaResponse;
+  const data = (await res.json()) as DatasourceInformationSchemaResponse;
+  const tables: DatasourceInformationSchemaTable[] = [];
+  for (const db of data.informationSchema?.databases ?? []) {
+    for (const schema of db.schemas ?? []) {
+      for (const table of schema.tables ?? []) {
+        tables.push(table);
+      }
+    }
+  }
+  return tables;
 }
 
 async function fetchTableInfoSchema(
@@ -500,12 +521,17 @@ export function registerProductAnalyticsTools({
     },
     async ({ datasourceId, tableId }) => {
       try {
-        const schemaData = await fetchDatasourceInfoSchema(
+        const rawTables = await fetchDatasourceInfoSchema(
           baseApiUrl,
           apiKey,
           datasourceId
         );
-        const tables = schemaData.tables || [];
+        const tables = rawTables.map((t) => ({
+          id: t.id,
+          path: t.path,
+          name: t.tableName,
+          numColumns: t.numOfColumns,
+        }));
 
         if (!tableId) {
           return {
@@ -525,18 +551,22 @@ export function registerProductAnalyticsTools({
           tableId
         );
 
-        const tableInfo = tableSchemaData.table;
+        const tableInfo = tableSchemaData.informationSchemaTable;
         const columns = tableInfo?.columns || [];
 
         const columnTypes: Record<string, string> = {};
         for (const col of columns) {
-          columnTypes[col.columnName] = col.dataType;
+          columnTypes[col.columnName] = mapSqlDataType(col.dataType);
         }
 
         const timestampColumn =
           columns.find((c) => c.columnName === "timestamp")?.columnName ??
-          columns.find((c) => c.dataType === "date")?.columnName ??
+          columns.find((c) => mapSqlDataType(c.dataType) === "date")?.columnName ??
           null;
+
+        const tablePath = tableInfo
+          ? `${tableInfo.databaseName}.${tableInfo.tableSchema}.${tableInfo.tableName}`
+          : tableId;
 
         return {
           content: [
@@ -545,7 +575,7 @@ export function registerProductAnalyticsTools({
               text: formatDatasourceTableDetail(
                 datasourceId,
                 tableId,
-                tableInfo?.path ?? tableId,
+                tablePath,
                 timestampColumn,
                 columnTypes
               ),
@@ -661,19 +691,21 @@ export function registerProductAnalyticsTools({
             datasourceId,
             tableId
           );
-          const tableInfo = tableSchemaData.table;
+          const tableInfo = tableSchemaData.informationSchemaTable;
           const columns = tableInfo?.columns || [];
           for (const col of columns) {
-            columnTypes[col.columnName] = col.dataType;
+            columnTypes[col.columnName] = mapSqlDataType(col.dataType);
           }
           if (!inputTimestampColumn) {
             timestampColumn =
               columns.find((c) => c.columnName === "timestamp")?.columnName ??
-              columns.find((c) => c.dataType === "date")?.columnName ??
+              columns.find((c) => mapSqlDataType(c.dataType) === "date")?.columnName ??
               "timestamp";
           }
           if (!inputTablePath) {
-            path = tableInfo?.path ?? tableId;
+            path = tableInfo
+              ? `${tableInfo.databaseName}.${tableInfo.tableSchema}.${tableInfo.tableName}`
+              : tableId;
           }
         } catch {
           // Information schema unavailable — proceed with provided/default values
