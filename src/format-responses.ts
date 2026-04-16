@@ -663,6 +663,103 @@ export function formatStaleFeatureFlags(
   return parts.join("\n");
 }
 
+// ─── Product Analytics Explorations ─────────────────────────────────
+export function formatMetricExploration(
+  data: {
+    exploration: {
+      id: string;
+      status: "running" | "success" | "error";
+      dateStart: string;
+      dateEnd: string;
+      error?: string | null;
+      result: {
+        rows: {
+          dimensions: (string | null)[];
+          values: { metricId: string; numerator: number | null; denominator: number | null }[];
+        }[];
+      };
+    } | null;
+    query: {
+      status: "running" | "queued" | "failed" | "partially-succeeded" | "succeeded";
+    } | null;
+    explorationUrl?: string;
+    message?: string;
+  },
+  metricName: string
+): string {
+  const parts: string[] = [];
+
+  if (!data.exploration) {
+    parts.push(`**Metric exploration for ${metricName} could not be created.**`);
+    if (data.message) parts.push(data.message);
+    if (data.query) parts.push(`Query status: ${data.query.status}`);
+    return parts.join("\n");
+  }
+
+  const { exploration } = data;
+
+  if (exploration.status === "running") {
+    parts.push(`**Metric exploration for ${metricName} is still running.**`);
+    parts.push(`Query status: ${data.query?.status || "unknown"}`);
+    parts.push("The query has not completed yet. Try again shortly.");
+    return parts.join("\n");
+  }
+
+  if (exploration.status === "error") {
+    parts.push(`**Metric exploration for ${metricName} failed.**`);
+    if (exploration.error) parts.push(`Error: ${exploration.error}`);
+    return parts.join("\n");
+  }
+
+  // Success
+  parts.push(`**Metric exploration: ${metricName}**`);
+  parts.push(`Date range: ${exploration.dateStart} to ${exploration.dateEnd}`);
+
+  const rows = exploration.result?.rows || [];
+  parts.push(`Data points: ${rows.length}`);
+
+  if (rows.length > 0) {
+    const dimCount = rows[0].dimensions.length;
+    const hasBreakdown = dimCount > 1;
+
+    parts.push("");
+
+    if (hasBreakdown) {
+      parts.push("| Date | Dimension | Value |");
+      parts.push("|------|-----------|-------|");
+    } else {
+      parts.push("| Date | Value |");
+      parts.push("|------|-------|");
+    }
+
+    const displayRows = rows.slice(0, 30);
+    for (const row of displayRows) {
+      const date = row.dimensions[0] ?? "—";
+      const value = row.values[0]?.numerator;
+      const formatted = value != null ? value.toLocaleString() : "—";
+
+      if (hasBreakdown) {
+        const dimension = row.dimensions.slice(1).join(", ") || "—";
+        parts.push(`| ${date} | ${dimension} | ${formatted} |`);
+      } else {
+        parts.push(`| ${date} | ${formatted} |`);
+      }
+    }
+
+    if (rows.length > 30) {
+      const cols = hasBreakdown ? "| ... | ... |" : "| ... |";
+      parts.push(`${cols} *(${rows.length - 30} more rows)* |`);
+    }
+  }
+
+  if (data.explorationUrl) {
+    parts.push("");
+    parts.push(`[View chart in GrowthBook](${data.explorationUrl})`);
+  }
+
+  return parts.join("\n");
+}
+
 // ─── Helpful Errors ─────────────────────────────────────────────────
 export function formatApiError(
   error: unknown,
