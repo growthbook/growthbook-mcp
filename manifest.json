@@ -115,6 +115,18 @@
     {
       "name": "create_fact_table_exploration",
       "description": "Chart data from a GrowthBook fact table. Requires factTableId and a series array (one or more entries: count, unit_count, or sum of a numeric column) so multiple series can appear on one chart. Use list_fact_tables and get_fact_table first. Returns exploration data and a GrowthBook chart link; same cache and date-range behavior as create_metric_exploration."
+    },
+    {
+      "name": "list_datasources",
+      "description": "List all GrowthBook data sources in the organization (id, name, type). Use a datasource id with get_datasource_schema to explore available tables and columns, or pass it to create_data_source_exploration to run an ad-hoc query."
+    },
+    {
+      "name": "get_datasource_schema",
+      "description": "Explore the schema of a GrowthBook data source. With only datasourceId, returns available tables. With datasourceId and tableId, also returns column names and data types for that table. Use list_datasources to find datasource ids. Use the returned tableId and column info with create_data_source_exploration."
+    },
+    {
+      "name": "create_data_source_exploration",
+      "description": "Run a GrowthBook product-analytics query directly against a raw data source table. Use only when create_metric_exploration and create_fact_table_exploration cannot satisfy the request. Requires datasourceId and tableId — use list_datasources then get_datasource_schema to discover these. Supports count and sum series. Automatically fetches column types and timestamp column before running the query."
     }
   ],
   "prompts": [

@@ -8,20 +8,84 @@ import {
 import type {
   CreateExplorationResponse,
   CreateFactTableExplorationResponse,
+  CreateDataSourceExplorationResponse,
   GetFactTableResponse,
+  ListDataSourcesResponse,
+  DatasourceInformationSchemaResponse,
+  DatasourceInformationSchemaTable,
+  TableInformationSchemaResponse,
 } from "../api-type-helpers.js";
-import { formatExplorationResult, formatApiError } from "../format-responses.js";
+import {
+  formatExplorationResult,
+  formatApiError,
+  formatDatasourcesList,
+  formatDatasourceTableList,
+  formatDatasourceTableDetail,
+} from "../format-responses.js";
 import {
   explorationSharedInputSchema,
   buildDateRangePayload,
   buildDimensions,
   factTableExplorationSeriesSchema,
   mapFactTableSeriesToPayload,
+  dataSourceExplorationSeriesSchema,
+  mapDataSourceSeriesToPayload,
   metricExplorationEntrySchema,
 } from "./exploration-schemas.js";
 
 interface ProductAnalyticsTools extends BaseToolsInterface {
   appOrigin: string;
+}
+
+type NormalizedDataType = "string" | "number" | "date" | "boolean" | "other";
+
+function mapSqlDataType(raw: string): NormalizedDataType {
+  const t = raw.toLowerCase();
+  if (t.includes("char") || t.includes("text") || t.includes("uuid") || t.includes("enum")) return "string";
+  if (t.includes("int") || t.includes("numeric") || t.includes("decimal") || t.includes("float") || t.includes("double") || t.includes("real") || t.includes("money")) return "number";
+  if (t.includes("timestamp") || t.includes("date") || t.includes("time")) return "date";
+  if (t.includes("bool")) return "boolean";
+  return "other";
+}
+
+async function fetchDatasourceInfoSchema(
+  baseApiUrl: string,
+  apiKey: string,
+  datasourceId: string
+): Promise<DatasourceInformationSchemaTable[]> {
+  const res = await fetchWithRateLimit(
+    `${baseApiUrl}/api/v1/data-sources/${encodeURIComponent(
+      datasourceId
+    )}/information-schema`,
+    { headers: buildHeaders(apiKey) }
+  );
+  await handleResNotOk(res);
+  const data = (await res.json()) as DatasourceInformationSchemaResponse;
+  const tables: DatasourceInformationSchemaTable[] = [];
+  for (const db of data.informationSchema?.databases ?? []) {
+    for (const schema of db.schemas ?? []) {
+      for (const table of schema.tables ?? []) {
+        tables.push(table);
+      }
+    }
+  }
+  return tables;
+}
+
+async function fetchTableInfoSchema(
+  baseApiUrl: string,
+  apiKey: string,
+  datasourceId: string,
+  tableId: string
+): Promise<TableInformationSchemaResponse> {
+  const res = await fetchWithRateLimit(
+    `${baseApiUrl}/api/v1/information-schema-tables/${encodeURIComponent(
+      tableId
+    )}`,
+    { headers: buildHeaders(apiKey) }
+  );
+  await handleResNotOk(res);
+  return (await res.json()) as TableInformationSchemaResponse;
 }
 
 async function resolveFactMetricDatasource(
@@ -260,16 +324,12 @@ export function registerProductAnalyticsTools({
       } catch (error) {
         const ids = metricEntries.map((m) => m.metricId).join(", ");
         throw new Error(
-          formatApiError(
-            error,
-            `creating metric exploration for '${ids}'`,
-            [
-              "Only fact metrics are supported — IDs must start with 'fact__'.",
-              "Use get_metrics to find available fact metric IDs.",
-              "Multiple metrics in one chart must share the same datasource.",
-              "If no fact metric matches, use create_fact_table_exploration or create_data_source_exploration instead.",
-            ]
-          )
+          formatApiError(error, `creating metric exploration for '${ids}'`, [
+            "Only fact metrics are supported — IDs must start with 'fact__'.",
+            "Use get_metrics to find available fact metric IDs.",
+            "Multiple metrics in one chart must share the same datasource.",
+            "If no fact metric matches, use create_fact_table_exploration or create_data_source_exploration instead.",
+          ])
         );
       }
     }
@@ -343,9 +403,10 @@ export function registerProductAnalyticsTools({
 
         await handleResNotOk(res);
 
-        const data = (await res.json()) as CreateFactTableExplorationResponse & {
-          explorationUrl?: string;
-        };
+        const data =
+          (await res.json()) as CreateFactTableExplorationResponse & {
+            explorationUrl?: string;
+          };
 
         const title =
           series.length > 1
@@ -369,6 +430,348 @@ export function registerProductAnalyticsTools({
               "Verify factTableId with list_fact_tables and get_fact_table.",
               "For sum series, valueColumn must be a numeric column on that fact table.",
               "Ensure your API key can read fact tables and run product analytics queries.",
+            ]
+          )
+        );
+      }
+    }
+  );
+
+  server.registerTool(
+    "list_datasources",
+    {
+      title: "List Data Sources",
+      description:
+        "Lists all GrowthBook data sources available in the organization. " +
+        "Returns the id, name, and type for each datasource. " +
+        "Use a datasource `id` with `get_datasource_schema` to explore available tables and columns, " +
+        "or pass it directly to `create_data_source_exploration` if the table details are already known. " +
+        "Prefer `create_metric_exploration` or `create_fact_table_exploration` over the data source explorer when possible.",
+      inputSchema: z.object({}),
+      annotations: {
+        readOnlyHint: true,
+      },
+    },
+    async () => {
+      try {
+        const allSources: ListDataSourcesResponse["dataSources"] = [];
+        let offset = 0;
+        const limit = 100;
+        let hasMore = true;
+
+        while (hasMore) {
+          const res = await fetchWithRateLimit(
+            `${baseApiUrl}/api/v1/data-sources?limit=${limit}&offset=${offset}`,
+            { headers: buildHeaders(apiKey) }
+          );
+          await handleResNotOk(res);
+          const data = (await res.json()) as ListDataSourcesResponse;
+          allSources.push(...(data.dataSources || []));
+          hasMore = data.hasMore ?? false;
+          offset = data.nextOffset ?? offset + limit;
+        }
+
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: formatDatasourcesList({
+                dataSources: allSources,
+              } as ListDataSourcesResponse),
+            },
+          ],
+        };
+      } catch (error) {
+        throw new Error(
+          formatApiError(error, "listing data sources", [
+            "Ensure your API key has permission to read data sources.",
+          ])
+        );
+      }
+    }
+  );
+
+  server.registerTool(
+    "get_datasource_schema",
+    {
+      title: "Get Datasource Schema",
+      description:
+        "Explores the schema of a GrowthBook data source. " +
+        "When called with only `datasourceId`, returns the list of available tables (with ids and paths). " +
+        "When called with both `datasourceId` and `tableId`, also returns the full column list with data types for that specific table. " +
+        "Use `list_datasources` to find a datasource id. " +
+        "Use the returned `tableId` and column names with `create_data_source_exploration` to run an ad-hoc query.",
+      inputSchema: z.object({
+        datasourceId: z
+          .string()
+          .describe(
+            "The data source ID (e.g. ds_...). Use list_datasources to find available IDs."
+          ),
+        tableId: z
+          .string()
+          .optional()
+          .describe(
+            "Optional. When provided, returns column names and types for this specific table. " +
+              "Omit to get only the list of available tables."
+          ),
+      }),
+      annotations: {
+        readOnlyHint: true,
+      },
+    },
+    async ({ datasourceId, tableId }) => {
+      try {
+        const rawTables = await fetchDatasourceInfoSchema(
+          baseApiUrl,
+          apiKey,
+          datasourceId
+        );
+        const tables = rawTables.map((t) => ({
+          id: t.id,
+          path: t.path,
+          name: t.tableName,
+          numColumns: t.numOfColumns,
+        }));
+
+        if (!tableId) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: formatDatasourceTableList(datasourceId, tables),
+              },
+            ],
+          };
+        }
+
+        const tableSchemaData = await fetchTableInfoSchema(
+          baseApiUrl,
+          apiKey,
+          datasourceId,
+          tableId
+        );
+
+        const tableInfo = tableSchemaData.informationSchemaTable;
+        const columns = tableInfo?.columns || [];
+
+        const columnTypes: Record<string, string> = {};
+        for (const col of columns) {
+          columnTypes[col.columnName] = mapSqlDataType(col.dataType);
+        }
+
+        const timestampColumn =
+          columns.find((c) => c.columnName === "timestamp")?.columnName ??
+          columns.find((c) => mapSqlDataType(c.dataType) === "date")?.columnName ??
+          null;
+
+        const tablePath = tableInfo
+          ? `${tableInfo.databaseName}.${tableInfo.tableSchema}.${tableInfo.tableName}`
+          : tableId;
+
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: formatDatasourceTableDetail(
+                datasourceId,
+                tableId,
+                tablePath,
+                timestampColumn,
+                columnTypes
+              ),
+            },
+          ],
+        };
+      } catch (error) {
+        throw new Error(
+          formatApiError(
+            error,
+            `fetching schema for datasource '${datasourceId}'`,
+            [
+              "Verify the datasourceId with list_datasources.",
+              "If providing a tableId, verify it exists in the datasource information schema.",
+              "Ensure your API key has permission to read data source schemas.",
+            ]
+          )
+        );
+      }
+    }
+  );
+
+  const dataSourceExplorationInputSchema = explorationSharedInputSchema.extend({
+    datasourceId: z
+      .string()
+      .describe(
+        "The data source ID (e.g. ds_...). Use list_datasources to find IDs."
+      ),
+    tableId: z
+      .string()
+      .describe(
+        "The table ID (e.g. tbl_...) to query — NOT the table path. " +
+          "Use get_datasource_schema with a datasourceId to list tables and get their IDs. " +
+          "The table ID and table path are distinct: the ID is the GrowthBook identifier, the path is the fully-qualified table name in the database."
+      ),
+    tablePath: z
+      .string()
+      .optional()
+      .describe(
+        "The fully-qualified table path in the database (e.g. 'project.dataset.table' or 'schema.table'). " +
+          "Resolved automatically from the information schema when omitted. " +
+          "Provide this explicitly when you already know the path (e.g. from get_fact_table SQL or get_datasource_schema output) to skip the schema lookup."
+      ),
+    timestampColumn: z
+      .string()
+      .optional()
+      .describe(
+        "The timestamp column name for this table. " +
+          "Resolved automatically from the information schema when omitted; defaults to 'timestamp' if auto-detection fails. " +
+          "Provide this explicitly when you already know the column name (e.g. from get_fact_table or get_datasource_schema output)."
+      ),
+    series: z
+      .array(dataSourceExplorationSeriesSchema)
+      .min(1)
+      .describe(
+        "One or more series to plot. Each series can be a row count ('count') or sum of a numeric column ('sum'). " +
+          "Use get_datasource_schema with a tableId to discover valid column names and types. " +
+          "For valueType 'sum', valueColumn must be a numeric column."
+      ),
+  });
+
+  server.registerTool(
+    "create_data_source_exploration",
+    {
+      title: "Create Data Source Exploration",
+      description:
+        "Runs a GrowthBook product-analytics query directly against a raw data source table. " +
+        "Use this when neither `create_metric_exploration` nor `create_fact_table_exploration` can satisfy the request — including when no fact tables exist (i.e. `list_fact_tables` returns empty). " +
+        "Requires a datasourceId and tableId — use `list_datasources` then `get_datasource_schema` to discover these. " +
+        "Note: tableId is the GrowthBook table identifier (e.g. tbl_...); tablePath is the fully-qualified database table name (e.g. project.dataset.table). These are distinct — always use the ID from get_datasource_schema, not the path. " +
+        "You may optionally supply tablePath and timestampColumn directly (e.g. from get_datasource_schema or get_fact_table output) to skip the automatic schema lookup. " +
+        "Don't assume you know what data source the user wants to use. Ask the user to specify the data source they want to use, but give them options to choose from. " +
+        "If there are tables with the same name in different datasources, ask the user to specify which data source they want to use. " +
+        "If there are multiple timestamp columns on a particular table, ask the user to specify which timestamp column they want to use. " +
+        "Attempts to auto-fetch column types, table path, and timestamp column from the information schema; falls back gracefully if unavailable. " +
+        "Returns chart data and a link to view the visualization in GrowthBook. " +
+        "If the response indicates the query is still running, wait 10–15 seconds and retry with cache 'preferred'.",
+      inputSchema: dataSourceExplorationInputSchema,
+      annotations: {
+        readOnlyHint: false,
+      },
+    },
+    async (input) => {
+      const {
+        datasourceId,
+        tableId,
+        tablePath: inputTablePath,
+        timestampColumn: inputTimestampColumn,
+        series,
+        dateRange,
+        lookbackValue,
+        lookbackUnit,
+        startDate,
+        endDate,
+        cache,
+        chartType,
+        dateGranularity,
+        dimensions,
+      } = input;
+
+      try {
+        let columnTypes: Record<
+          string,
+          "string" | "number" | "date" | "boolean" | "other"
+        > = {};
+        let timestampColumn = inputTimestampColumn ?? "timestamp";
+        let path = inputTablePath ?? tableId;
+
+        try {
+          const tableSchemaData = await fetchTableInfoSchema(
+            baseApiUrl,
+            apiKey,
+            datasourceId,
+            tableId
+          );
+          const tableInfo = tableSchemaData.informationSchemaTable;
+          const columns = tableInfo?.columns || [];
+          for (const col of columns) {
+            columnTypes[col.columnName] = mapSqlDataType(col.dataType);
+          }
+          if (!inputTimestampColumn) {
+            timestampColumn =
+              columns.find((c) => c.columnName === "timestamp")?.columnName ??
+              columns.find((c) => mapSqlDataType(c.dataType) === "date")?.columnName ??
+              "timestamp";
+          }
+          if (!inputTablePath) {
+            path = tableInfo
+              ? `${tableInfo.databaseName}.${tableInfo.tableSchema}.${tableInfo.tableName}`
+              : tableId;
+          }
+        } catch {
+          // Information schema unavailable — proceed with provided/default values
+        }
+
+        const payload = {
+          datasource: datasourceId,
+          type: "data_source" as const,
+          chartType,
+          dateRange: buildDateRangePayload(
+            dateRange,
+            lookbackValue,
+            lookbackUnit,
+            startDate,
+            endDate
+          ),
+          dimensions: buildDimensions(dimensions, chartType, dateGranularity),
+          dataset: {
+            type: "data_source" as const,
+            path,
+            table: tableId,
+            timestampColumn,
+            columnTypes,
+            values: series.map(mapDataSourceSeriesToPayload),
+          },
+        };
+
+        const res = await fetchWithRateLimit(
+          `${baseApiUrl}/api/v1/product-analytics/data-source-exploration?cache=${cache}`,
+          {
+            method: "POST",
+            headers: buildHeaders(apiKey),
+            body: JSON.stringify(payload),
+          }
+        );
+
+        await handleResNotOk(res);
+
+        const data =
+          (await res.json()) as CreateDataSourceExplorationResponse & {
+            explorationUrl?: string;
+          };
+
+        const title =
+          series.length > 1
+            ? `${path} (${series.length} series)`
+            : `${path} — ${series[0].name}`;
+
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: formatExplorationResult(data, title),
+            },
+          ],
+        };
+      } catch (error) {
+        throw new Error(
+          formatApiError(
+            error,
+            `creating data source exploration for table '${tableId}'`,
+            [
+              "Use list_datasources to verify the datasourceId.",
+              "Use get_datasource_schema to verify the tableId and column names.",
+              "For sum series, valueColumn must be a numeric column — check get_datasource_schema output.",
+              "If no fact metric or fact table exists for this data, consider creating one in GrowthBook first.",
             ]
           )
         );

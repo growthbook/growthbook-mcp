@@ -10,6 +10,9 @@ All notable changes to this project will be documented in this file.
 - `list_fact_tables` tool — list fact tables with pagination and optional project or data source filters; use ids for product analytics and fact metrics workflows
 - `create_metric_exploration` tool — chart metric data over time with configurable date ranges and chart types, returns visualization data and a link to view in GrowthBook
 - `create_fact_table_exploration` tool — run product-analytics queries directly against a fact table (row count, unit count, sum of a column) with the same chart and date-range options as metric exploration
+- `list_datasources` tool — list all GrowthBook data sources with ids, names, and types; starting point for the data source exploration workflow
+- `get_datasource_schema` tool — explore a data source's available tables; when a `tableId` is provided, also returns column names and data types for that table
+- `create_data_source_exploration` tool — run a product-analytics query directly against a raw data source table; automatically fetches the table's column types and timestamp column before building the query payload; intended as a last resort when fact metrics and fact tables are unavailable
 
 ### Changed
 

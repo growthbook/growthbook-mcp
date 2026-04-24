@@ -20,6 +20,7 @@ import type {
   GetFactTableResponse,
   Feature,
   GetStaleFeatureResponse,
+  ListDataSourcesResponse,
 } from "./api-type-helpers.js";
 
 // Helper to resolve a metric ID to a display name using an optional lookup
@@ -65,7 +66,14 @@ export function formatProjects(data: ListProjectsResponse): string {
 export function formatFactTablesList(data: ListFactTablesResponse): string {
   const tables = data.factTables || [];
   if (tables.length === 0) {
-    return "No fact tables found for the current filters.";
+    return (
+      "No fact tables found for the current filters.\n\n" +
+      "To answer product analytics questions without fact tables, use `create_data_source_exploration` directly:\n" +
+      "1. Call `list_datasources` to find available data source IDs.\n" +
+      "2. Call `get_datasource_schema` with the datasource ID to list tables.\n" +
+      "3. Call `get_datasource_schema` again with a tableId to inspect columns.\n" +
+      "4. Call `create_data_source_exploration` with the datasourceId, tableId, and a series definition."
+    );
   }
 
   const lines = tables.map((t) => {
@@ -768,6 +776,82 @@ export function formatStaleFeatureFlags(
   } else {
     parts.push("No stale flags found. All checked features are active.");
   }
+
+  return parts.join("\n");
+}
+
+// ─── Data Sources ───────────────────────────────────────────────────
+
+export function formatDatasourcesList(data: ListDataSourcesResponse): string {
+  const sources = data.dataSources || [];
+  if (sources.length === 0) {
+    return "No data sources found in this GrowthBook organization.";
+  }
+
+  const lines = sources.map((ds) => {
+    const parts = [`- **${ds.name}** (id: \`${ds.id}\`, type: \`${ds.type}\`)`];
+    if (ds.description?.trim()) parts.push(`  ${ds.description.trim()}`);
+    if (ds.projectIds?.length)
+      parts.push(`  Projects: ${ds.projectIds.map((p: string) => `\`${p}\``).join(", ")}`);
+    return parts.join("\n");
+  });
+
+  return [
+    `**${sources.length} data source(s):**`,
+    "",
+    ...lines,
+    "",
+    "Use a data source `id` with `get_datasource_schema` to explore available tables and columns.",
+  ].join("\n");
+}
+
+export function formatDatasourceTableList(
+  datasourceId: string,
+  tables: Array<{ id: string; path: string; name?: string; numColumns?: number }>
+): string {
+  if (tables.length === 0) {
+    return `No tables found for data source \`${datasourceId}\`.`;
+  }
+
+  const lines = tables.map((t) => {
+    const label = t.name && t.name !== t.path ? `${t.name} — \`${t.path}\`` : `\`${t.path}\``;
+    const colNote = t.numColumns != null ? ` (${t.numColumns} columns)` : "";
+    return `- **${label}**${colNote}\n  id: \`${t.id}\``;
+  });
+
+  return [
+    `**${tables.length} table(s) available on datasource \`${datasourceId}\`:**`,
+    "",
+    ...lines,
+    "",
+    "Call `get_datasource_schema` again with a `tableId` to see column names and types for a specific table. Then use that `tableId` with `create_data_source_exploration`.",
+  ].join("\n");
+}
+
+export function formatDatasourceTableDetail(
+  datasourceId: string,
+  tableId: string,
+  path: string,
+  timestampColumn: string | null,
+  columnTypes: Record<string, string>
+): string {
+  const cols = Object.entries(columnTypes);
+  const colLines = cols.map(([name, type]) => {
+    const isTimestamp = name === timestampColumn ? " *(timestamp)*" : "";
+    return `- \`${name}\` — ${type}${isTimestamp}`;
+  });
+
+  const parts = [
+    `**Table: \`${path}\`**`,
+    `Datasource: \`${datasourceId}\` | Table ID: \`${tableId}\``,
+    timestampColumn ? `Timestamp column: \`${timestampColumn}\`` : "*(No timestamp column detected — you may need to specify one manually.)*",
+    "",
+    `**${cols.length} column(s):**`,
+    "",
+    ...colLines,
+    "",
+    `Use tableId \`${tableId}\` with \`create_data_source_exploration\` to run an ad-hoc query against this table.`,
+  ];
 
   return parts.join("\n");
 }
