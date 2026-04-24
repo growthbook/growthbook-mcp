@@ -16,6 +16,8 @@ import type {
   ListFactMetricsResponse,
   GetMetricResponse,
   GetFactMetricResponse,
+  ListFactTablesResponse,
+  GetFactTableResponse,
   Feature,
   GetStaleFeatureResponse,
 } from "./api-type-helpers.js";
@@ -57,6 +59,113 @@ export function formatProjects(data: ListProjectsResponse): string {
     "",
     `Use the \`id\` value when creating feature flags or experiments scoped to a project.`,
   ].join("\n");
+}
+
+// ─── Fact tables ────────────────────────────────────────────────────
+export function formatFactTablesList(data: ListFactTablesResponse): string {
+  const tables = data.factTables || [];
+  if (tables.length === 0) {
+    return "No fact tables found for the current filters.";
+  }
+
+  const lines = tables.map((t) => {
+    const parts = [
+      `- **${t.name}** (id: \`${t.id}\`, datasource: \`${t.datasource}\`)`,
+    ];
+    if (t.archived) parts.push("  *(archived)*");
+    if (t.description?.trim()) parts.push(`  ${t.description.trim()}`);
+    return parts.join("\n");
+  });
+
+  const total = data.total;
+  const header =
+    typeof total === "number"
+      ? `**${tables.length} fact table(s)** on this page (${total} total in organization):`
+      : `**${tables.length} fact table(s):**`;
+
+  return [
+    header,
+    "",
+    ...lines,
+    "",
+    "Use the `id` as `factTableId` when building fact-table explorations or fact metrics. Call `get_fact_table` with an id for full column definitions and SQL.",
+    data.hasMore
+      ? `More results available (nextOffset: ${data.nextOffset ?? "—"}). Increase \`offset\` to paginate.`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+const FACT_TABLE_SQL_MAX_CHARS = 4000;
+
+export function formatFactTableDetail(data: GetFactTableResponse): string {
+  const t = data.factTable;
+  if (!t) return "Fact table not found.";
+
+  const parts: string[] = [];
+  parts.push(`**Fact table: ${t.name}** (id: \`${t.id}\`)`);
+  parts.push(`Datasource: \`${t.datasource}\``);
+  if (t.archived) parts.push("*(archived)*");
+  if (t.description?.trim()) parts.push(`Description: ${t.description.trim()}`);
+  if (t.owner?.trim()) parts.push(`Owner: ${t.owner}`);
+  if (t.projects?.length)
+    parts.push(`Projects: ${t.projects.map((p) => `\`${p}\``).join(", ")}`);
+  if (t.tags?.length)
+    parts.push(`Tags: ${t.tags.map((x) => `\`${x}\``).join(", ")}`);
+  if (t.userIdTypes?.length)
+    parts.push(
+      `User id types: ${t.userIdTypes.map((x) => `\`${x}\``).join(", ")}`
+    );
+  if (t.eventName) parts.push(`Event name: \`${t.eventName}\``);
+  if (t.managedBy) parts.push(`Managed by: \`${t.managedBy}\``);
+  parts.push("");
+
+  if (t.columnsError?.trim()) {
+    parts.push(`**Column parse error:** ${t.columnsError.trim()}`);
+    parts.push("");
+  }
+
+  const cols = t.columns || [];
+  if (cols.length === 0) {
+    parts.push("**Columns:** *(none returned)*");
+  } else {
+    parts.push(
+      "**Columns** *(one JSON object per `factTable.columns[]` entry, API order; includes `deleted` columns. Only keys the API returns appear; omitted boolean fields on a column mean false per GrowthBook API.)*"
+    );
+    parts.push("");
+    for (const c of cols) {
+      const heading = c.name?.trim()
+        ? `\`${c.column}\` (${c.name.trim()})`
+        : `\`${c.column}\``;
+      parts.push(`### ${heading}`);
+      parts.push("");
+      parts.push("```json");
+      parts.push(JSON.stringify(c, null, 2));
+      parts.push("```");
+      parts.push("");
+    }
+  }
+
+  parts.push("");
+  parts.push("**SQL:**");
+  parts.push("");
+  const sql = t.sql || "";
+  if (sql.length <= FACT_TABLE_SQL_MAX_CHARS) {
+    parts.push("```sql");
+    parts.push(sql || "—");
+    parts.push("```");
+  } else {
+    parts.push("```sql");
+    parts.push(sql.slice(0, FACT_TABLE_SQL_MAX_CHARS));
+    parts.push("```");
+    parts.push("");
+    parts.push(
+      `*(SQL truncated; ${sql.length - FACT_TABLE_SQL_MAX_CHARS} more characters in source.)*`
+    );
+  }
+
+  return parts.join("\n");
 }
 
 // ─── Environments ───────────────────────────────────────────────────
@@ -664,33 +773,53 @@ export function formatStaleFeatureFlags(
 }
 
 // ─── Product Analytics Explorations ─────────────────────────────────
-export function formatMetricExploration(
-  data: {
-    exploration: {
-      id: string;
-      status: "running" | "success" | "error";
-      dateStart: string;
-      dateEnd: string;
-      error?: string | null;
-      result: {
-        rows: {
-          dimensions: (string | null)[];
-          values: { metricId: string; numerator: number | null; denominator: number | null }[];
-        }[];
+
+/** Exploration API responses (metric, fact-table, data-source) share this shape */
+type ExplorationResultPayload = {
+  exploration: {
+    id: string;
+    status: "running" | "success" | "error";
+    dateStart: string;
+    dateEnd: string;
+    error?: string | null;
+    result: {
+      rows: {
+        dimensions: (string | null)[];
+        values: { metricId: string; numerator: number | null; denominator: number | null }[];
+      }[];
+    };
+    config?: {
+      dataset?: {
+        values?: { name?: string }[];
       };
-    } | null;
-    query: {
-      status: "running" | "queued" | "failed" | "partially-succeeded" | "succeeded";
-    } | null;
-    explorationUrl?: string;
-    message?: string;
-  },
-  metricName: string
+    };
+  } | null;
+  query: {
+    status: "running" | "queued" | "failed" | "partially-succeeded" | "succeeded";
+  } | null;
+  explorationUrl?: string;
+  message?: string;
+};
+
+function explorationValueColumnLabels(data: ExplorationResultPayload): string[] {
+  const values = data.exploration?.config?.dataset?.values;
+  if (Array.isArray(values) && values.length > 0) {
+    return values.map((v, i) =>
+      typeof v.name === "string" && v.name.length > 0 ? v.name : `Series ${i + 1}`
+    );
+  }
+  return ["Value"];
+}
+
+/** Formats metric, fact-table, or data-source exploration results for agents */
+export function formatExplorationResult(
+  data: ExplorationResultPayload,
+  title: string
 ): string {
   const parts: string[] = [];
 
   if (!data.exploration) {
-    parts.push(`**Metric exploration for ${metricName} could not be created.**`);
+    parts.push(`**Exploration for ${title} could not be created.**`);
     if (data.message) parts.push(data.message);
     if (data.query) parts.push(`Query status: ${data.query.status}`);
     return parts.join("\n");
@@ -699,20 +828,19 @@ export function formatMetricExploration(
   const { exploration } = data;
 
   if (exploration.status === "running") {
-    parts.push(`**Metric exploration for ${metricName} is still running.**`);
+    parts.push(`**Exploration for ${title} is still running.**`);
     parts.push(`Query status: ${data.query?.status || "unknown"}`);
     parts.push("The query has not completed yet. Try again shortly.");
     return parts.join("\n");
   }
 
   if (exploration.status === "error") {
-    parts.push(`**Metric exploration for ${metricName} failed.**`);
+    parts.push(`**Exploration for ${title} failed.**`);
     if (exploration.error) parts.push(`Error: ${exploration.error}`);
     return parts.join("\n");
   }
 
-  // Success
-  parts.push(`**Metric exploration: ${metricName}**`);
+  parts.push(`**Exploration: ${title}**`);
   parts.push(`Date range: ${exploration.dateStart} to ${exploration.dateEnd}`);
 
   const rows = exploration.result?.rows || [];
@@ -721,34 +849,43 @@ export function formatMetricExploration(
   if (rows.length > 0) {
     const dimCount = rows[0].dimensions.length;
     const hasBreakdown = dimCount > 1;
+    const valueLabels = explorationValueColumnLabels(data);
+    const nValues = Math.max(1, rows[0].values?.length ?? 0);
+    const valueHeads = Array.from({ length: nValues }, (_, i) => {
+      return valueLabels[i] ?? `Series ${i + 1}`;
+    });
+    const valueSep = Array(nValues).fill("-------").join("|");
 
     parts.push("");
 
     if (hasBreakdown) {
-      parts.push("| Date | Dimension | Value |");
-      parts.push("|------|-----------|-------|");
+      parts.push(`| Date | Dimension | ${valueHeads.join(" | ")} |`);
+      parts.push(`|------|-----------|${valueSep}|`);
     } else {
-      parts.push("| Date | Value |");
-      parts.push("|------|-------|");
+      parts.push(`| Date | ${valueHeads.join(" | ")} |`);
+      parts.push(`|------|${valueSep}|`);
     }
 
     const displayRows = rows.slice(0, 30);
     for (const row of displayRows) {
-      const date = row.dimensions[0] ?? "—";
-      const value = row.values[0]?.numerator;
-      const formatted = value != null ? value.toLocaleString() : "—";
+      const primary = row.dimensions[0] ?? "—";
+      const valueCells: string[] = [];
+      for (let i = 0; i < nValues; i++) {
+        const v = row.values[i]?.numerator;
+        valueCells.push(v != null ? v.toLocaleString() : "—");
+      }
 
       if (hasBreakdown) {
         const dimension = row.dimensions.slice(1).join(", ") || "—";
-        parts.push(`| ${date} | ${dimension} | ${formatted} |`);
+        parts.push(`| ${primary} | ${dimension} | ${valueCells.join(" | ")} |`);
       } else {
-        parts.push(`| ${date} | ${formatted} |`);
+        parts.push(`| ${primary} | ${valueCells.join(" | ")} |`);
       }
     }
 
     if (rows.length > 30) {
-      const cols = hasBreakdown ? "| ... | ... |" : "| ... |";
-      parts.push(`${cols} *(${rows.length - 30} more rows)* |`);
+      parts.push("");
+      parts.push(`*(${rows.length - 30} more rows not shown)*`);
     }
   }
 

@@ -11,6 +11,7 @@ import { getApiKey, getApiUrl, getAppOrigin } from "./utils.js";
 import { registerSearchTools } from "./tools/search.js";
 import { registerDefaultsTools } from "./tools/defaults.js";
 import { registerMetricsTools } from "./tools/metrics.js";
+import { registerFactTableTools } from "./tools/fact-tables.js";
 import { registerProductAnalyticsTools } from "./tools/product-analytics.js";
 import { registerExperimentPrompts } from "./prompts/experiment-prompts.js";
 import packageDetails from "../package.json" with { type: "json" };
@@ -39,7 +40,7 @@ Key workflows:
 - Feature flags: Use create_feature_flag for simple flags, then create_force_rule to add targeting conditions
 - Experiments: ALWAYS call get_defaults first, then create_experiment. Experiments are created as "draft" - users must launch in GrowthBook UI
 - Analysis: Use get_experiments with mode="summary" for quick insights
-- Product analytics: Use create_metric_exploration to chart metric data. Use get_metrics first to find the metric ID.
+- Product analytics: Use list_fact_tables to find fact table IDs, then get_fact_table for columns and SQL. Use get_metrics to find fact metric IDs. Use create_metric_exploration to chart one or more fact metrics on the same exploration (metricId or metrics[]), or create_fact_table_exploration for ad-hoc aggregates with one or more series (counts, distinct units, sums).
 
 All mutating tools require a fileExtension parameter for SDK integration guidance.`,
     capabilities: {
@@ -99,6 +100,12 @@ registerMetricsTools({
   apiKey,
   appOrigin,
   user,
+});
+
+registerFactTableTools({
+  server,
+  baseApiUrl,
+  apiKey,
 });
 
 registerProductAnalyticsTools({
