@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Local, single-tenant Streamable HTTP transport entrypoint with optional bearer-token protection for the MCP endpoint
 - `create_metric_exploration` tool — chart metric data over time with configurable date ranges and chart types, returns visualization data and a link to view in GrowthBook
 
 ## [1.8.1] - 2026-03-09

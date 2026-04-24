@@ -12,6 +12,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
+    "start:http": "node server/http.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
@@ -23,7 +24,8 @@
     "generate-api-types": "npx openapi-typescript https://api.growthbook.io/api/v1/openapi.yaml -o src/api-types.d.ts"
   },
   "bin": {
-    "mcp": "server/index.js"
+    "mcp": "server/index.js",
+    "growthbook-mcp-http": "server/http.js"
   },
   "files": [
     "server"
