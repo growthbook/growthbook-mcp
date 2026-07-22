@@ -34,7 +34,7 @@
     },
     {
       "name": "call_api",
-      "description": "Make an authenticated HTTP request to the GrowthBook REST API."
+      "description": "Make an authenticated HTTP request to the GrowthBook REST API. Confirm mutating methods with the user unless already instructed."
     }
   ],
   "user_config": {

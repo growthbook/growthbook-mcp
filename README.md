@@ -8,7 +8,7 @@ A thin MCP server for GrowthBook with three tools:
 | `read_skill` | Return the full skill markdown (workflow + guardrails) |
 | `call_api` | Authenticated REST passthrough to the GrowthBook API |
 
-Competence lives in the [skills](https://github.com/growthbook/skills) repo and is **bundled at build time**. Capability is a generic `call_api` tool — no per-endpoint formatters.
+Competence lives in the [skills](https://github.com/growthbook/skills) repo and is **bundled at build time**. Capability is a generic `call_api` tool — no per-endpoint formatters. The tool description asks agents to confirm mutating methods (POST/PUT/PATCH/DELETE) with the user unless already instructed.
 
 ## Install / run
 
@@ -34,10 +34,10 @@ Point your MCP client at the compiled entrypoint:
 }
 ```
 
-Or after publishing:
+Or after publishing (beta dist-tag until 2.0.0 is stable):
 
 ```bash
-npx @growthbook/mcp-thin
+npx @growthbook/mcp@beta
 ```
 
 ## Environment variables
@@ -66,6 +66,8 @@ Clients connect to:
 - `http://127.0.0.1:3333/mcp/api` — capability-only (`call_api`)
 
 Unauthenticated requests receive `401` with `WWW-Authenticate` pointing at `/.well-known/oauth-protected-resource`, which advertises the GrowthBook Authorization Server.
+
+Before handling MCP, the server probes GrowthBook REST (`GET /api/v1/`) with the bearer. A `401` from that probe (or later from `call_api`) yields HTTP `401` with `error="invalid_token"` so the MCP client can refresh — instead of surfacing `"This API key has expired"` as a tool error. A `403` is treated as an accepted bearer (permission denied ≠ invalid token) so clients are not forced into a refresh loop.
 
 ### Capability-only mode
 
@@ -135,6 +137,7 @@ This MCP server does **not** shell out to `gb-call`. When a skill shows that pat
 - Methods: `GET` | `POST` | `PUT` | `PATCH` | `DELETE`
 - Returns raw response body on 2xx
 - On non-2xx, returns an actionable error (`isError: true`) covering auth failures, self-hosted 404 hints, and rate limits
+- Tool description + server instructions tell the agent to confirm POST/PUT/PATCH/DELETE with the user unless already instructed (soft guidance, not a hard gate)
 
 ### `list_skills` / `read_skill`
 
@@ -149,9 +152,19 @@ npm run build
 npm start
 ```
 
+## Standalone HTTP mode
+
+By default the server runs over stdio. Set `GB_MCP_TRANSPORT=http` to run it as a standalone HTTP server that exposes MCP at `/mcp` (skills + `call_api`) and `/mcp/api` (capability-only), behind an OAuth 2.0 protected-resource surface (RFC 9728 metadata + RFC 6750 `WWW-Authenticate`).
+
+- `GB_MCP_URL` (**required** in HTTP mode) — the server's public base URL. It is stamped into the OAuth resource (audience) and the protected-resource metadata, so it is never derived from request headers. The server refuses to start without it.
+- `GB_MCP_PORT` (default `3333`) and `GB_MCP_HOST` (default `127.0.0.1`).
+- Incoming bearers are validated by probing the GrowthBook REST API; a rejected token gets HTTP `401` + `WWW-Authenticate` so the client can refresh.
+
+Run it on a trusted network or bound to loopback. For a multi-tenant or public deployment, front it with your own gateway/auth.
+
 ## Out of scope (v1)
 
 - CLI OAuth login (Phase 2 — same AS)
-- Independent MCP token introspection / audience validation (pass-through to GB REST for now)
+- Dedicated token introspection endpoint (HTTP mode probes REST and relies on `401` for invalidation)
 - Response formatting and summarization (belongs in skills)
 - Editing the canonical skills to reference `call_api` instead of `gb-call` (bridged via instructions)

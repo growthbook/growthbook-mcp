@@ -16,7 +16,9 @@ export function registerCallApiTool(server: McpServer) {
       description:
         "Make an authenticated HTTP request to the GrowthBook REST API on the user's behalf. " +
         "Use method + path (+ optional JSON body) exactly as shown in skill workflows that mention gb-call. " +
-        "Paths typically start with /api/v1/ or /api/v2/. Returns the raw response body on success.",
+        "Paths typically start with /api/v1/ or /api/v2/. Returns the raw response body on success. " +
+        "IMPORTANT: Before POST, PUT, PATCH, or DELETE, confirm with the user (summarize method, path, and body) " +
+        "unless they have already explicitly instructed you to perform that mutation. GET requests do not need confirmation.",
       inputSchema: z.object({
         method: z
           .enum(["GET", "POST", "PUT", "PATCH", "DELETE"])

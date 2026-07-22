@@ -15,8 +15,13 @@ const ALLOWED_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
 
 export type HttpMethod = (typeof ALLOWED_METHODS)[number];
 
-/** Per-request OAuth bearer (HTTP transport). Falls back to GB_API_KEY for stdio. */
-export const requestAuthStore = new AsyncLocalStorage<{ bearer?: string }>();
+/**
+ * Per-request context (HTTP transport).
+ * - bearer: OAuth bearer; falls back to GB_API_KEY for stdio.
+ */
+export const requestAuthStore = new AsyncLocalStorage<{
+  bearer?: string;
+}>();
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -60,13 +65,12 @@ export function getApiKey(): string {
 }
 
 export function getApiUrl(): string {
-  const defaultApiUrl = DEFAULT_API_URL;
   let userApiUrl = process.env.GB_API_URL;
   userApiUrl = userApiUrl?.trim().replace(/\/+$/, "");
-  const apiUrl = userApiUrl || defaultApiUrl;
+  const apiUrl = userApiUrl || DEFAULT_API_URL;
   if (CONTROL_RE.test(apiUrl)) {
     throw new Error(
-      "GB_API_URL contains whitespace or control characters. Set a clean base URL (e.g. https://api.growthbook.io)."
+      "GrowthBook API base URL contains whitespace or control characters. Set a clean base URL (e.g. https://api.growthbook.io)."
     );
   }
   return apiUrl;
@@ -174,11 +178,20 @@ export function explainHttpError(
   })();
   const isCloud = host === "api.growthbook.io";
 
-  if (status === 401 || status === 403) {
+  if (status === 401) {
     return (
-      `HTTP ${status} ${statusText} on ${method} ${requestUrl}\n` +
+      `HTTP 401 ${statusText} on ${method} ${requestUrl}\n` +
       `Authentication failed. Your OAuth token or GB_API_KEY may be invalid, expired, or revoked.\n` +
       `If using OAuth, refresh the token. If using a key, update GB_API_KEY and try again.\n` +
+      (responseBody ? responseBody + "\n" : "")
+    );
+  }
+  if (status === 403) {
+    return (
+      `HTTP 403 ${statusText} on ${method} ${requestUrl}\n` +
+      `The token is valid but lacks permission for this request. This is a permissions/role\n` +
+      `problem, not an expired credential — refreshing the token will not help. Check that the\n` +
+      `token's user/role can perform this action, or use a token with the required scope.\n` +
       (responseBody ? responseBody + "\n" : "")
     );
   }
@@ -262,6 +275,11 @@ export async function callApi(args: CallApiArgs): Promise<CallApiResult> {
 
   const text = await res.text();
   if (!res.ok) {
+    // Only 401 means the bearer itself is bad. 403 is often a valid token
+    // with insufficient permissions — do not force a client refresh loop.
+    if (res.status === 401 && requestAuthStore.getStore()?.bearer) {
+      invalidateBearerCache(apiKey);
+    }
     return {
       ok: false,
       text: explainHttpError(res.status, res.statusText, text, method, url),
@@ -288,4 +306,94 @@ export function areSkillsEnabled(): boolean {
 export function getTransportMode(): "stdio" | "http" {
   const raw = (process.env.GB_MCP_TRANSPORT || "stdio").trim().toLowerCase();
   return raw === "http" ? "http" : "stdio";
+}
+
+/** Positive cache so bursty MCP clients don't double every call against the API. */
+const BEARER_VALID_CACHE_TTL_MS = 5_000;
+const BEARER_CACHE_MAX_ENTRIES = 1_000;
+const bearerValidUntil = new Map<string, number>();
+
+function rememberBearerAccepted(token: string, ttlMs: number): void {
+  if (bearerValidUntil.size >= BEARER_CACHE_MAX_ENTRIES) {
+    // Drop expired first; if still full, clear (tokens are short-lived anyway).
+    const now = Date.now();
+    for (const [key, until] of bearerValidUntil) {
+      if (until <= now) bearerValidUntil.delete(key);
+    }
+    if (bearerValidUntil.size >= BEARER_CACHE_MAX_ENTRIES) {
+      bearerValidUntil.clear();
+    }
+  }
+  bearerValidUntil.set(token, Date.now() + ttlMs);
+}
+
+/**
+ * Outcome of probing GrowthBook REST auth for a bearer:
+ * - "accepted"    — token is a valid credential (2xx, or 403 = authenticated
+ *                   but lacking permission on the probe path)
+ * - "invalid"     — token is expired/revoked/invalid (401); client should refresh
+ * - "unavailable" — GrowthBook could not answer (429 / 5xx / network), so we
+ *                   can't verify the token. Fail closed: do NOT grant access.
+ */
+export type BearerCheckResult = "accepted" | "invalid" | "unavailable";
+
+/**
+ * Probe GrowthBook REST auth for this bearer.
+ *
+ * Fails closed: only a definite success (2xx) or a 403 (authenticated but
+ * permission-denied on the probe path) accepts the token. A 401 is a real
+ * rejection (refresh). Anything else — rate limit, 5xx, network — means we
+ * couldn't verify, so we report "unavailable" instead of letting the request
+ * through on an outage.
+ *
+ * Used by the HTTP resource server so Cursor gets a real HTTP 401 +
+ * WWW-Authenticate on invalid tokens (and can refresh), and a 503 when the
+ * token simply can't be verified.
+ */
+export async function checkBearerWithGrowthBook(
+  token: string
+): Promise<BearerCheckResult> {
+  const cachedUntil = bearerValidUntil.get(token);
+  if (cachedUntil !== undefined) {
+    if (cachedUntil > Date.now()) {
+      return "accepted";
+    }
+    bearerValidUntil.delete(token);
+  }
+
+  const url = `${getApiUrl()}/api/v1/`;
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "GET",
+      headers: buildHeaders(token, false),
+    });
+  } catch {
+    // Network failure — can't verify. Don't cache; re-probe next request.
+    return "unavailable";
+  }
+
+  if (res.status === 401) {
+    bearerValidUntil.delete(token);
+    return "invalid";
+  }
+  // 403 = token authenticated but lacks permission on the probe path; it's
+  // still a valid credential, so accept rather than force a refresh loop.
+  if (res.ok || res.status === 403) {
+    rememberBearerAccepted(token, BEARER_VALID_CACHE_TTL_MS);
+    return "accepted";
+  }
+  // 429 / 5xx — GrowthBook couldn't answer. Fail closed and don't cache, so we
+  // re-probe on the next request once it recovers.
+  return "unavailable";
+}
+
+/** Drop cached validity (e.g. after an upstream 401 on call_api). */
+export function invalidateBearerCache(token: string): void {
+  bearerValidUntil.delete(token);
+}
+
+/** Test helper — clear the bearer validity cache. */
+export function clearBearerCacheForTests(): void {
+  bearerValidUntil.clear();
 }

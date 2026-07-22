@@ -9,8 +9,6 @@ import { areSkillsEnabled, getTransportMode } from "./api.js";
 import { startHttpServer, type CreateServerOptions } from "./http.js";
 import { registerCallApiTool, registerSkillTools } from "./tools.js";
 
-export type { CreateServerOptions };
-
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 function readPackageVersion(): string {
@@ -43,6 +41,8 @@ Workflow:
 2. Follow the skill's steps. Skills show bash like \`gb-call <METHOD> <PATH> [body]\` —
    translate each of those into a call_api invocation with the same method, path, and optional JSON body string.
 3. Do not invent endpoints; prefer the paths listed in the skill.
+4. Before call_api with POST/PUT/PATCH/DELETE, confirm with the user (method, path, body summary)
+   unless they already explicitly instructed that mutation. GET does not need confirmation.
 
 Skill content is the source of truth for GrowthBook task workflows and API footguns.
 call_api is a dumb authenticated passthrough — it does not validate payloads.`
@@ -50,6 +50,7 @@ call_api is a dumb authenticated passthrough — it does not validate payloads.`
 
 Only the call_api tool is available (capability-only mode — bundled skills are not exposed).
 Use call_api to make authenticated GrowthBook REST API requests: method, path (e.g. /api/v1/projects), and optional JSON body.
+Before POST/PUT/PATCH/DELETE, confirm with the user unless they already explicitly instructed that mutation.
 The client or user is expected to supply their own skill/workflow guidance.`;
 }
 
@@ -80,16 +81,19 @@ export function createServer(options: CreateServerOptions = {}): McpServer {
   return server;
 }
 
-const mode = getTransportMode();
+async function main(): Promise<void> {
+  const mode = getTransportMode();
 
-if (mode === "http") {
-  try {
-    await startHttpServer(createServer);
-  } catch (error) {
-    console.error(error);
-    process.exit(1);
+  if (mode === "http") {
+    try {
+      await startHttpServer(createServer);
+    } catch (error) {
+      console.error(error);
+      process.exit(1);
+    }
+    return;
   }
-} else {
+
   const server = createServer({ skills: envSkillsEnabled });
   const transport = new StdioServerTransport();
   try {
@@ -99,3 +103,5 @@ if (mode === "http") {
     process.exit(1);
   }
 }
+
+void main();

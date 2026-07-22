@@ -15,22 +15,39 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      # (Edit these for your package type)
+      - name: Checkout GrowthBook skills
+        uses: actions/checkout@v5
+        with:
+          repository: growthbook/skills
+          path: skills-src
+
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
           node-version: "lts/*"
+
       - name: Install dependencies
         run: npm ci
-      - name: Build
-        run: npm run build --if-present
-      - name: Publish to npm
-        run: npm publish
 
-      # MCP publishing (works for all package types)
+      - name: Build
+        run: npm run build
+        env:
+          SKILLS_SRC: ${{ github.workspace }}/skills-src
+
+      - name: Publish to npm
+        # Prerelease versions (e.g. 2.0.0-beta.0) must not become `latest`.
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [[ "$VERSION" == *-* ]]; then
+            npm publish --tag beta
+          else
+            npm publish
+          fi
+
       - name: Download MCP Publisher
         run: |
           curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+
       - name: Publish to MCP Registry
         run: |
           ./mcp-publisher login github-oidc

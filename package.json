@@ -13,7 +13,10 @@
     "bundle-skills": "node scripts/bundle-skills.mjs",
     "build": "tsc && npm run bundle-skills",
     "dev": "tsc --watch",
-    "start": "node server/index.js"
+    "start": "node server/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "sync-version": "node scripts/sync-version.js"
   },
   "bin": {
     "mcp": "server/index.js"
@@ -38,7 +41,8 @@
   "devDependencies": {
     "@types/express": "^5.0.0",
     "@types/node": "^25.3.5",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.7"
   },
   "type": "module",
   "engines": {

@@ -7,13 +7,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+
+      - name: Checkout GrowthBook skills
+        uses: actions/checkout@v5
+        with:
+          repository: growthbook/skills
+          path: skills-src
+
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
           node-version: "lts/*"
+
       - name: Install dependencies
         run: npm ci
+
       - name: Build
-        run: npm run build --if-present
+        run: npm run build
+        env:
+          SKILLS_SRC: ${{ github.workspace }}/skills-src
+
       - name: Test
-        run: npm run test
+        run: npm test
