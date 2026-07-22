@@ -2642,6 +2642,8 @@ export interface components {
             description: string;
             tags: string[];
             owner: string;
+            /** @description Resolved email address of the experiment owner */
+            ownerEmail?: string;
             archived: boolean;
             status: string;
             autoRefresh: boolean;
