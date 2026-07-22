@@ -416,7 +416,9 @@ export function formatExperimentList(data: ListExperimentsResponse): string {
       e.id
     }\`, status: ${status})\n  Variations: ${variations}${
       goalCount > 0 ? ` | Goals: ${goalCount} metric(s)` : ""
-    }${e.project ? ` | Project: ${e.project}` : ""}`;
+    }${e.project ? ` | Project: ${e.project}` : ""}${
+      e.ownerEmail ? ` | Owner: ${e.ownerEmail}` : e.owner ? ` | Owner: ${e.owner}` : ""
+    }`;
   });
 
   const pagination = data.hasMore
@@ -466,7 +468,11 @@ export function formatExperimentDetail(
   if (e.trackingKey) parts.push(`Tracking key: \`${e.trackingKey}\``);
   if (e.hashAttribute) parts.push(`Hash attribute: \`${e.hashAttribute}\``);
   if (e.project) parts.push(`Project: ${e.project}`);
-  if (e.owner) parts.push(`Owner: ${e.owner}`);
+  if (e.ownerEmail) {
+    parts.push(`Owner: ${e.ownerEmail}`);
+  } else if (e.owner) {
+    parts.push(`Owner: ${e.owner}`);
+  }
   if (e.tags?.length) parts.push(`Tags: ${e.tags.join(", ")}`);
 
   // Linked features
