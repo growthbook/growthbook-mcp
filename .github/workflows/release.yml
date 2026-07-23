@@ -1,0 +1,168 @@
+name: Release
+
+# Self-hosted release track. Cutting a release is a deliberate act: push a
+# `v<version>` git tag whose version matches package.json. That produces the
+# artifacts self-hosters pin to:
+#   - a versioned, multi-arch Docker image on GHCR (ghcr.io/growthbook/growthbook-mcp)
+#   - the npm package (@growthbook/mcp)
+#   - an entry in the MCP registry
+#   - a GitHub Release with generated notes
+#
+# Skills are frozen at release-cut time: the build checks out growthbook/skills'
+# default branch and bundles it into the image/package, so a release is a stable
+# snapshot of MCP code + skills. Cloud, by contrast, continuously tracks main
+# (see deploy.yml).
+#
+# Prerelease versions (e.g. 2.0.0-beta.1) publish under the `beta` npm dist-tag
+# and only get the exact version image tag — they never move `latest`/major/minor.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  # Guard: the tag must match package.json, so a release can't ship a version
+  # that disagrees with what npm/the image report.
+  verify:
+    runs-on: ubuntu-latest
+    if: ${{ github.repository == 'growthbook/growthbook-mcp' }}
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      prerelease: ${{ steps.v.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Verify tag matches package.json
+        id: v
+        run: |
+          TAG="${GITHUB_REF#refs/tags/v}"
+          PKG="$(node -p "require('./package.json').version")"
+          if [ "$TAG" != "$PKG" ]; then
+            echo "::error::Tag v$TAG does not match package.json version $PKG. Bump package.json and re-tag."
+            exit 1
+          fi
+          echo "version=$TAG" >> "$GITHUB_OUTPUT"
+          if [[ "$TAG" == *-* ]]; then
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # Multi-arch release image on GHCR for self-hosters running the HTTP server.
+  docker:
+    needs: verify
+    runs-on: ubuntu-latest
+    if: ${{ github.repository == 'growthbook/growthbook-mcp' }}
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v5
+
+      # Freeze skills at cut time (matches ci.yml / deploy.yml).
+      - name: Checkout GrowthBook skills
+        uses: actions/checkout@v5
+        with:
+          repository: growthbook/skills
+          path: skills-src
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute image tags
+        id: tags
+        run: |
+          IMG="ghcr.io/${{ github.repository }}"
+          V="${{ needs.verify.outputs.version }}"
+          TAGS="$IMG:$V"
+          if [ "${{ needs.verify.outputs.prerelease }}" = "false" ]; then
+            MAJOR="${V%%.*}"
+            MINOR="${V%.*}"
+            TAGS="$TAGS,$IMG:$MAJOR,$IMG:$MINOR,$IMG:latest"
+          fi
+          echo "tags=$TAGS" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push release image
+        uses: docker/build-push-action@v6
+        with:
+          push: true
+          context: .
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.tags.outputs.tags }}
+
+  # npm package + MCP registry entry (formerly publish-mcp.yml, now tag-driven).
+  npm:
+    needs: verify
+    runs-on: ubuntu-latest
+    if: ${{ github.repository == 'growthbook/growthbook-mcp' }}
+    permissions:
+      id-token: write # npm trusted publishing (OIDC) + MCP registry github-oidc login
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Checkout GrowthBook skills
+        uses: actions/checkout@v5
+        with:
+          repository: growthbook/skills
+          path: skills-src
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "lts/*"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          SKILLS_SRC: ${{ github.workspace }}/skills-src
+
+      - name: Publish to npm
+        run: |
+          if [ "${{ needs.verify.outputs.prerelease }}" = "true" ]; then
+            npm publish --tag beta
+          else
+            npm publish
+          fi
+
+      - name: Download MCP Publisher
+        run: |
+          curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+
+      - name: Publish to MCP Registry
+        run: |
+          ./mcp-publisher login github-oidc
+          ./mcp-publisher publish
+
+  # GitHub Release with auto-generated notes, after artifacts are live.
+  github-release:
+    needs: [verify, docker, npm]
+    runs-on: ubuntu-latest
+    if: ${{ github.repository == 'growthbook/growthbook-mcp' }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          FLAGS="--generate-notes --title ${GITHUB_REF_NAME}"
+          if [ "${{ needs.verify.outputs.prerelease }}" = "true" ]; then
+            FLAGS="$FLAGS --prerelease"
+          fi
+          gh release create "${GITHUB_REF_NAME}" $FLAGS

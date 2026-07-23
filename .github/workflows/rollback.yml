@@ -1,0 +1,40 @@
+name: Rollback Cloud MCP to SHA
+
+# Cloud-only rollback. deploy.yml pushes every commit to ECR as :git-<sha>, so
+# rolling back is: retag a known-good :git-<sha> as :latest and force a new ECS
+# deployment. This does not touch npm / GHCR / self-hosted releases.
+
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "First 7 characters of the commit SHA (the ECR :git-<sha> tag) to roll back to"
+        required: true
+        type: string
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    if: ${{ github.repository == 'growthbook/growthbook-mcp' }}
+    steps:
+      - name: Install buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Retag git-${{ inputs.sha }} as latest in ECR
+        run: |
+          ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
+          docker buildx imagetools create -t $ECR_REGISTRY/growthbook-mcp:latest $ECR_REGISTRY/growthbook-mcp:git-${{ inputs.sha }}
+
+      - name: Deploy to ECS
+        run: aws ecs update-service --cluster prod-growthbook-mcp --service prod-growthbook-mcp --force-new-deployment --region us-east-1

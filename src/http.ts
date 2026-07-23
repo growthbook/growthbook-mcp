@@ -171,6 +171,13 @@ function createMcpHttpApp(options: McpHttpAppOptions): Express {
     );
   }
 
+  // Unauthenticated liveness probe for load balancers / orchestrators. It does
+  // not touch GrowthBook, so it stays green even if the upstream API is down —
+  // it reports that this process is up, not that auth is working.
+  app.get("/health", (_req, res) => {
+    res.status(200).json({ status: "ok" });
+  });
+
   app.get("/.well-known/oauth-protected-resource", (_req, res) => {
     sendProtectedResource(res, "/mcp");
   });
