@@ -3,7 +3,7 @@
   "name": "GrowthBook",
   "version": "2.0.0-beta.0",
   "description": "Thin MCP server for GrowthBook — skill loader + authenticated API passthrough",
-  "long_description": "A thin GrowthBook MCP server with three tools: list_skills and read_skill (bundled GrowthBook agent skills) plus call_api (authenticated REST passthrough). Skills can be disabled so clients can use only the API capability with their own workflows.",
+  "long_description": "A thin GrowthBook MCP server with three tools: growthbook_list_skills and growthbook_read_skill (bundled GrowthBook agent skills) plus growthbook_call_api (authenticated REST passthrough). Skills can be disabled so clients can use only the API capability with their own workflows.",
   "author": {
     "name": "GrowthBook",
     "email": "support@growthbook.io"
@@ -25,15 +25,15 @@
   },
   "tools": [
     {
-      "name": "list_skills",
+      "name": "growthbook_list_skills",
       "description": "List available GrowthBook agent skills (name + description)."
     },
     {
-      "name": "read_skill",
+      "name": "growthbook_read_skill",
       "description": "Return the full markdown content of a GrowthBook skill by name."
     },
     {
-      "name": "call_api",
+      "name": "growthbook_call_api",
       "description": "Make an authenticated HTTP request to the GrowthBook REST API. Confirm mutating methods with the user unless already instructed."
     }
   ],
@@ -56,7 +56,7 @@
     "GB_SKILLS_ENABLED": {
       "type": "string",
       "title": "Enable bundled skills",
-      "description": "Set to false to disable list_skills/read_skill and use only call_api (capability-only mode).",
+      "description": "Set to false to disable growthbook_list_skills/growthbook_read_skill and use only growthbook_call_api (capability-only mode).",
       "required": false,
       "sensitive": false,
       "default": "true"

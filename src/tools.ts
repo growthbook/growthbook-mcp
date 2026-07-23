@@ -10,7 +10,7 @@ import {
 
 export function registerCallApiTool(server: McpServer) {
   server.registerTool(
-    "call_api",
+    "growthbook_call_api",
     {
       title: "Call GrowthBook API",
       description:
@@ -62,13 +62,13 @@ export function registerSkillTools(server: McpServer) {
   }
 
   server.registerTool(
-    "list_skills",
+    "growthbook_list_skills",
     {
       title: "List GrowthBook Skills",
       description:
         "List available GrowthBook agent skills (name + description). " +
-        "Use read_skill to load the full workflow for a skill before acting. " +
-        "Skills encode how to accomplish GrowthBook tasks well; use call_api to execute the REST calls they describe.",
+        "Use growthbook_read_skill to load the full workflow for a skill before acting. " +
+        "Skills encode how to accomplish GrowthBook tasks well; use growthbook_call_api to execute the REST calls they describe.",
       inputSchema: z.object({}),
       annotations: {
         readOnlyHint: true,
@@ -84,13 +84,13 @@ export function registerSkillTools(server: McpServer) {
   );
 
   server.registerTool(
-    "read_skill",
+    "growthbook_read_skill",
     {
       title: "Read GrowthBook Skill",
       description:
         "Return the full markdown content of a GrowthBook skill by name " +
-        "(from list_skills). Follow the skill's workflow; when it shows " +
-        "`gb-call <METHOD> <PATH> [body]`, use the call_api tool with those arguments instead.",
+        "(from growthbook_list_skills). Follow the skill's workflow; when it shows " +
+        "`gb-call <METHOD> <PATH> [body]`, use the growthbook_call_api tool with those arguments instead.",
       inputSchema: z.object({
         name: z
           .string()

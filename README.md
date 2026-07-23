@@ -4,11 +4,13 @@ A thin MCP server for GrowthBook with three tools:
 
 | Tool | Purpose |
 |------|---------|
-| `list_skills` | List bundled GrowthBook agent skills (name + description) |
-| `read_skill` | Return the full skill markdown (workflow + guardrails) |
-| `call_api` | Authenticated REST passthrough to the GrowthBook API |
+| `growthbook_list_skills` | List bundled GrowthBook agent skills (name + description) |
+| `growthbook_read_skill` | Return the full skill markdown (workflow + guardrails) |
+| `growthbook_call_api` | Authenticated REST passthrough to the GrowthBook API |
 
-Competence lives in the [skills](https://github.com/growthbook/skills) repo and is **bundled at build time**. Capability is a generic `call_api` tool — no per-endpoint formatters. The tool description asks agents to confirm mutating methods (POST/PUT/PATCH/DELETE) with the user unless already instructed.
+Competence lives in the [skills](https://github.com/growthbook/skills) repo and is **bundled at build time**. Capability is a generic `growthbook_call_api` tool — no per-endpoint formatters. The tool description asks agents to confirm mutating methods (POST/PUT/PATCH/DELETE) with the user unless already instructed.
+
+Tools are prefixed with `growthbook_` so they stay unambiguous when a client has multiple MCP servers loaded — an agent should never mistake `growthbook_call_api` for a generic API caller.
 
 ## Install / run
 
@@ -63,11 +65,11 @@ GB_MCP_TRANSPORT=http GB_API_URL=http://localhost:3100 GB_MCP_PORT=3333 npm star
 
 Clients connect to:
 - `http://127.0.0.1:3333/mcp` — full (skills + API)
-- `http://127.0.0.1:3333/mcp/api` — capability-only (`call_api`)
+- `http://127.0.0.1:3333/mcp/api` — capability-only (`growthbook_call_api`)
 
 Unauthenticated requests receive `401` with `WWW-Authenticate` pointing at `/.well-known/oauth-protected-resource`, which advertises the GrowthBook Authorization Server.
 
-Before handling MCP, the server probes GrowthBook REST (`GET /api/v1/`) with the bearer. A `401` from that probe (or later from `call_api`) yields HTTP `401` with `error="invalid_token"` so the MCP client can refresh — instead of surfacing `"This API key has expired"` as a tool error. A `403` is treated as an accepted bearer (permission denied ≠ invalid token) so clients are not forced into a refresh loop.
+Before handling MCP, the server probes GrowthBook REST (`GET /api/v1/`) with the bearer. A `401` from that probe (or later from `growthbook_call_api`) yields HTTP `401` with `error="invalid_token"` so the MCP client can refresh — instead of surfacing `"This API key has expired"` as a tool error. A `403` is treated as an accepted bearer (permission denied ≠ invalid token) so clients are not forced into a refresh loop.
 
 ### Capability-only mode
 
@@ -85,8 +87,8 @@ Before handling MCP, the server probes GrowthBook REST (`GET /api/v1/`) with the
 
 | Path | Tools |
 |------|--------|
-| `/mcp` | `list_skills`, `read_skill`, `call_api` (unless `GB_SKILLS_ENABLED=false`) |
-| `/mcp/api` | `call_api` only |
+| `/mcp` | `growthbook_list_skills`, `growthbook_read_skill`, `growthbook_call_api` (unless `GB_SKILLS_ENABLED=false`) |
+| `/mcp/api` | `growthbook_call_api` only |
 
 **stdio / process-wide:** set env so skills are never registered:
 
@@ -97,7 +99,7 @@ Before handling MCP, the server probes GrowthBook REST (`GET /api/v1/`) with the
 }
 ```
 
-When skills are disabled, only `call_api` is registered. `list_skills` and `read_skill` are not exposed.
+When skills are disabled, only `growthbook_call_api` is registered. `growthbook_list_skills` and `growthbook_read_skill` are not exposed.
 
 ## How skills are bundled
 
@@ -114,7 +116,7 @@ Source path resolution:
 
 The skills repo stays the source of truth — this package never forks skill content.
 
-## Using skills with `call_api`
+## Using skills with `growthbook_call_api`
 
 Bundled skills still show workflows as:
 
@@ -123,11 +125,11 @@ gb-call GET /api/v1/projects
 gb-call POST /api/v2/features ./payload.json
 ```
 
-This MCP server does **not** shell out to `gb-call`. When a skill shows that pattern, call the `call_api` tool with the same method, path, and optional JSON body string. Server instructions and `read_skill` output include this bridge note.
+This MCP server does **not** shell out to `gb-call`. When a skill shows that pattern, call the `growthbook_call_api` tool with the same method, path, and optional JSON body string. Server instructions and `growthbook_read_skill` output include this bridge note.
 
 ## Tools detail
 
-### `call_api`
+### `growthbook_call_api`
 
 ```json
 { "method": "GET", "path": "/api/v1/projects" }
@@ -139,9 +141,9 @@ This MCP server does **not** shell out to `gb-call`. When a skill shows that pat
 - On non-2xx, returns an actionable error (`isError: true`) covering auth failures, self-hosted 404 hints, and rate limits
 - Tool description + server instructions tell the agent to confirm POST/PUT/PATCH/DELETE with the user unless already instructed (soft guidance, not a hard gate)
 
-### `list_skills` / `read_skill`
+### `growthbook_list_skills` / `growthbook_read_skill`
 
-Only registered when `GB_SKILLS_ENABLED` is not disabled. `read_skill` returns the full `SKILL.md` content so the agent can follow workflow steps and guardrails.
+Only registered when `GB_SKILLS_ENABLED` is not disabled. `growthbook_read_skill` returns the full `SKILL.md` content so the agent can follow workflow steps and guardrails.
 
 ## Development
 
@@ -154,7 +156,7 @@ npm start
 
 ## Standalone HTTP mode
 
-By default the server runs over stdio. Set `GB_MCP_TRANSPORT=http` to run it as a standalone HTTP server that exposes MCP at `/mcp` (skills + `call_api`) and `/mcp/api` (capability-only), behind an OAuth 2.0 protected-resource surface (RFC 9728 metadata + RFC 6750 `WWW-Authenticate`).
+By default the server runs over stdio. Set `GB_MCP_TRANSPORT=http` to run it as a standalone HTTP server that exposes MCP at `/mcp` (skills + `growthbook_call_api`) and `/mcp/api` (capability-only), behind an OAuth 2.0 protected-resource surface (RFC 9728 metadata + RFC 6750 `WWW-Authenticate`).
 
 - `GB_MCP_URL` (**required** in HTTP mode) — the server's public base URL. It is stamped into the OAuth resource (audience) and the protected-resource metadata, so it is never derived from request headers. The server refuses to start without it.
 - `GB_MCP_PORT` (default `3333`) and `GB_MCP_HOST` (default `127.0.0.1`).
@@ -200,4 +202,4 @@ Self-hosters pull `ghcr.io/growthbook/growthbook-mcp:<version>` or `npx @growthb
 - CLI OAuth login (Phase 2 — same AS)
 - Dedicated token introspection endpoint (HTTP mode probes REST and relies on `401` for invalidation)
 - Response formatting and summarization (belongs in skills)
-- Editing the canonical skills to reference `call_api` instead of `gb-call` (bridged via instructions)
+- Editing the canonical skills to reference `growthbook_call_api` instead of `gb-call` (bridged via instructions)

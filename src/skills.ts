@@ -99,7 +99,7 @@ export function loadSkills(): Skill[] {
     const name = meta.name || nameFromFile;
     const description =
       meta.description ||
-      `GrowthBook skill: ${name}. Call read_skill for the full workflow.`;
+      `GrowthBook skill: ${name}. Call growthbook_read_skill for the full workflow.`;
 
     skills.push({ name, description, content });
   }
@@ -116,9 +116,9 @@ export function getSkill(name: string): Skill | undefined {
   return loadSkills().find((s) => s.name === name);
 }
 
-/** Bridge note prepended when returning skill content via read_skill. */
+/** Bridge note prepended when returning skill content via growthbook_read_skill. */
 export const GB_CALL_BRIDGE_NOTE = `> **MCP note:** This skill's workflow examples use \`gb-call <METHOD> <PATH> [body]\`.
-> In this MCP server, use the \`call_api\` tool instead with the same method, path, and optional JSON body string.
+> In this MCP server, use the \`growthbook_call_api\` tool instead with the same method, path, and optional JSON body string.
 > Do not shell out to \`gb-call\`. Before POST/PUT/PATCH/DELETE, confirm with the user unless they already
 > explicitly instructed that mutation.
 

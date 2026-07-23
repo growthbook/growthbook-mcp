@@ -2,14 +2,14 @@
  * Streamable HTTP transport + OAuth resource-server surface for the thin MCP.
  *
  * Paths:
- * - POST /mcp      — full server (skills + call_api), unless GB_SKILLS_ENABLED=false
- * - POST /mcp/api  — capability-only (call_api only)
+ * - POST /mcp      — full server (skills + growthbook_call_api), unless GB_SKILLS_ENABLED=false
+ * - POST /mcp/api  — capability-only (growthbook_call_api only)
  *
  * - Serves /.well-known/oauth-protected-resource (RFC 9728) pointing at the GB AS
  * - Requires Bearer; validates it against GrowthBook REST so expired/revoked
  *   tokens get HTTP 401 + WWW-Authenticate (RFC 6750 invalid_token) and the
  *   MCP client can refresh — not a tool-level "API key has expired" string
- * - Threads the bearer into call_api via AsyncLocalStorage (transparent pass-through)
+ * - Threads the bearer into growthbook_call_api via AsyncLocalStorage (transparent pass-through)
  */
 
 import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -25,7 +25,7 @@ import {
 } from "./api.js";
 
 export type CreateServerOptions = {
-  /** When false, only call_api is registered. */
+  /** When false, only growthbook_call_api is registered. */
   skills?: boolean;
 };
 
@@ -194,7 +194,7 @@ function createMcpHttpApp(options: McpHttpAppOptions): Express {
     serverOptions: CreateServerOptions
   ) => {
     const bearer = (req as Request & { gbBearer?: string }).gbBearer || "";
-    // Thread the bearer into call_api via ALS for this request.
+    // Thread the bearer into growthbook_call_api via ALS for this request.
     await requestAuthStore.run({ bearer }, async () => {
       const server = createServer({ skills: serverOptions.skills });
       try {

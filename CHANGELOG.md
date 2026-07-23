@@ -8,7 +8,8 @@ All notable changes to this project will be documented in this file.
 
 - HTTP mode now requires `GB_MCP_URL` and refuses to start without it; the public base — stamped into the OAuth resource (audience) and protected-resource metadata — is never derived from request headers
 - HTTP mode probes GrowthBook REST with the bearer before handling MCP and now fails closed: `2xx`/`403` accept (`403` = valid token lacking permission on the probe path), `401` rejects with `error="invalid_token"` so clients refresh, and when GrowthBook can't answer (`429`/`5xx`/network) the request gets `503 temporarily_unavailable` instead of being let through
-- `call_api` tool description and server instructions ask agents to confirm POST/PUT/PATCH/DELETE with the user unless already instructed (soft guidance; MCP annotation hints proved unreliable in clients)
+- Renamed all three tools with a `growthbook_` prefix (`growthbook_list_skills`, `growthbook_read_skill`, `growthbook_call_api`) so they stay unambiguous when a client loads multiple MCP servers — an agent should never mistake `growthbook_call_api` for a generic API caller
+- `growthbook_call_api` tool description and server instructions ask agents to confirm POST/PUT/PATCH/DELETE with the user unless already instructed (soft guidance; MCP annotation hints proved unreliable in clients)
 
 ## [2.0.0-beta.0] - 2026-07-15
 

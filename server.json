@@ -31,7 +31,7 @@
           "name": "GB_API_URL"
         },
         {
-          "description": "Set to false to disable bundled skill tools (list_skills, read_skill). Defaults to true.",
+          "description": "Set to false to disable bundled skill tools (growthbook_list_skills, growthbook_read_skill). Defaults to true.",
           "is_required": false,
           "format": "string",
           "is_secret": false,
