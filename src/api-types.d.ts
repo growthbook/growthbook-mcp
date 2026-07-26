@@ -2642,6 +2642,10 @@ export interface components {
             description: string;
             tags: string[];
             owner: string;
+            /** @description The email address of the owner, when the owner can be resolved to a known user. */
+            ownerEmail?: string;
+            /** @description The display name of the owner, when the owner can be resolved to a known user. */
+            ownerName?: string;
             archived: boolean;
             status: string;
             autoRefresh: boolean;

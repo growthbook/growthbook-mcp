@@ -10,6 +10,8 @@ export type Experiment = {
   project: string;
   tags?: string[];
   owner?: string;
+  ownerEmail?: string;
+  ownerName?: string;
   resultSummary: {
     status: string;
     winner: string;

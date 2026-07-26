@@ -20,6 +20,8 @@ interface ExperimentCard {
   project: string;
   tags: string[];
   owner: string;
+  ownerEmail?: string;
+  ownerName?: string;
   type: "standard" | "multi-armed-bandit";
 
   primaryMetric: {
@@ -342,6 +344,8 @@ async function buildExperimentStats(
       project: exp.project || "",
       tags: exp.tags || [],
       owner: exp.owner || "",
+      ownerEmail: exp.ownerEmail,
+      ownerName: exp.ownerName,
       type: expType,
       primaryMetric: primaryMetricResult
         ? {
