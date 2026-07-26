@@ -466,7 +466,10 @@ export function formatExperimentDetail(
   if (e.trackingKey) parts.push(`Tracking key: \`${e.trackingKey}\``);
   if (e.hashAttribute) parts.push(`Hash attribute: \`${e.hashAttribute}\``);
   if (e.project) parts.push(`Project: ${e.project}`);
-  if (e.owner) parts.push(`Owner: ${e.owner}`);
+  if (e.owner) {
+    const ownerDisplay = e.ownerName ?? e.ownerEmail ?? e.owner;
+    parts.push(`Owner: ${ownerDisplay}`);
+  }
   if (e.tags?.length) parts.push(`Tags: ${e.tags.join(", ")}`);
 
   // Linked features
