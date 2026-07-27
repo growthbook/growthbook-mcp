@@ -26,7 +26,7 @@ Point your MCP client at the compiled entrypoint:
   "mcpServers": {
     "growthbook": {
       "command": "node",
-      "args": ["/absolute/path/to/growthbook-mcp-thin/server/index.js"],
+      "args": ["/absolute/path/to/growthbook-mcp/server/index.js"],
       "env": {
         "GB_API_KEY": "your_api_key_or_pat",
         "GB_API_URL": "https://api.growthbook.io"
@@ -164,42 +164,20 @@ By default the server runs over stdio. Set `GB_MCP_TRANSPORT=http` to run it as 
 
 Run it on a trusted network or bound to loopback. For a multi-tenant or public deployment, front it with your own gateway/auth.
 
-## Deployment & releases
+## Releases
 
-Two tracks, so GrowthBook Cloud can move fast while self-hosters stay on stable, pinned versions.
-
-### Cloud (continuous)
-
-`deploy.yml` runs on every push to `main` (and on manual dispatch). It builds the image — checking out `growthbook/skills` fresh so cloud always has the newest skills — pushes it to ECR as `:latest` and `:git-<sha>`, then forces a new ECS deployment. Infra (ECS service, ALB, DNS) lives in the terraform repo (`growthbook-mcp.tf`).
-
-Skills commits do **not** auto-trigger cloud. To pull a skills change into cloud without an MCP commit, run `deploy.yml` via **Run workflow** (manual dispatch); the fresh skills checkout picks it up.
-
-To roll cloud back, run `rollback.yml` (manual dispatch) with the 7-char SHA of a known-good commit — it retags that `:git-<sha>` image as `:latest` and redeploys. Nothing about npm or self-hosted releases is touched.
-
-### Self-hosted (tagged releases)
-
-Cutting a release is deliberate — you push a `v<version>` git tag whose version **matches `package.json`** (a guard job fails the release otherwise):
+Cutting a release is deliberate: bump the version in `package.json`, then push a matching `v*` tag:
 
 ```bash
-# bump version in package.json, merge to main, then:
 git tag v2.0.0-beta.1
 git push origin v2.0.0-beta.1
 ```
 
-`release.yml` then, from that tagged commit (skills frozen at cut time):
+That tagged commit (with skills frozen at cut time) publishes:
 
-- builds and pushes a **multi-arch** (`amd64`+`arm64`) image to `ghcr.io/growthbook/growthbook-mcp`, tagged `:<version>` (plus `:<major>`, `:<major>.<minor>`, `:latest` for stable releases only);
-- publishes `@growthbook/mcp` to npm (prereleases go under the `beta` dist-tag, never `latest`);
-- publishes to the MCP registry;
-- opens a GitHub Release with generated notes.
+- `@growthbook/mcp` to npm — prereleases (versions with a `-`, e.g. `2.0.0-beta.1`) go under the `beta` dist-tag; stable versions become `latest`
+- a multi-arch (`amd64` + `arm64`) image to `ghcr.io/growthbook/growthbook-mcp` (`:<version>`, plus `:<major>`, `:<major>.<minor>`, and `:latest` for stable releases)
+- an entry in the MCP registry
+- a GitHub Release
 
-Self-hosters pull `ghcr.io/growthbook/growthbook-mcp:<version>` or `npx @growthbook/mcp@<version>`.
-
-> **One-time setup:** the GHCR package defaults to private on first publish — make it public in the org's package settings so self-hosters can pull it. The cloud workflows (`deploy.yml`, `rollback.yml`) need `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` repo secrets; npm publish uses OIDC trusted publishing (no `NPM_TOKEN`).
-
-## Out of scope (v1)
-
-- CLI OAuth login (Phase 2 — same AS)
-- Dedicated token introspection endpoint (HTTP mode probes REST and relies on `401` for invalidation)
-- Response formatting and summarization (belongs in skills)
-- Editing the canonical skills to reference `growthbook_call_api` instead of `gb-call` (bridged via instructions)
+Install a release with `npx @growthbook/mcp@<version>` or pull `ghcr.io/growthbook/growthbook-mcp:<version>`.
