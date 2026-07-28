@@ -1,8 +1,18 @@
 name: Deploy
 
-# Builds the MCP image, pushes it to ECR as :latest (+ :git-<sha>), and forces a
-# new ECS deployment. The ECS service, cluster, ALB, and DNS are defined in the
-# terraform repo (growthbook-mcp.tf); this workflow only ships new images to them.
+# Builds the MCP image, pushes it to ECR as :git-<sha>, and points the ECS
+# service at a task-def revision pinned to that tag. The ECS service, cluster,
+# ALB, and DNS are defined in the terraform repo (growthbook-mcp.tf); this
+# workflow only ships new images to them.
+#
+# The ECR repo is immutable and terraform ignores task_definition, so :latest is
+# never pushed here — it only seeds revision 1 at bootstrap. Deploying a pinned
+# revision (rather than re-pulling a mutable tag) is what keeps the Vanta
+# "Fargate deploys version-controlled images" test passing; see terraform PR #175.
+#
+# The AWS_ACCESS_KEY_ID principal needs ecr:*, ecs:DescribeTaskDefinition,
+# ecs:RegisterTaskDefinition, ecs:DescribeServices, ecs:UpdateService, and
+# iam:PassRole on prod-growthbook-mcp{,-ecs}.
 
 on:
   push:
@@ -69,9 +79,23 @@ jobs:
           push: true
           context: .
           platforms: linux/amd64
-          tags: |
-            ${{ steps.login-ecr.outputs.registry }}/growthbook-mcp:latest
-            ${{ steps.login-ecr.outputs.registry }}/growthbook-mcp:git-${{ steps.metadata.outputs.docker_sha }}
+          tags: ${{ steps.login-ecr.outputs.registry }}/growthbook-mcp:git-${{ steps.metadata.outputs.docker_sha }}
+
+      # Pin the running task def to this build's tagged image rather than
+      # re-pulling a mutable tag. Takes the family's newest revision (terraform
+      # owns everything except the image) and swaps only the app container.
+      - name: Render task definition
+        id: taskdef
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition-family: prod-growthbook-mcp
+          container-name: growthbook_mcp
+          image: ${{ steps.login-ecr.outputs.registry }}/growthbook-mcp:git-${{ steps.metadata.outputs.docker_sha }}
 
       - name: Deploy to ECS
-        run: aws ecs update-service --cluster prod-growthbook-mcp --service prod-growthbook-mcp --force-new-deployment --region us-east-1
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.taskdef.outputs.task-definition }}
+          service: prod-growthbook-mcp
+          cluster: prod-growthbook-mcp
+          wait-for-service-stability: true
