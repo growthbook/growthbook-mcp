@@ -79,12 +79,16 @@ export type ListFactMetricsResponse =
   Paths["/fact-metrics"]["get"]["responses"][200]["content"]["application/json"];
 export type GetFactMetricResponse =
   Paths["/fact-metrics/{id}"]["get"]["responses"][200]["content"]["application/json"];
+export type CreateFactMetricResponse =
+  Paths["/fact-metrics"]["post"]["responses"][200]["content"]["application/json"];
 
 // Fact tables
 export type ListFactTablesResponse =
   Paths["/fact-tables"]["get"]["responses"][200]["content"]["application/json"];
 export type GetFactTableResponse =
   Paths["/fact-tables/{id}"]["get"]["responses"][200]["content"]["application/json"];
+export type CreateFactTableResponse =
+  Paths["/fact-tables"]["post"]["responses"][200]["content"]["application/json"];
 
 // Stale features
 export type GetStaleFeatureResponse =

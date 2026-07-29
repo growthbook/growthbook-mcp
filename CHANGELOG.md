@@ -6,6 +6,9 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- `create_fact_table` tool — create a fact table from SQL (data source, user id types, optional event name, projects, and tags), completing the read-only fact table tools
+- `create_fact_metric` tool — create a fact metric on an existing fact table for every metric type (proportion, retention, mean, quantile, ratio, dailyParticipation), including row filters, aggregate filters, and quantile settings. Cross-field rules documented by the API are checked before the request, so invalid input comes back as a list of fixes instead of a 400
+- Both creation tools accept `managedBy: "api"` to make a resource read-only in the GrowthBook UI, and tag what they create with `mcp`
 - `get_fact_table` tool — fetch a single fact table by id (columns, SQL, datasource, user id types) for analytics and metric configuration
 - `list_fact_tables` tool — list fact tables with pagination and optional project or data source filters; use ids for product analytics and fact metrics workflows
 - `create_metric_exploration` tool — chart metric data over time with configurable date ranges and chart types, returns visualization data and a link to view in GrowthBook

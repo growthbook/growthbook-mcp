@@ -85,12 +85,20 @@
       "description": "List metrics in GrowthBook. Metrics measure experiment success. Includes both fact metrics (modern) and legacy metrics."
     },
     {
+      "name": "create_fact_metric",
+      "description": "Create a fact metric on an existing fact table. Requires a name, a metricType (proportion, mean, ratio, quantile, retention, or dailyParticipation), and a numerator pointing at a fact table id. Ratio metrics need a denominator and quantile metrics need quantileSettings. Analysis settings such as conversion windows and priors inherit the organization defaults. Input problems are reported as a list before anything is sent to GrowthBook."
+    },
+    {
       "name": "list_fact_tables",
       "description": "List GrowthBook fact tables with optional filters by project or data source. Returns ids and datasource ids; use get_fact_table for full schema and SQL."
     },
     {
       "name": "get_fact_table",
       "description": "Fetch one fact table by id: datasource, user id types, full column objects as JSON (API keys only), and SQL. Omitted booleans on columns mean false. Use after list_fact_tables."
+    },
+    {
+      "name": "create_fact_table",
+      "description": "Create a fact table: the event-level SQL that fact metrics are built on. Requires a name, a data source id, the identifier columns the SQL returns (userIdTypes), and the SQL itself. GrowthBook parses the SQL to detect columns, so verify with get_fact_table afterwards."
     },
     {
       "name": "get_defaults",

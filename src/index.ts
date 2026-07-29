@@ -41,6 +41,7 @@ Key workflows:
 - Experiments: ALWAYS call get_defaults first, then create_experiment. Experiments are created as "draft" - users must launch in GrowthBook UI
 - Analysis: Use get_experiments with mode="summary" for quick insights
 - Product analytics: Use list_fact_tables to find fact table IDs, then get_fact_table for columns and SQL. Use get_metrics to find fact metric IDs. Use create_metric_exploration to chart one or more fact metrics on the same exploration (metricId or metrics[]), or create_fact_table_exploration for ad-hoc aggregates with one or more series (counts, distinct units, sums).
+- Metric setup: Use create_fact_table to define event-level SQL, then create_fact_metric on top of it. Check column names with get_fact_table before creating a metric
 
 All mutating tools require a fileExtension parameter for SDK integration guidance.`,
     capabilities: {
@@ -106,6 +107,8 @@ registerFactTableTools({
   server,
   baseApiUrl,
   apiKey,
+  appOrigin,
+  user,
 });
 
 registerProductAnalyticsTools({
