@@ -1,6 +1,6 @@
 import { z } from "zod";
 import {
-  type BaseToolsInterface,
+  type ExtendedToolsInterface,
   fetchWithPagination,
   fetchWithRateLimit,
   buildHeaders,
@@ -10,19 +10,24 @@ import {
 import type {
   ListFactTablesResponse,
   GetFactTableResponse,
+  CreateFactTableResponse,
 } from "../api-type-helpers.js";
 import {
   formatFactTablesList,
   formatFactTableDetail,
+  formatFactTableCreated,
   formatApiError,
 } from "../format-responses.js";
+import { buildFactTablePayload, createFactTableShape } from "./fact-schemas.js";
 
-interface FactTableTools extends BaseToolsInterface {}
+interface FactTableTools extends ExtendedToolsInterface {}
 
 export function registerFactTableTools({
   server,
   baseApiUrl,
   apiKey,
+  appOrigin,
+  user,
 }: FactTableTools) {
   server.registerTool(
     "list_fact_tables",
@@ -137,6 +142,58 @@ export function registerFactTableTools({
           formatApiError(error, `fetching fact table '${factTableId}'`, [
             "Check the fact table id — use list_fact_tables to list valid ids.",
             "Ensure your GB_API_KEY can read fact tables.",
+          ])
+        );
+      }
+    }
+  );
+
+  /**
+   * Tool: create_fact_table
+   */
+  server.registerTool(
+    "create_fact_table",
+    {
+      title: "Create Fact Table",
+      description:
+        "Creates a GrowthBook fact table: the event-level SQL that fact metrics are built on. " +
+        "Requires a name, a data source id, the identifier columns the SQL returns (userIdTypes), and the SQL itself. " +
+        "Use `get_defaults` to find the data source id and `get_projects` to scope the table to a project. " +
+        "The SQL should return one row per event, including the identifier column(s) and a timestamp column. " +
+        "GrowthBook parses the SQL to detect columns, so verify with `get_fact_table` afterwards. " +
+        "Then use `create_fact_metric` to define metrics on top of it.",
+      inputSchema: createFactTableShape,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+      },
+    },
+    async (input) => {
+      try {
+        const res = await fetchWithRateLimit(`${baseApiUrl}/api/v1/fact-tables`, {
+          method: "POST",
+          headers: buildHeaders(apiKey),
+          body: JSON.stringify(buildFactTablePayload(input, user)),
+        });
+
+        await handleResNotOk(res);
+        const data = (await res.json()) as CreateFactTableResponse;
+
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: formatFactTableCreated(data, appOrigin),
+            },
+          ],
+        };
+      } catch (error) {
+        throw new Error(
+          formatApiError(error, `creating fact table '${input.name}'`, [
+            "Verify the datasource id — use get_defaults to see the configured data source.",
+            "Check that the SQL runs against that data source and returns every column listed in userIdTypes.",
+            "If scoping to a project, verify the project id with get_projects.",
           ])
         );
       }

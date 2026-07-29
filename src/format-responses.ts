@@ -18,6 +18,8 @@ import type {
   GetFactMetricResponse,
   ListFactTablesResponse,
   GetFactTableResponse,
+  CreateFactTableResponse,
+  CreateFactMetricResponse,
   Feature,
   GetStaleFeatureResponse,
 } from "./api-type-helpers.js";
@@ -162,6 +164,32 @@ export function formatFactTableDetail(data: GetFactTableResponse): string {
     parts.push("");
     parts.push(
       `*(SQL truncated; ${sql.length - FACT_TABLE_SQL_MAX_CHARS} more characters in source.)*`
+    );
+  }
+
+  return parts.join("\n");
+}
+
+export function formatFactTableCreated(
+  data: CreateFactTableResponse,
+  appOrigin: string
+): string {
+  const t = data.factTable;
+  const id = t?.id || "unknown";
+  const link = generateLinkToGrowthBook(appOrigin, "fact-tables", id);
+
+  const parts = [
+    `**Fact table \`${id}\` created.**`,
+    `[View in GrowthBook](${link})`,
+    "",
+    "GrowthBook parses the SQL to detect columns. Use `get_fact_table` to confirm the columns were detected as expected.",
+    "Then use `create_fact_metric` with this fact table id to define a metric on top of it.",
+  ];
+
+  if (t?.managedBy === "api") {
+    parts.push("");
+    parts.push(
+      "*This fact table is managed by the API and cannot be edited in the GrowthBook UI.*"
     );
   }
 
@@ -622,6 +650,48 @@ export function formatMetricDetail(
   ]
     .filter(Boolean)
     .join("\n");
+}
+
+export function formatFactMetricCreated(
+  data: CreateFactMetricResponse,
+  appOrigin: string
+): string {
+  const m = data.factMetric;
+  const id = m?.id || "unknown";
+  const link = generateLinkToGrowthBook(appOrigin, "fact-metrics", id);
+
+  const parts = [
+    `**Fact metric \`${id}\` created.**`,
+    `[View in GrowthBook](${link})`,
+    "",
+    "Analysis settings (conversion window, capping, priors, thresholds) use your organization defaults. Adjust them in the GrowthBook UI if this metric needs different ones.",
+    "Add the metric to an experiment to start measuring it.",
+  ];
+
+  if (m?.managedBy === "api") {
+    parts.push("");
+    parts.push(
+      "*This metric is managed by the API and cannot be edited in the GrowthBook UI.*"
+    );
+  }
+
+  return parts.join("\n");
+}
+
+/**
+ * Formats the cross-field problems found before calling the API, so the agent
+ * gets every issue at once instead of one 400 response at a time.
+ */
+export function formatFactMetricValidationErrors(errors: string[]): string {
+  return [
+    `Cannot create this fact metric yet — ${errors.length} ${
+      errors.length === 1 ? "problem" : "problems"
+    } to fix:`,
+    "",
+    ...errors.map((e) => `- ${e}`),
+    "",
+    "Fix these and call `create_fact_metric` again. Nothing was sent to GrowthBook.",
+  ].join("\n");
 }
 
 // ─── Defaults ───────────────────────────────────────────────────────

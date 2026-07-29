@@ -503,7 +503,8 @@ export function generateLinkToGrowthBook(
     | "project"
     | "sdk-connection"
     | "metric"
-    | "fact-metrics",
+    | "fact-metrics"
+    | "fact-tables",
   id: string
 ) {
   return `${appOrigin}/${resource}/${id}`;
