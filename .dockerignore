@@ -1,0 +1,14 @@
+# Keep the build context small and reproducible. Notably we exclude the local
+# `server/` build output so the image always rebuilds from `src/`, and we keep
+# `skills-src/` (vendored by CI) so bundle-skills can find the SKILL.md files.
+node_modules
+server
+build
+.git
+.github
+test
+*.png
+.env
+.npm-cache
+.DS_Store
+scratch.js

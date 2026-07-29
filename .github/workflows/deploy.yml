@@ -1,0 +1,101 @@
+name: Deploy
+
+# Builds the MCP image, pushes it to ECR as :git-<sha>, and points the ECS
+# service at a task-def revision pinned to that tag. The ECS service, cluster,
+# ALB, and DNS are defined in the terraform repo (growthbook-mcp.tf); this
+# workflow only ships new images to them.
+#
+# The ECR repo is immutable and terraform ignores task_definition, so :latest is
+# never pushed here — it only seeds revision 1 at bootstrap. Deploying a pinned
+# revision (rather than re-pulling a mutable tag) is what keeps the Vanta
+# "Fargate deploys version-controlled images" test passing; see terraform PR #175.
+#
+# The AWS_ACCESS_KEY_ID principal needs ecr:*, ecs:DescribeTaskDefinition,
+# ecs:RegisterTaskDefinition, ecs:DescribeServices, ecs:UpdateService, and
+# iam:PassRole on prod-growthbook-mcp{,-ecs}.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/deploy.yml"
+      - "src/**"
+      - "scripts/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+      - "Dockerfile"
+      - ".dockerignore"
+  # Manual lever: rebuild + redeploy cloud on demand. Because the build checks
+  # out growthbook/skills fresh, this is how a skills-only change reaches cloud
+  # (skills commits do not auto-trigger this workflow).
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-mcp-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.repository == 'growthbook/growthbook-mcp' }}
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      # bundle-skills (run inside the Docker build) reads SKILL.md files from a
+      # checkout of growthbook/skills. Vendor it into ./skills-src so it lands in
+      # the Docker build context. Mirrors ci.yml.
+      - name: Checkout GrowthBook skills
+        uses: actions/checkout@v5
+        with:
+          repository: growthbook/skills
+          path: skills-src
+
+      - name: Configure AWS credentials for ECR
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Prepare build metadata
+        id: metadata
+        run: echo "docker_sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build, tag, and push image to ECR
+        uses: docker/build-push-action@v6
+        with:
+          push: true
+          context: .
+          platforms: linux/amd64
+          tags: ${{ steps.login-ecr.outputs.registry }}/growthbook-mcp:git-${{ steps.metadata.outputs.docker_sha }}
+
+      # Pin the running task def to this build's tagged image rather than
+      # re-pulling a mutable tag. Takes the family's newest revision (terraform
+      # owns everything except the image) and swaps only the app container.
+      - name: Render task definition
+        id: taskdef
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition-family: prod-growthbook-mcp
+          container-name: growthbook_mcp
+          image: ${{ steps.login-ecr.outputs.registry }}/growthbook-mcp:git-${{ steps.metadata.outputs.docker_sha }}
+
+      - name: Deploy to ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.taskdef.outputs.task-definition }}
+          service: prod-growthbook-mcp
+          cluster: prod-growthbook-mcp
+          wait-for-service-stability: true

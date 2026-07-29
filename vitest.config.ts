@@ -6,10 +6,7 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./test/setup.ts"],
     include: ["test/**/*.test.ts"],
-    // Cursor's sandbox can block process termination used by child-process pools.
-    // Force a threads pool and run in a single thread for reliability.
     pool: "threads",
     maxWorkers: 1,
   },
 });
-

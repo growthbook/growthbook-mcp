@@ -2,129 +2,106 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { registerEnvironmentTools } from "./tools/environments.js";
-import { registerExperimentTools } from "./tools/experiments/experiments.js";
-import { registerFeatureTools } from "./tools/features.js";
-import { registerProjectTools } from "./tools/projects.js";
-import { registerSdkConnectionTools } from "./tools/sdk-connections.js";
-import { getApiKey, getApiUrl, getAppOrigin } from "./utils.js";
-import { registerSearchTools } from "./tools/search.js";
-import { registerDefaultsTools } from "./tools/defaults.js";
-import { registerMetricsTools } from "./tools/metrics.js";
-import { registerFactTableTools } from "./tools/fact-tables.js";
-import { registerProductAnalyticsTools } from "./tools/product-analytics.js";
-import { registerExperimentPrompts } from "./prompts/experiment-prompts.js";
-import packageDetails from "../package.json" with { type: "json" };
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { areSkillsEnabled, getTransportMode } from "./api.js";
+import { startHttpServer, type CreateServerOptions } from "./http.js";
+import { registerCallApiTool, registerSkillTools } from "./tools.js";
 
-export const baseApiUrl = getApiUrl();
-export const apiKey = getApiKey();
-export const appOrigin = getAppOrigin();
-export const user = process.env.GB_EMAIL;
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
-if (!user) {
-  throw new Error("GB_EMAIL is not set in the environment variables");
-}
-
-// Create an MCP server
-const server = new McpServer(
-  {
-    name: "GrowthBook MCP",
-    version: packageDetails.version,
-    title: "GrowthBook MCP",
-    websiteUrl: "https://growthbook.io",
-  },
-  {
-    instructions: `You are a helpful assistant that interacts with GrowthBook, an open source feature flagging and experimentation platform.
-
-Key workflows:
-- Feature flags: Use create_feature_flag for simple flags, then create_force_rule to add targeting conditions
-- Experiments: ALWAYS call get_defaults first, then create_experiment. Experiments are created as "draft" - users must launch in GrowthBook UI
-- Analysis: Use get_experiments with mode="summary" for quick insights
-- Product analytics: Use list_fact_tables to find fact table IDs, then get_fact_table for columns and SQL. Use get_metrics to find fact metric IDs. Use create_metric_exploration to chart one or more fact metrics on the same exploration (metricId or metrics[]), or create_fact_table_exploration for ad-hoc aggregates with one or more series (counts, distinct units, sums).
-
-All mutating tools require a fileExtension parameter for SDK integration guidance.`,
-    capabilities: {
-      tools: {},
-      prompts: {},
-    },
+function readPackageVersion(): string {
+  try {
+    const pkgPath = join(__dirname, "..", "package.json");
+    const pkg = JSON.parse(readFileSync(pkgPath, "utf8")) as {
+      version?: string;
+    };
+    return pkg.version ?? "0.0.0";
+  } catch {
+    return "0.0.0";
   }
-);
-
-registerEnvironmentTools({
-  server,
-  baseApiUrl,
-  apiKey,
-});
-
-registerProjectTools({
-  server,
-  baseApiUrl,
-  apiKey,
-});
-
-registerSdkConnectionTools({
-  server,
-  baseApiUrl,
-  apiKey,
-});
-
-registerFeatureTools({
-  server,
-  baseApiUrl,
-  apiKey,
-  appOrigin,
-  user,
-});
-
-registerExperimentTools({
-  server,
-  baseApiUrl,
-  apiKey,
-  appOrigin,
-  user,
-});
-
-registerSearchTools({
-  server,
-});
-
-registerDefaultsTools({
-  server,
-  baseApiUrl,
-  apiKey,
-});
-
-registerMetricsTools({
-  server,
-  baseApiUrl,
-  apiKey,
-  appOrigin,
-  user,
-});
-
-registerFactTableTools({
-  server,
-  baseApiUrl,
-  apiKey,
-});
-
-registerProductAnalyticsTools({
-  server,
-  baseApiUrl,
-  apiKey,
-  appOrigin,
-});
-
-registerExperimentPrompts({
-  server,
-});
-
-// Start receiving messages on stdin and sending messages on stdout
-const transport = new StdioServerTransport();
-
-try {
-  await server.connect(transport);
-} catch (error) {
-  console.error(error);
-  process.exit(1);
 }
+
+const version = readPackageVersion();
+/** Process-wide default (stdio + /mcp). /mcp/api always disables skills. */
+const envSkillsEnabled = areSkillsEnabled();
+
+function instructionsFor(skills: boolean): string {
+  return skills
+    ? `You are a helpful assistant that interacts with GrowthBook via a thin MCP server.
+
+Tools:
+- growthbook_list_skills — discover available GrowthBook skills (name + description)
+- growthbook_read_skill — load a skill's full workflow and guardrails
+- growthbook_call_api — make an authenticated GrowthBook REST API request on the user's behalf
+
+Workflow:
+1. growthbook_list_skills (or growthbook_read_skill if you already know the skill name) to load competence.
+2. Follow the skill's steps. Skills show bash like \`gb-call <METHOD> <PATH> [body]\` —
+   translate each of those into a growthbook_call_api invocation with the same method, path, and optional JSON body string.
+3. Do not invent endpoints; prefer the paths listed in the skill.
+4. Before growthbook_call_api with POST/PUT/PATCH/DELETE, confirm with the user (method, path, body summary)
+   unless they already explicitly instructed that mutation. GET does not need confirmation.
+
+Skill content is the source of truth for GrowthBook task workflows and API footguns.
+growthbook_call_api is a dumb authenticated passthrough — it does not validate payloads.`
+    : `You are a helpful assistant that interacts with GrowthBook via a thin MCP server.
+
+Only the growthbook_call_api tool is available (capability-only mode — bundled skills are not exposed).
+Use growthbook_call_api to make authenticated GrowthBook REST API requests: method, path (e.g. /api/v1/projects), and optional JSON body.
+Before POST/PUT/PATCH/DELETE, confirm with the user unless they already explicitly instructed that mutation.
+The client or user is expected to supply their own skill/workflow guidance.`;
+}
+
+export function createServer(options: CreateServerOptions = {}): McpServer {
+  const skills = options.skills ?? envSkillsEnabled;
+
+  const server = new McpServer(
+    {
+      name: skills ? "GrowthBook MCP Thin" : "GrowthBook MCP Thin (API only)",
+      version,
+      title: skills ? "GrowthBook MCP Thin" : "GrowthBook MCP Thin (API only)",
+      websiteUrl: "https://growthbook.io",
+    },
+    {
+      instructions: instructionsFor(skills),
+      capabilities: {
+        tools: {},
+      },
+    }
+  );
+
+  registerCallApiTool(server);
+
+  if (skills) {
+    registerSkillTools(server);
+  }
+
+  return server;
+}
+
+async function main(): Promise<void> {
+  const mode = getTransportMode();
+
+  if (mode === "http") {
+    try {
+      await startHttpServer(createServer);
+    } catch (error) {
+      console.error(error);
+      process.exit(1);
+    }
+    return;
+  }
+
+  const server = createServer({ skills: envSkillsEnabled });
+  const transport = new StdioServerTransport();
+  try {
+    await server.connect(transport);
+  } catch (error) {
+    console.error(error);
+    process.exit(1);
+  }
+}
+
+void main();

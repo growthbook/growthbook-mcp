@@ -13,7 +13,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const rootDir = join(__dirname, "..");
 
-// Read version from package.json
 const packageJsonPath = join(rootDir, "package.json");
 const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
 const version = packageJson.version;
@@ -25,14 +24,12 @@ if (!version) {
 
 console.log(`Syncing version ${version} across all files...`);
 
-// Update manifest.json
 const manifestPath = join(rootDir, "manifest.json");
 const manifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
 manifest.version = version;
 writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
 console.log(`✓ Updated manifest.json`);
 
-// Update server.json (both the root version and packages[0].version)
 const serverPath = join(rootDir, "server.json");
 const server = JSON.parse(readFileSync(serverPath, "utf-8"));
 server.version = version;

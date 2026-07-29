@@ -4,19 +4,35 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Added
-
-- `get_fact_table` tool — fetch a single fact table by id (columns, SQL, datasource, user id types) for analytics and metric configuration
-- `list_fact_tables` tool — list fact tables with pagination and optional project or data source filters; use ids for product analytics and fact metrics workflows
-- `create_metric_exploration` tool — chart metric data over time with configurable date ranges and chart types, returns visualization data and a link to view in GrowthBook
-- `create_fact_table_exploration` tool — run product-analytics queries directly against a fact table (row count, unit count, sum of a column) with the same chart and date-range options as metric exploration
-
 ### Changed
 
-- `get_fact_table` — column details are shown as per-column JSON (all keys returned by the API, including deleted columns). Tool description notes that omitted boolean fields on a column object should be read as false.
-- `create_metric_exploration` — supports multiple fact metrics on one chart via optional `metrics[]` (same datasource required); single-series callers still use `metricId` and optional `name`. Tool and manifest descriptions updated.
-- `create_fact_table_exploration` — descriptions clarify that the `series` array can include multiple entries for one chart (tool, manifest, and Zod field description).
+- HTTP mode now requires `GB_MCP_URL` and refuses to start without it; the public base — stamped into the OAuth resource (audience) and protected-resource metadata — is never derived from request headers
+- HTTP mode probes GrowthBook REST with the bearer before handling MCP and now fails closed: `2xx`/`403` accept (`403` = valid token lacking permission on the probe path), `401` rejects with `error="invalid_token"` so clients refresh, and when GrowthBook can't answer (`429`/`5xx`/network) the request gets `503 temporarily_unavailable` instead of being let through
+- Renamed all three tools with a `growthbook_` prefix (`growthbook_list_skills`, `growthbook_read_skill`, `growthbook_call_api`) so they stay unambiguous when a client loads multiple MCP servers — an agent should never mistake `growthbook_call_api` for a generic API caller
+- `growthbook_call_api` tool description and server instructions ask agents to confirm POST/PUT/PATCH/DELETE with the user unless already instructed (soft guidance; MCP annotation hints proved unreliable in clients)
 
+## [2.0.0-beta.0] - 2026-07-15
+
+### Breaking
+
+- Replaced the 1.x per-endpoint tool surface (feature flags, experiments, metrics, explorations, docs search, etc.) with a thin three-tool server:
+  - `list_skills` — discover bundled GrowthBook agent skills
+  - `read_skill` — load a skill's full workflow and guardrails
+  - `call_api` — authenticated REST passthrough to the GrowthBook API
+- Competence now lives in the [growthbook/skills](https://github.com/growthbook/skills) repo and is **bundled at build time**. There are no per-endpoint formatters in this package.
+- Removed vitest coverage of the old tools (replaced with unit tests for passthrough helpers and skill frontmatter parsing).
+
+### Added
+
+- HTTP + OAuth resource-server transport (`GB_MCP_TRANSPORT=http`) with RFC 9728 protected-resource metadata
+- Capability-only mode: `POST /mcp/api` (or `GB_SKILLS_ENABLED=false`) exposes only `call_api`
+- Skill bundling via `scripts/bundle-skills.mjs` (`SKILLS_SRC` or sibling `../skills`)
+
+### Migration
+
+1. Point clients at `@growthbook/mcp@2.0.0-beta.0` (npm dist-tag `beta` until 2.0.0 is stable) — do not install via `@growthbook/mcp-thin`.
+2. Prefer `list_skills` → `read_skill` → `call_api` over the removed 1.x tools.
+3. For remote/OAuth clients, use `GB_MCP_TRANSPORT=http` and connect to `/mcp` or `/mcp/api`.
 
 ## [1.8.1] - 2026-03-09
 

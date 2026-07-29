@@ -1,51 +1,44 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.growthbook/growthbook-mcp",
-  "description": "MCP Server for interacting with GrowthBook",
+  "description": "Thin MCP server for GrowthBook — skill loader + authenticated API passthrough",
   "repository": {
     "url": "https://github.com/growthbook/growthbook-mcp",
     "source": "github"
   },
-  "version": "1.8.1",
+  "version": "2.0.0-beta.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@growthbook/mcp",
-      "version": "1.8.1",
+      "version": "2.0.0-beta.0",
       "transport": {
         "type": "stdio"
       },
       "environmentVariables": [
         {
-          "description": "A GrowthBook API key or PAT.",
+          "description": "A GrowthBook API key or personal access token.",
           "is_required": true,
           "format": "string",
           "is_secret": true,
           "name": "GB_API_KEY"
         },
         {
-          "description": "Your email address used with GrowthBook. Used when creating feature flags and experiments.",
-          "is_required": true,
-          "format": "string",
-          "is_secret": false,
-          "name": "GB_EMAIL"
-        },
-        {
-          "description": "Your GrowthBook API URL. Defaults to `https://api.growthbook.io`.",
+          "description": "Your GrowthBook API URL. Defaults to https://api.growthbook.io.",
           "is_required": false,
           "format": "string",
           "is_secret": false,
           "name": "GB_API_URL"
         },
         {
-          "description": "Your GrowthBook app URL Defaults to `https://app.growthbook.io`.",
+          "description": "Set to false to disable bundled skill tools (growthbook_list_skills, growthbook_read_skill). Defaults to true.",
           "is_required": false,
           "format": "string",
           "is_secret": false,
-          "name": "GB_APP_ORIGIN"
+          "name": "GB_SKILLS_ENABLED"
         },
         {
-          "description": "Custom HTTP headers to include in all GrowthBook API requests. Use the pattern GB_HTTP_HEADER_<NAME> where <NAME> is converted to proper HTTP header format. Examples: GB_HTTP_HEADER_X_TENANT_ID=abc123, GB_HTTP_HEADER_CF_ACCESS_TOKEN=<token>. Multiple custom headers can be configured.",
+          "description": "Custom HTTP headers via GB_HTTP_HEADER_<NAME> (e.g. GB_HTTP_HEADER_CF_ACCESS_TOKEN).",
           "is_required": false,
           "format": "string",
           "is_secret": false,

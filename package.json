@@ -1,8 +1,8 @@
 {
   "name": "@growthbook/mcp",
   "mcpName": "io.github.growthbook/growthbook-mcp",
-  "version": "1.8.1",
-  "description": "MCP Server for interacting with GrowthBook",
+  "version": "2.0.0-beta.0",
+  "description": "Thin MCP server for GrowthBook — skill loader + authenticated API passthrough",
   "access": "public",
   "homepage": "https://github.com/growthbook/growthbook-mcp",
   "repository": {
@@ -10,17 +10,13 @@
     "url": "git+https://github.com/growthbook/growthbook-mcp"
   },
   "scripts": {
-    "build": "tsc",
+    "bundle-skills": "node scripts/bundle-skills.mjs",
+    "build": "tsc && npm run bundle-skills",
     "dev": "tsc --watch",
+    "start": "node server/index.js",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
-    "sync-version": "node scripts/sync-version.js",
-    "bump:patch": "npm version patch --no-git-tag-version && npm run sync-version",
-    "bump:minor": "npm version minor --no-git-tag-version && npm run sync-version",
-    "bump:major": "npm version major --no-git-tag-version && npm run sync-version",
-    "mcpb:build": "npx -y @anthropic-ai/mcpb -- pack",
-    "generate-api-types": "npx openapi-typescript https://api.growthbook.io/api/v1/openapi.yaml -o src/api-types.d.ts"
+    "sync-version": "node scripts/sync-version.js"
   },
   "bin": {
     "mcp": "server/index.js"
@@ -39,14 +35,17 @@
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",
-    "env-paths": "^4.0.0",
+    "express": "^5.2.1",
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@types/express": "^5.0.0",
     "@types/node": "^25.3.5",
-    "@vitest/coverage-v8": "^4.0.18",
     "typescript": "^5.9.2",
-    "vitest": "^4.0.18"
+    "vitest": "^3.2.7"
   },
-  "type": "module"
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  }
 }
