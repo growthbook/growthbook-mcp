@@ -36,10 +36,10 @@ Point your MCP client at the compiled entrypoint:
 }
 ```
 
-Or after publishing (beta dist-tag until 2.0.0 is stable):
+Or run the published package:
 
 ```bash
-npx @growthbook/mcp@beta
+npx @growthbook/mcp
 ```
 
 ## Environment variables
@@ -169,8 +169,8 @@ Run it on a trusted network or bound to loopback. For a multi-tenant or public d
 Cutting a release is deliberate: bump the version in `package.json`, then push a matching `v*` tag:
 
 ```bash
-git tag v2.0.0-beta.1
-git push origin v2.0.0-beta.1
+git tag v2.0.0
+git push origin v2.0.0
 ```
 
 That tagged commit (with skills frozen at cut time) publishes:
