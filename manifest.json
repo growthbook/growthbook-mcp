@@ -1,7 +1,7 @@
 {
   "manifest_version": "0.2",
   "name": "GrowthBook",
-  "version": "2.0.0-beta.0",
+  "version": "2.0.0",
   "description": "Thin MCP server for GrowthBook — skill loader + authenticated API passthrough",
   "long_description": "A thin GrowthBook MCP server with three tools: growthbook_list_skills and growthbook_read_skill (bundled GrowthBook agent skills) plus growthbook_call_api (authenticated REST passthrough). Skills can be disabled so clients can use only the API capability with their own workflows.",
   "author": {
