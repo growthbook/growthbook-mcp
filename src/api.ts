@@ -388,7 +388,7 @@ export async function checkBearerWithGrowthBook(
   return "unavailable";
 }
 
-/** Drop cached validity (e.g. after an upstream 401 on growthbook_call_api). */
+/** Drop cached validity (e.g. after an upstream 401 on an API tool call). */
 export function invalidateBearerCache(token: string): void {
   bearerValidUntil.delete(token);
 }

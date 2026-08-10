@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-08-10
+
+### Breaking
+
+- Replaced `growthbook_call_api` with separate tools so clients can honor read vs write annotations (required for Anthropic Connectors Directory review):
+  - `growthbook_api_read` — GET only (`readOnlyHint: true`)
+  - `growthbook_api_write` — POST/PUT/PATCH/DELETE (`destructiveHint: true`)
+- Removed soft “confirm mutating methods with the user” guidance from tool descriptions and server instructions; confirmation is left to client annotation handling
+
+### Changed
+
+- Skill bridge note and server instructions map `gb-call GET` → `growthbook_api_read` and mutating methods → `growthbook_api_write`
+- Freeform API tool descriptions link to the [GrowthBook REST API docs](https://docs.growthbook.io/api)
+
+### Migration
+
+1. Replace `growthbook_call_api` with `growthbook_api_read` (GET) or `growthbook_api_write` (POST/PUT/PATCH/DELETE).
+2. Point clients at `@growthbook/mcp@2.1.0`.
+
 ## [2.0.0] - 2026-07-30
 
 ### Breaking
