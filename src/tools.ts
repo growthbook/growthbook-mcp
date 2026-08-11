@@ -8,25 +8,57 @@ import {
   loadSkills,
 } from "./skills.js";
 
-export function registerCallApiTool(server: McpServer) {
+const API_DOCS =
+  "https://docs.growthbook.io/api (OpenAPI: https://api.growthbook.io/api/v1/openapi.yaml)";
+
+export function registerApiTools(server: McpServer) {
   server.registerTool(
-    "growthbook_call_api",
+    "growthbook_api_read",
     {
-      title: "Call GrowthBook API",
+      title: "Read GrowthBook API",
       description:
-        "Make an authenticated HTTP request to the GrowthBook REST API on the user's behalf. " +
-        "Use method + path (+ optional JSON body) exactly as shown in skill workflows that mention gb-call. " +
-        "Paths typically start with /api/v1/ or /api/v2/. Returns the raw response body on success. " +
-        "IMPORTANT: Before POST, PUT, PATCH, or DELETE, confirm with the user (summarize method, path, and body) " +
-        "unless they have already explicitly instructed you to perform that mutation. GET requests do not need confirmation.",
+        `Make an authenticated GET request to the GrowthBook REST API. ` +
+        `Use path (+ optional query string) exactly as shown in skill workflows that mention gb-call GET. ` +
+        `Paths typically start with /api/v1/ or /api/v2/. Returns the raw response body on success. ` +
+        `Queries the GrowthBook REST API — see ${API_DOCS}.`,
       inputSchema: z.object({
-        method: z
-          .enum(["GET", "POST", "PUT", "PATCH", "DELETE"])
-          .describe("HTTP method"),
         path: z
           .string()
           .describe(
             "API path including query string if needed, e.g. /api/v1/projects or /api/v2/features/my-flag"
+          ),
+      }),
+      annotations: {
+        readOnlyHint: true,
+        openWorldHint: true,
+      },
+    },
+    async ({ path }) => {
+      const result = await callApi({ method: "GET", path });
+      return {
+        content: [{ type: "text" as const, text: result.text }],
+        isError: !result.ok,
+      };
+    }
+  );
+
+  server.registerTool(
+    "growthbook_api_write",
+    {
+      title: "Write GrowthBook API",
+      description:
+        `Make an authenticated mutating request (POST, PUT, PATCH, or DELETE) to the GrowthBook REST API. ` +
+        `Use method + path (+ optional JSON body) exactly as shown in skill workflows that mention gb-call with those methods. ` +
+        `Paths typically start with /api/v1/ or /api/v2/. Returns the raw response body on success. ` +
+        `Mutates the GrowthBook REST API — see ${API_DOCS}.`,
+      inputSchema: z.object({
+        method: z
+          .enum(["POST", "PUT", "PATCH", "DELETE"])
+          .describe("HTTP method"),
+        path: z
+          .string()
+          .describe(
+            "API path including query string if needed, e.g. /api/v2/features or /api/v1/experiments/exp_123"
           ),
         body: z
           .string()
@@ -36,8 +68,8 @@ export function registerCallApiTool(server: McpServer) {
           ),
       }),
       annotations: {
-        // Can mutate org state depending on method/path
         readOnlyHint: false,
+        destructiveHint: true,
         openWorldHint: true,
       },
     },
@@ -68,7 +100,7 @@ export function registerSkillTools(server: McpServer) {
       description:
         "List available GrowthBook agent skills (name + description). " +
         "Use growthbook_read_skill to load the full workflow for a skill before acting. " +
-        "Skills encode how to accomplish GrowthBook tasks well; use growthbook_call_api to execute the REST calls they describe.",
+        "Skills encode how to accomplish GrowthBook tasks well; use growthbook_api_read / growthbook_api_write to execute the REST calls they describe.",
       inputSchema: z.object({}),
       annotations: {
         readOnlyHint: true,
@@ -90,7 +122,8 @@ export function registerSkillTools(server: McpServer) {
       description:
         "Return the full markdown content of a GrowthBook skill by name " +
         "(from growthbook_list_skills). Follow the skill's workflow; when it shows " +
-        "`gb-call <METHOD> <PATH> [body]`, use the growthbook_call_api tool with those arguments instead.",
+        "`gb-call <METHOD> <PATH> [body]`, use growthbook_api_read for GET and " +
+        "growthbook_api_write for POST/PUT/PATCH/DELETE.",
       inputSchema: z.object({
         name: z
           .string()

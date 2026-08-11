@@ -118,8 +118,7 @@ export function getSkill(name: string): Skill | undefined {
 
 /** Bridge note prepended when returning skill content via growthbook_read_skill. */
 export const GB_CALL_BRIDGE_NOTE = `> **MCP note:** This skill's workflow examples use \`gb-call <METHOD> <PATH> [body]\`.
-> In this MCP server, use the \`growthbook_call_api\` tool instead with the same method, path, and optional JSON body string.
-> Do not shell out to \`gb-call\`. Before POST/PUT/PATCH/DELETE, confirm with the user unless they already
-> explicitly instructed that mutation.
+> In this MCP server, map GET to \`growthbook_api_read\` and POST/PUT/PATCH/DELETE to \`growthbook_api_write\`
+> with the same path and optional JSON body string. Do not shell out to \`gb-call\`.
 
 `;
