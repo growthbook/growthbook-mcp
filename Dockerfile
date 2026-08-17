@@ -30,8 +30,15 @@ FROM node:20-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 
+# Pick up Debian security patches (glibc, gnutls28, dpkg, etc.) ahead of the
+# next node:20-slim base refresh.
+RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
+
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+# npm itself (and its vendored deps: tar, minimatch, brace-expansion, ...) is
+# only needed to install; it never runs once the container starts `node`.
+RUN npm ci --omit=dev && npm cache clean --force && \
+    rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
 
 # Compiled server (includes the bundled skills under server/skills).
 COPY --from=build /build/server ./server
