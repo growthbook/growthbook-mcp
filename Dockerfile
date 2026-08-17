@@ -1,6 +1,6 @@
 # Multi-stage build for the GrowthBook MCP server (HTTP transport).
 #
-# `npm run build` runs `bundle-skills`, which copies SKILL.md files from a
+# `npm run build` runs `bundle-skills`, which copies the top-level skill tree from a
 # checkout of github.com/growthbook/skills. That repo is NOT part of this build
 # context by default, so CI must vendor it into ./skills-src before building
 # (the deploy workflow does this via actions/checkout, matching ci.yml).
@@ -21,7 +21,7 @@ RUN npm ci
 COPY . .
 
 # Skills source, vendored into the context by CI (or a local clone). bundle-skills
-# reads <SKILLS_SRC>/skills/<name>/SKILL.md.
+# copies <SKILLS_SRC>/skills/<skill>/{SKILL.md,references/*.md}.
 ENV SKILLS_SRC=/build/skills-src
 RUN npm run build
 

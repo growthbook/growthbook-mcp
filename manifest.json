@@ -10,6 +10,7 @@
   },
   "homepage": "https://growthbook.io",
   "documentation": "https://docs.growthbook.io/integrations/mcp",
+  "icon": "icon.png",
   "server": {
     "type": "node",
     "entry_point": "server/index.js",
@@ -28,11 +29,11 @@
   "tools": [
     {
       "name": "growthbook_list_skills",
-      "description": "List available GrowthBook agent skills (name + description)."
+      "description": "List top-level GrowthBook skill entry points (name + description)."
     },
     {
       "name": "growthbook_read_skill",
-      "description": "Return the full markdown content of a GrowthBook skill by name."
+      "description": "Return skill markdown by top-level name or qualified child path (e.g. feature-flags/references/flag-create)."
     },
     {
       "name": "growthbook_api_read",

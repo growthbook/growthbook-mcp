@@ -2,7 +2,7 @@ import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { callApi } from "./api.js";
 import {
-  GB_CALL_BRIDGE_NOTE,
+  formatSkillForMcp,
   getSkill,
   listSkillSummaries,
   loadSkills,
@@ -98,8 +98,10 @@ export function registerSkillTools(server: McpServer) {
     {
       title: "List GrowthBook Skills",
       description:
-        "List available GrowthBook agent skills (name + description). " +
-        "Use growthbook_read_skill to load the full workflow for a skill before acting. " +
+        "List available top-level GrowthBook skill entry points (name + description). " +
+        "Call growthbook_read_skill with the relevant name. If the returned skill " +
+        "routes to a qualified child path (e.g. feature-flags/references/flag-create), " +
+        "call growthbook_read_skill again with that path. " +
         "Skills encode how to accomplish GrowthBook tasks well; use growthbook_api_read / growthbook_api_write to execute the REST calls they describe.",
       inputSchema: z.object({}),
       annotations: {
@@ -120,14 +122,19 @@ export function registerSkillTools(server: McpServer) {
     {
       title: "Read GrowthBook Skill",
       description:
-        "Return the full markdown content of a GrowthBook skill by name " +
-        "(from growthbook_list_skills). Follow the skill's workflow; when it shows " +
-        "`gb-call <METHOD> <PATH> [body]`, use growthbook_api_read for GET and " +
-        "growthbook_api_write for POST/PUT/PATCH/DELETE.",
+        "Return the full markdown content of a GrowthBook skill by path. " +
+        "Pass a top-level name from growthbook_list_skills (e.g. feature-flags or " +
+        "flag-create), or a qualified child path named by a skill " +
+        "(e.g. feature-flags/references/flag-create). " +
+        "Follow the skill's workflow; when it shows `gb-call <METHOD> <PATH> [body]`, " +
+        "use growthbook_api_read for GET and growthbook_api_write for POST/PUT/PATCH/DELETE.",
       inputSchema: z.object({
         name: z
           .string()
-          .describe("Skill name, e.g. flag-create or experiment-launch"),
+          .describe(
+            "Top-level skill name (e.g. feature-flags or flag-create), or a " +
+              "qualified child path named by a skill"
+          ),
       }),
       annotations: {
         readOnlyHint: true,
@@ -144,9 +151,10 @@ export function registerSkillTools(server: McpServer) {
             {
               type: "text" as const,
               text:
-                `Unknown skill: ${name}.` +
+                `Unknown skill: ${name}. ` +
+                `Use a name from growthbook_list_skills or a qualified child path named by a loaded skill.` +
                 (available
-                  ? ` Available skills: ${available}`
+                  ? ` Available top-level skills: ${available}`
                   : " No skills are bundled."),
             },
           ],
@@ -158,7 +166,7 @@ export function registerSkillTools(server: McpServer) {
         content: [
           {
             type: "text" as const,
-            text: GB_CALL_BRIDGE_NOTE + skill.content,
+            text: formatSkillForMcp(skill),
           },
         ],
       };

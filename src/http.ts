@@ -4,6 +4,7 @@
  * Paths:
  * - POST /mcp      — full server (skills + API read/write tools), unless GB_SKILLS_ENABLED=false
  * - POST /mcp/api  — capability-only (growthbook_api_read + growthbook_api_write)
+ * - GET  /         — redirects a browser to the integration docs
  *
  * - Serves /.well-known/oauth-protected-resource (RFC 9728) pointing at the GB AS
  * - Requires Bearer; validates it against GrowthBook REST so expired/revoked
@@ -23,6 +24,9 @@ import {
   getOauthIssuer,
   requestAuthStore,
 } from "./api.js";
+
+/** Human-facing docs for this server: advertised in OAuth metadata and used by the / redirect. */
+const DOCS_URL = "https://docs.growthbook.io/integrations/mcp";
 
 export type CreateServerOptions = {
   /** When false, only growthbook_api_read / growthbook_api_write are registered. */
@@ -157,7 +161,7 @@ function createMcpHttpApp(options: McpHttpAppOptions): Express {
       authorization_servers: [getOauthIssuer()],
       bearer_methods_supported: ["header"],
       scopes_supported: ["openid", "profile", "email", "offline_access"],
-      resource_documentation: "https://docs.growthbook.io/integrations/mcp",
+      resource_documentation: DOCS_URL,
     });
   }
 
@@ -170,6 +174,15 @@ function createMcpHttpApp(options: McpHttpAppOptions): Express {
       })
     );
   }
+
+  // Nothing at the origin root speaks MCP — the protocol only defines the /mcp
+  // endpoints below — so anyone landing here is a human in a browser. Send them
+  // to the docs instead of Express's default "Cannot GET /". Temporary (302) so
+  // this can become a real landing page later without clients having cached a
+  // permanent redirect.
+  app.get("/", (_req, res) => {
+    res.redirect(DOCS_URL);
+  });
 
   // Unauthenticated liveness probe for load balancers / orchestrators. It does
   // not touch GrowthBook, so it stays green even if the upstream API is down —

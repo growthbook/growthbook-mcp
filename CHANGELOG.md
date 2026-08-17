@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Skill bundling preserves each top-level skill tree (`<skill>/SKILL.md` + optional `<skill>/references/*.md`) instead of flattening entry points to `server/skills/<name>.md`
+- `growthbook_list_skills` lists top-level skill entry points; `growthbook_read_skill` accepts a listed name or qualified child path (e.g. `feature-flags/references/flag-create`)
+- At bundle time, in-skill `` `references/foo.md` `` links are rewritten to qualified paths (e.g. `` `feature-flags/references/foo` ``) so the runtime can serve files as-is
+
 ## [2.1.0] - 2026-08-10
 
 ### Breaking

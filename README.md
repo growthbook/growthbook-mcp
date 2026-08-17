@@ -4,8 +4,8 @@ A thin MCP server for GrowthBook with four tools:
 
 | Tool | Purpose |
 |------|---------|
-| `growthbook_list_skills` | List bundled GrowthBook agent skills (name + description) |
-| `growthbook_read_skill` | Return the full skill markdown (workflow + guardrails) |
+| `growthbook_list_skills` | List top-level skill entry points (name + description) |
+| `growthbook_read_skill` | Return a listed skill or qualified child workflow (`feature-flags` or `feature-flags/references/flag-create`) |
 | `growthbook_api_read` | Authenticated GET passthrough to the GrowthBook API |
 | `growthbook_api_write` | Authenticated POST/PUT/PATCH/DELETE passthrough |
 
@@ -108,14 +108,21 @@ When skills are disabled, only the API read/write tools are registered. `growthb
 npm run build   # tsc && bundle-skills
 ```
 
-`scripts/bundle-skills.mjs` copies every `skills/*/SKILL.md` from the canonical skills checkout into `server/skills/<name>.md`.
+`scripts/bundle-skills.mjs` copies the top-level skill tree from the canonical skills checkout, preserving structure:
+
+```
+skills/<skill>/SKILL.md                   → server/skills/<skill>/SKILL.md
+skills/<skill>/references/<workflow>.md   → server/skills/<skill>/references/<workflow>.md
+```
+
+Per-skill `scripts/` directories (the `gb-call` helper) are not copied — MCP uses the API tools instead.
 
 Source path resolution:
 
 1. `SKILLS_SRC` env var (path to the skills repo root), or
 2. `../skills` (sibling directory)
 
-The skills repo stays the source of truth — this package never forks skill content.
+The skills repo stays the source of truth — this package never forks skill content. At bundle time, in-skill `` `references/foo.md` `` links are rewritten to qualified paths (`` `feature-flags/references/foo` ``) so the on-disk MCP artifact is ready to serve.
 
 ## Using skills with the API tools
 
@@ -145,7 +152,10 @@ This MCP server does **not** shell out to `gb-call`. Map `GET` → `growthbook_a
 
 ### `growthbook_list_skills` / `growthbook_read_skill`
 
-Only registered when `GB_SKILLS_ENABLED` is not disabled. `growthbook_read_skill` returns the full `SKILL.md` content so the agent can follow workflow steps and guardrails.
+Only registered when `GB_SKILLS_ENABLED` is not disabled.
+
+- `growthbook_list_skills` returns top-level skill entry points. An entry may contain a complete workflow or route to child workflows.
+- `growthbook_read_skill` accepts a listed top-level name or a qualified child path named by a loaded skill (`feature-flags/references/flag-create`) and returns the full markdown (workflow + guardrails).
 
 ## Development
 
