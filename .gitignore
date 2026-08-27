@@ -1,6 +1,7 @@
 build/
 server/
 node_modules/
+agent-skills.local.json
 .env
 .npm-cache/
 .claude

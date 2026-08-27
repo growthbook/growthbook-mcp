@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { rewriteReferencePaths } from "../scripts/bundle-skills.mjs";
+import {
+  BLOCKED_SKILLS,
+  rewriteReferencePaths,
+} from "../scripts/bundle-skills.mjs";
 import { normalizeSkillPath, parseFrontmatter } from "../src/skills.js";
 
 describe("parseFrontmatter", () => {
@@ -72,5 +75,11 @@ describe("rewriteReferencePaths", () => {
     expect(rewriteReferencePaths(input, "analytics")).toBe(
       "See `analytics/references/metric-search`."
     );
+  });
+});
+
+describe("BLOCKED_SKILLS", () => {
+  it("blocks gb-setup and nothing else", () => {
+    expect([...BLOCKED_SKILLS]).toEqual(["gb-setup"]);
   });
 });

@@ -22,14 +22,14 @@ on:
       - ".github/workflows/deploy.yml"
       - "src/**"
       - "scripts/**"
+      - ".github/actions/checkout-agent-skills/action.yml"
+      - "agent-skills.lock.json"
       - "package.json"
       - "package-lock.json"
       - "tsconfig.json"
       - "Dockerfile"
       - ".dockerignore"
-  # Manual lever: rebuild + redeploy cloud on demand. Because the build checks
-  # out growthbook/skills fresh, this is how a skills-only change reaches cloud
-  # (skills commits do not auto-trigger this workflow).
+  # Manual lever: rebuild + redeploy cloud on demand.
   workflow_dispatch:
 
 concurrency:
@@ -46,14 +46,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
 
-      # bundle-skills (run inside the Docker build) reads SKILL.md files from a
-      # checkout of growthbook/skills. Vendor it into ./skills-src so it lands in
-      # the Docker build context. Mirrors ci.yml.
+      # Vendor the pinned skills into ./skills-src so they land in the Docker
+      # build context. Mirrors ci.yml.
       - name: Checkout GrowthBook skills
-        uses: actions/checkout@v5
-        with:
-          repository: growthbook/skills
-          path: skills-src
+        uses: ./.github/actions/checkout-agent-skills
 
       - name: Configure AWS credentials for ECR
         uses: aws-actions/configure-aws-credentials@v5

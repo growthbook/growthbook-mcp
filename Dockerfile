@@ -2,8 +2,9 @@
 #
 # `npm run build` runs `bundle-skills`, which copies the top-level skill tree from a
 # checkout of github.com/growthbook/skills. That repo is NOT part of this build
-# context by default, so CI must vendor it into ./skills-src before building
-# (the deploy workflow does this via actions/checkout, matching ci.yml).
+# context by default, so CI vendors the commit in agent-skills.lock.json into
+# ./skills-src before building. The build fails rather than silently shipping no
+# skills if it isn't there.
 #
 #   Local build:
 #     git clone git@github.com:growthbook/skills.git skills-src

@@ -115,14 +115,29 @@ skills/<skill>/SKILL.md                   → server/skills/<skill>/SKILL.md
 skills/<skill>/references/<workflow>.md   → server/skills/<skill>/references/<workflow>.md
 ```
 
-Per-skill `scripts/` directories (the `gb-call` helper) are not copied — MCP uses the API tools instead.
-
 Source path resolution:
 
-1. `SKILLS_SRC` env var (path to the skills repo root), or
-2. `../skills` (sibling directory)
+1. `SKILLS_SRC` env var (path to the skills repo root)
+2. `agent-skills.local.json` — `{ "path": "../skills" }`, relative to the repo root. Gitignored; copy `agent-skills.local.json.example`
+3. `skills-src/` — what CI and the Docker build vendor
 
-The skills repo stays the source of truth — this package never forks skill content. At bundle time, in-skill `` `references/foo.md` `` links are rewritten to qualified paths (`` `feature-flags/references/foo` ``) so the on-disk MCP artifact is ready to serve.
+There is no implicit sibling lookup. `../skills` resolves to whatever happens to be at that path, which makes a local build silently disagree with the commit CI builds from.
+
+CI, cloud deploys, and releases all read `agent-skills.lock.json` and check out
+that exact skills commit. To ship upstream skill changes, update the commit in
+the lock file. Local development can point at any checkout with
+`agent-skills.local.json` or `SKILLS_SRC`.
+
+The skills repo stays the source of truth — this package does not maintain a
+fork of skill content. New skills flow through automatically, except those named
+in the small blocklist in `bundle-skills.mjs`. Currently only `gb-setup` is
+blocked because it configures the `gb-call` shell adapter rather than GrowthBook
+itself.
+
+Per-skill `scripts/` directories are not copied. Relative
+`` `references/foo.md` `` links are rewritten to qualified
+`` `feature-flags/references/foo` `` paths so `growthbook_read_skill` can resolve
+them.
 
 ## Using skills with the API tools
 
@@ -160,7 +175,9 @@ Only registered when `GB_SKILLS_ENABLED` is not disabled.
 ## Development
 
 ```bash
-# Requires a sibling checkout at ../skills (or SKILLS_SRC)
+git clone git@github.com:growthbook/skills.git ../skills
+cp agent-skills.local.json.example agent-skills.local.json  # edit if not at ../skills
+
 npm install
 npm run build
 npm start
