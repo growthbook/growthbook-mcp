@@ -4,6 +4,7 @@
 node_modules
 server
 build
+agent-skills.local.json
 .git
 .github
 test

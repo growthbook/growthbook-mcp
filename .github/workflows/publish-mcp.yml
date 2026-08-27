@@ -8,10 +8,8 @@ name: Release
 #   - an entry in the MCP registry
 #   - a GitHub Release with generated notes
 #
-# Skills are frozen at release-cut time: the build checks out growthbook/skills'
-# default branch and bundles it into the image/package, so a release is a stable
-# snapshot of MCP code + skills. Cloud, by contrast, continuously tracks main
-# (see deploy.yml).
+# Skills are pinned by agent-skills.lock.json and bundled into the image/package,
+# so a release is a stable snapshot of MCP code + skills.
 #
 # Prerelease versions (e.g. 2.0.0-beta.1) publish under the `beta` npm dist-tag
 # and only get the exact version image tag — they never move `latest`/major/minor.
@@ -60,12 +58,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      # Freeze skills at cut time (matches ci.yml / deploy.yml).
+      # Use the same pinned skills as CI and cloud deploys.
       - name: Checkout GrowthBook skills
-        uses: actions/checkout@v5
-        with:
-          repository: growthbook/skills
-          path: skills-src
+        uses: ./.github/actions/checkout-agent-skills
 
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
@@ -110,10 +105,7 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Checkout GrowthBook skills
-        uses: actions/checkout@v5
-        with:
-          repository: growthbook/skills
-          path: skills-src
+        uses: ./.github/actions/checkout-agent-skills
 
       - name: Setup Node.js
         uses: actions/setup-node@v5
