@@ -8,9 +8,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # 26 is what the Dockerfile runs in production; 24 is the current LTS,
-        # which is what npm consumers of @growthbook/mcp are on.
-        node-version: ["24", "26"]
+        # 26 is what the Dockerfile runs; 22 is the oldest supported LTS, standing
+        # in for the `engines` floor that npm consumers install against.
+        node-version: ["22", "26"]
     steps:
       - uses: actions/checkout@v5
 
