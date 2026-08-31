@@ -13,7 +13,7 @@
 # Runtime is configured entirely through env vars (see the ENV block below and
 # the terraform task definition). No secrets are baked into the image.
 
-FROM node:20-slim AS build
+FROM node:26-slim AS build
 WORKDIR /build
 
 COPY package.json package-lock.json ./
@@ -27,12 +27,12 @@ ENV SKILLS_SRC=/build/skills-src
 RUN npm run build
 
 
-FROM node:20-slim AS runtime
+FROM node:26-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 
 # Pick up Debian security patches (glibc, gnutls28, dpkg, etc.) ahead of the
-# next node:20-slim base refresh.
+# next node:26-slim base refresh.
 RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json ./

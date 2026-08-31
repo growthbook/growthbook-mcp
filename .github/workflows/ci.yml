@@ -5,6 +5,12 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 26 is what the Dockerfile runs; 22 is the oldest supported LTS, standing
+        # in for the `engines` floor that npm consumers install against.
+        node-version: ["22", "26"]
     steps:
       - uses: actions/checkout@v5
 
@@ -14,7 +20,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: "lts/*"
+          node-version: ${{ matrix.node-version }}
 
       - name: Install dependencies
         run: npm ci
