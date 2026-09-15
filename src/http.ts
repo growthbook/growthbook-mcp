@@ -267,7 +267,7 @@ export async function startHttpServer(
 
   const app = createMcpHttpApp({ createServer, skillsEnabled: envSkills });
 
-  app.listen(port, host, () => {
+  const server = app.listen(port, host, () => {
     console.error(
       `GrowthBook MCP Thin (HTTP) listening on http://${host}:${port}/mcp`
     );
@@ -281,4 +281,11 @@ export async function startHttpServer(
     console.error(`OAuth AS issuer: ${getOauthIssuer()}`);
     console.error(`GrowthBook API: ${getApiUrl()}`);
   });
+
+  // Must exceed the ALB's idle_timeout, or the ALB reuses connections we
+  // already closed and returns spurious 502s to clients.
+  server.keepAliveTimeout = parseInt(
+    process.env.GB_MCP_KEEP_ALIVE_TIMEOUT_MS || "3605000",
+    10
+  );
 }
