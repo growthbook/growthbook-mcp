@@ -53,7 +53,7 @@ npx @growthbook/mcp
 | `GB_MCP_PORT` | No | `3333` | HTTP listen port (when transport=http) |
 | `GB_MCP_HOST` | No | `127.0.0.1` | HTTP bind host |
 | `GB_MCP_URL` | Yes for HTTP | — | Public MCP base URL stamped into OAuth resource metadata (server refuses to start in HTTP mode without it) |
-| `KEEP_ALIVE_TIMEOUT_MS` | No | Node's default (5s) | Idle keep-alive timeout in HTTP mode. Set it above the idle timeout of any load balancer in front, or the LB can reuse a connection the server has already closed and the request fails with a 502 |
+| `KEEP_ALIVE_TIMEOUT_MS` | No | `90000` | Idle keep-alive timeout in HTTP mode. Must exceed the idle timeout of any load balancer in front, or the LB can reuse a connection the server has already closed and the request fails with a 502 |
 | `GB_OAUTH_ISSUER` | No | `GB_API_URL` | GrowthBook OAuth AS issuer URL |
 | `GB_HTTP_HEADER_*` | No | — | Extra request headers (e.g. `GB_HTTP_HEADER_CF_ACCESS_TOKEN`) |
 | `GB_SKILLS_ENABLED` | No | `true` | Set to `false` / `0` to disable skill tools |
@@ -190,7 +190,6 @@ By default the server runs over stdio. Set `GB_MCP_TRANSPORT=http` to run it as 
 
 - `GB_MCP_URL` (**required** in HTTP mode) — the server's public base URL. It is stamped into the OAuth resource (audience) and the protected-resource metadata, so it is never derived from request headers. The server refuses to start without it.
 - `GB_MCP_PORT` (default `3333`) and `GB_MCP_HOST` (default `127.0.0.1`).
-- `KEEP_ALIVE_TIMEOUT_MS` — set this above the idle timeout of any load balancer you put in front. Node closes idle connections after 5s by default, so a proxy that pools them for longer will eventually reuse one the server has already closed and return a 502 that never reaches these logs.
 - Incoming bearers are validated by probing the GrowthBook REST API; a rejected token gets HTTP `401` + `WWW-Authenticate` so the client can refresh.
 
 Run it on a trusted network or bound to loopback. For a multi-tenant or public deployment, front it with your own gateway/auth.
