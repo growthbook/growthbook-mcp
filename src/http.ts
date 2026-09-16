@@ -282,10 +282,11 @@ export async function startHttpServer(
     console.error(`GrowthBook API: ${getApiUrl()}`);
   });
 
-  // Must exceed the ALB's idle_timeout, or the ALB reuses connections we
-  // already closed and returns spurious 502s to clients.
-  server.keepAliveTimeout = parseInt(
-    process.env.GB_MCP_KEEP_ALIVE_TIMEOUT_MS || "3605000",
-    10
-  );
+  // Must exceed the idle timeout of whatever load balancer fronts the
+  // deployment, or the LB reuses connections we already closed and returns
+  // spurious 502s. Left at Node's default unless the deployment sets it.
+  const keepAliveTimeout = process.env.KEEP_ALIVE_TIMEOUT_MS;
+  if (keepAliveTimeout) {
+    server.keepAliveTimeout = parseInt(keepAliveTimeout, 10);
+  }
 }
