@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Every API request sends `User-Agent: growthbook-mcp/<version> (node <ver>; <transport>)`, so GrowthBook can attribute API usage to MCP rather than an unidentified HTTP client. `GB_HTTP_HEADER_USER_AGENT` still overrides it
+
 ### Changed
 
 - Skill bundling preserves each top-level skill tree (`<skill>/SKILL.md` + optional `<skill>/references/*.md`) instead of flattening entry points to `server/skills/<name>.md`

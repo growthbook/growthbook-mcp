@@ -7,6 +7,9 @@
  */
 
 import { AsyncLocalStorage } from "node:async_hooks";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const CONTROL_RE = /[\s\x00-\x1f\x7f]/;
 const DEFAULT_API_URL = "https://api.growthbook.io";
@@ -116,6 +119,36 @@ export function getCustomHeaders(): Record<string, string> {
   return customHeaders;
 }
 
+let cachedVersion: string | null = null;
+
+export function getPackageVersion(): string {
+  if (cachedVersion !== null) return cachedVersion;
+
+  try {
+    const dir = dirname(fileURLToPath(import.meta.url));
+    const pkg = JSON.parse(
+      readFileSync(join(dir, "..", "package.json"), "utf8")
+    ) as { version?: string };
+    // Only a successful read is cached, so a transient failure doesn't pin
+    // "0.0.0" for the life of the process.
+    cachedVersion = pkg.version ?? "0.0.0";
+    return cachedVersion;
+  } catch {
+    return "0.0.0";
+  }
+}
+
+/**
+ * Identifies MCP traffic to the GrowthBook API, which otherwise can't be told
+ * apart from a plain HTTP client. The transport separates a local stdio server
+ * from a shared remote one.
+ */
+export function buildUserAgent(): string {
+  return `growthbook-mcp/${getPackageVersion()} (node ${
+    process.version
+  }; ${getTransportMode()})`;
+}
+
 /**
  * Builds HTTP headers for GrowthBook API requests, merging required headers
  * with any custom headers configured via GB_HTTP_HEADER_* environment variables.
@@ -125,6 +158,10 @@ export function buildHeaders(
   includeContentType = true
 ): Record<string, string> {
   const headers: Record<string, string> = {
+    // Above the spread so GB_HTTP_HEADER_USER_AGENT stays an escape hatch for
+    // proxies that filter on it. Attribution is not a security boundary — any
+    // client can send whatever User-Agent it likes.
+    "User-Agent": buildUserAgent(),
     ...getCustomHeaders(),
     Authorization: `Bearer ${apiKey}`,
     Accept: "application/json",
