@@ -7,6 +7,9 @@
  */
 
 import { AsyncLocalStorage } from "node:async_hooks";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const CONTROL_RE = /[\s\x00-\x1f\x7f]/;
 const DEFAULT_API_URL = "https://api.growthbook.io";
@@ -116,6 +119,34 @@ export function getCustomHeaders(): Record<string, string> {
   return customHeaders;
 }
 
+let cachedVersion: string | null = null;
+
+export function getPackageVersion(): string {
+  if (cachedVersion === null) {
+    try {
+      const dir = dirname(fileURLToPath(import.meta.url));
+      const pkg = JSON.parse(
+        readFileSync(join(dir, "..", "package.json"), "utf8")
+      ) as { version?: string };
+      cachedVersion = pkg.version ?? "0.0.0";
+    } catch {
+      cachedVersion = "0.0.0";
+    }
+  }
+  return cachedVersion;
+}
+
+/**
+ * Identifies MCP traffic to the GrowthBook API, which otherwise can't be told
+ * apart from a plain HTTP client. The transport separates a local stdio server
+ * from a shared remote one.
+ */
+export function buildUserAgent(): string {
+  return `growthbook-mcp/${getPackageVersion()} (node ${
+    process.version
+  }; ${getTransportMode()})`;
+}
+
 /**
  * Builds HTTP headers for GrowthBook API requests, merging required headers
  * with any custom headers configured via GB_HTTP_HEADER_* environment variables.
@@ -128,6 +159,7 @@ export function buildHeaders(
     ...getCustomHeaders(),
     Authorization: `Bearer ${apiKey}`,
     Accept: "application/json",
+    "User-Agent": buildUserAgent(),
   };
 
   if (includeContentType) {

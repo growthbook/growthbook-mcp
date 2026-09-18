@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   areSkillsEnabled,
+  buildHeaders,
+  buildUserAgent,
   checkBearerWithGrowthBook,
   explainHttpError,
   getTransportMode,
@@ -63,6 +65,33 @@ describe("getTransportMode", () => {
     expect(getTransportMode()).toBe("http");
     process.env.GB_MCP_TRANSPORT = "something";
     expect(getTransportMode()).toBe("stdio");
+  });
+});
+
+describe("buildUserAgent", () => {
+  it("names the product, version and transport", () => {
+    delete process.env.GB_MCP_TRANSPORT;
+    expect(buildUserAgent()).toMatch(
+      /^growthbook-mcp\/\d+\.\d+\.\d+ \(node v\d+\S*; stdio\)$/
+    );
+  });
+
+  it("reflects the http transport", () => {
+    process.env.GB_MCP_TRANSPORT = "http";
+    expect(buildUserAgent()).toContain("; http)");
+    delete process.env.GB_MCP_TRANSPORT;
+  });
+});
+
+describe("buildHeaders", () => {
+  it("sends the User-Agent on every request", () => {
+    expect(buildHeaders("key")["User-Agent"]).toBe(buildUserAgent());
+  });
+
+  it("is not overridable via GB_HTTP_HEADER_*", () => {
+    process.env.GB_HTTP_HEADER_USER_AGENT = "spoofed";
+    expect(buildHeaders("key")["User-Agent"]).toBe(buildUserAgent());
+    delete process.env.GB_HTTP_HEADER_USER_AGENT;
   });
 });
 
