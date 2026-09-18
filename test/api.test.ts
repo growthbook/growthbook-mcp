@@ -88,10 +88,16 @@ describe("buildHeaders", () => {
     expect(buildHeaders("key")["User-Agent"]).toBe(buildUserAgent());
   });
 
-  it("is not overridable via GB_HTTP_HEADER_*", () => {
-    process.env.GB_HTTP_HEADER_USER_AGENT = "spoofed";
-    expect(buildHeaders("key")["User-Agent"]).toBe(buildUserAgent());
+  it("lets GB_HTTP_HEADER_* override it, for proxies that filter on it", () => {
+    process.env.GB_HTTP_HEADER_USER_AGENT = "custom-proxy-agent";
+    expect(buildHeaders("key")["User-Agent"]).toBe("custom-proxy-agent");
     delete process.env.GB_HTTP_HEADER_USER_AGENT;
+  });
+
+  it("still sets Authorization and Accept below the override", () => {
+    process.env.GB_HTTP_HEADER_AUTHORIZATION = "spoofed";
+    expect(buildHeaders("key").Authorization).toBe("Bearer key");
+    delete process.env.GB_HTTP_HEADER_AUTHORIZATION;
   });
 });
 

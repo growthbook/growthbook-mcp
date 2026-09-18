@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Every API request sends `User-Agent: growthbook-mcp/<version> (node <ver>; <transport>)`, so GrowthBook can attribute API usage to MCP rather than an unidentified HTTP client. It is not overridable via `GB_HTTP_HEADER_*`
+- Every API request sends `User-Agent: growthbook-mcp/<version> (node <ver>; <transport>)`, so GrowthBook can attribute API usage to MCP rather than an unidentified HTTP client. `GB_HTTP_HEADER_USER_AGENT` still overrides it
 
 ### Changed
 

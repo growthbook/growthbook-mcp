@@ -122,18 +122,20 @@ export function getCustomHeaders(): Record<string, string> {
 let cachedVersion: string | null = null;
 
 export function getPackageVersion(): string {
-  if (cachedVersion === null) {
-    try {
-      const dir = dirname(fileURLToPath(import.meta.url));
-      const pkg = JSON.parse(
-        readFileSync(join(dir, "..", "package.json"), "utf8")
-      ) as { version?: string };
-      cachedVersion = pkg.version ?? "0.0.0";
-    } catch {
-      cachedVersion = "0.0.0";
-    }
+  if (cachedVersion !== null) return cachedVersion;
+
+  try {
+    const dir = dirname(fileURLToPath(import.meta.url));
+    const pkg = JSON.parse(
+      readFileSync(join(dir, "..", "package.json"), "utf8")
+    ) as { version?: string };
+    // Only a successful read is cached, so a transient failure doesn't pin
+    // "0.0.0" for the life of the process.
+    cachedVersion = pkg.version ?? "0.0.0";
+    return cachedVersion;
+  } catch {
+    return "0.0.0";
   }
-  return cachedVersion;
 }
 
 /**
@@ -156,10 +158,13 @@ export function buildHeaders(
   includeContentType = true
 ): Record<string, string> {
   const headers: Record<string, string> = {
+    // Above the spread so GB_HTTP_HEADER_USER_AGENT stays an escape hatch for
+    // proxies that filter on it. Attribution is not a security boundary — any
+    // client can send whatever User-Agent it likes.
+    "User-Agent": buildUserAgent(),
     ...getCustomHeaders(),
     Authorization: `Bearer ${apiKey}`,
     Accept: "application/json",
-    "User-Agent": buildUserAgent(),
   };
 
   if (includeContentType) {
