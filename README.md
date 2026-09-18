@@ -53,6 +53,7 @@ npx @growthbook/mcp
 | `GB_MCP_PORT` | No | `3333` | HTTP listen port (when transport=http) |
 | `GB_MCP_HOST` | No | `127.0.0.1` | HTTP bind host |
 | `GB_MCP_URL` | Yes for HTTP | — | Public MCP base URL stamped into OAuth resource metadata (server refuses to start in HTTP mode without it) |
+| `GB_MCP_KEEP_ALIVE_TIMEOUT_MS` | No | `90000` | Idle keep-alive timeout in HTTP mode. Must exceed the idle timeout of any load balancer in front, or the LB can reuse a connection the server has already closed and the request fails with a 502 |
 | `GB_OAUTH_ISSUER` | No | `GB_API_URL` | GrowthBook OAuth AS issuer URL |
 | `GB_HTTP_HEADER_*` | No | — | Extra request headers (e.g. `GB_HTTP_HEADER_CF_ACCESS_TOKEN`) |
 | `GB_SKILLS_ENABLED` | No | `true` | Set to `false` / `0` to disable skill tools |
