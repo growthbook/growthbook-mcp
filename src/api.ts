@@ -7,6 +7,9 @@
  */
 
 import { AsyncLocalStorage } from "node:async_hooks";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const CONTROL_RE = /[\s\x00-\x1f\x7f]/;
 const DEFAULT_API_URL = "https://api.growthbook.io";
@@ -18,10 +21,36 @@ export type HttpMethod = (typeof ALLOWED_METHODS)[number];
 /**
  * Per-request context (HTTP transport).
  * - bearer: OAuth bearer; falls back to GB_API_KEY for stdio.
+ * - userAgent: the MCP client's User-Agent, used to identify the client in
+ *   usage telemetry when the MCP initialize handshake isn't available
+ *   (stateless HTTP builds a fresh server per request).
  */
 export const requestAuthStore = new AsyncLocalStorage<{
   bearer?: string;
+  userAgent?: string;
 }>();
+
+let serverVersion: string | undefined;
+
+/** This package's version, read once from package.json. */
+export function getServerVersion(): string {
+  if (serverVersion === undefined) {
+    try {
+      const pkgPath = join(
+        dirname(fileURLToPath(import.meta.url)),
+        "..",
+        "package.json"
+      );
+      const pkg = JSON.parse(readFileSync(pkgPath, "utf8")) as {
+        version?: string;
+      };
+      serverVersion = pkg.version ?? "0.0.0";
+    } catch {
+      serverVersion = "0.0.0";
+    }
+  }
+  return serverVersion;
+}
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -239,6 +268,39 @@ export interface CallApiArgs {
   method: string;
   path: string;
   body?: string;
+  /** MCP tool making the call, reported to GrowthBook for usage telemetry. */
+  tool?: string;
+  /** MCP client as "name/version" (from the initialize handshake), if known. */
+  client?: string;
+}
+
+/** Header values must be printable ASCII; client names are client-controlled. */
+function sanitizeHeaderValue(value: string): string {
+  return value.replace(/[^\x20-\x7e]/g, "").trim().slice(0, 200);
+}
+
+/**
+ * Headers that let the GrowthBook backend attribute API calls to the MCP
+ * server. The backend records them through its own telemetry pipeline, so
+ * self-hosted instances with DISABLE_TELEMETRY set send nothing; this server
+ * never reports usage anywhere itself.
+ */
+export function buildMcpTelemetryHeaders(
+  tool: string,
+  client?: string
+): Record<string, string> {
+  const headers: Record<string, string> = {
+    "X-GB-MCP-Version": getServerVersion(),
+    "X-GB-MCP-Transport": getTransportMode(),
+    "X-GB-MCP-Tool": sanitizeHeaderValue(tool),
+  };
+  const clientName = sanitizeHeaderValue(
+    client || requestAuthStore.getStore()?.userAgent || ""
+  );
+  if (clientName) {
+    headers["X-GB-MCP-Client"] = clientName;
+  }
+  return headers;
 }
 
 export interface CallApiResult {
@@ -259,7 +321,10 @@ export async function callApi(args: CallApiArgs): Promise<CallApiResult> {
 
   const hasBody =
     args.body !== undefined && args.body !== null && args.body !== "";
-  const headers = buildHeaders(apiKey, hasBody);
+  const headers = {
+    ...(args.tool ? buildMcpTelemetryHeaders(args.tool, args.client) : {}),
+    ...buildHeaders(apiKey, hasBody),
+  };
 
   let res: Response;
   try {

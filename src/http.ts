@@ -207,8 +207,9 @@ function createMcpHttpApp(options: McpHttpAppOptions): Express {
     serverOptions: CreateServerOptions
   ) => {
     const bearer = (req as Request & { gbBearer?: string }).gbBearer || "";
-    // Thread the bearer into API tools via ALS for this request.
-    await requestAuthStore.run({ bearer }, async () => {
+    const userAgent = req.headers["user-agent"];
+    // Thread the bearer (and client UA, for telemetry) into API tools via ALS.
+    await requestAuthStore.run({ bearer, userAgent }, async () => {
       const server = createServer({ skills: serverOptions.skills });
       try {
         const transport = new StreamableHTTPServerTransport({

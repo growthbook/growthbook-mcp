@@ -1,12 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   areSkillsEnabled,
+  buildMcpTelemetryHeaders,
+  callApi,
   checkBearerWithGrowthBook,
   explainHttpError,
+  getServerVersion,
   getTransportMode,
   invalidateBearerCache,
   normalizeMethod,
   normalizePath,
+  requestAuthStore,
 } from "../src/api.js";
 
 describe("normalizeMethod", () => {
@@ -184,5 +188,55 @@ describe("checkBearerWithGrowthBook", () => {
     await expect(checkBearerWithGrowthBook("any")).resolves.toBe(
       "unavailable"
     );
+  });
+});
+
+describe("MCP telemetry headers", () => {
+  it("tags tool calls with version, transport, tool, and client", async () => {
+    process.env.GB_API_KEY = "secret_abc";
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue({ ok: true, status: 200, text: async () => "{}" });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await callApi({
+      method: "GET",
+      path: "/api/v1/projects",
+      tool: "growthbook_api_read",
+      client: "cursor/1.2.3",
+    });
+
+    const headers = fetchMock.mock.calls[0][1].headers;
+    expect(headers["X-GB-MCP-Version"]).toBe(getServerVersion());
+    expect(headers["X-GB-MCP-Transport"]).toBe("stdio");
+    expect(headers["X-GB-MCP-Tool"]).toBe("growthbook_api_read");
+    expect(headers["X-GB-MCP-Client"]).toBe("cursor/1.2.3");
+    expect(headers.Authorization).toBe("Bearer secret_abc");
+  });
+
+  it("falls back to the HTTP User-Agent when no client info is known", () => {
+    const headers = requestAuthStore.run(
+      { bearer: "tok", userAgent: "claude-code/2.0" },
+      () => buildMcpTelemetryHeaders("growthbook_api_write")
+    );
+    expect(headers["X-GB-MCP-Client"]).toBe("claude-code/2.0");
+  });
+
+  it("strips non-printable characters from client-controlled values", () => {
+    const headers = buildMcpTelemetryHeaders("t", "evil\r\nX-Injected: 1");
+    expect(headers["X-GB-MCP-Client"]).toBe("evilX-Injected: 1");
+  });
+
+  it("omits telemetry headers when no tool is given", async () => {
+    process.env.GB_API_KEY = "secret_abc";
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue({ ok: true, status: 200, text: async () => "{}" });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await callApi({ method: "GET", path: "/api/v1/projects" });
+
+    const headers = fetchMock.mock.calls[0][1].headers;
+    expect(headers["X-GB-MCP-Tool"]).toBeUndefined();
   });
 });
