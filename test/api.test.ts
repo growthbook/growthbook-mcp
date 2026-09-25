@@ -5,12 +5,12 @@ import {
   callApi,
   checkBearerWithGrowthBook,
   explainHttpError,
-  getServerVersion,
   getTransportMode,
   invalidateBearerCache,
   normalizeMethod,
   normalizePath,
   requestAuthStore,
+  SERVER_VERSION,
 } from "../src/api.js";
 
 describe("normalizeMethod", () => {
@@ -207,7 +207,7 @@ describe("MCP telemetry headers", () => {
     });
 
     const headers = fetchMock.mock.calls[0][1].headers;
-    expect(headers["X-GB-MCP-Version"]).toBe(getServerVersion());
+    expect(headers["X-GB-MCP-Version"]).toBe(SERVER_VERSION);
     expect(headers["X-GB-MCP-Transport"]).toBe("stdio");
     expect(headers["X-GB-MCP-Tool"]).toBe("growthbook_api_read");
     expect(headers["X-GB-MCP-Client"]).toBe("cursor/1.2.3");

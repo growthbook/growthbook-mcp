@@ -11,7 +11,6 @@ import {
 const API_DOCS =
   "https://docs.growthbook.io/api (OpenAPI: https://api.growthbook.io/api/v1/openapi.yaml)";
 
-/** The connected MCP client as "name/version", when it sent an initialize. */
 function getClientName(server: McpServer): string | undefined {
   const info = server.server.getClientVersion();
   if (!info?.name) return undefined;

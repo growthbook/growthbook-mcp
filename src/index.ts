@@ -2,15 +2,10 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import {
-  areSkillsEnabled,
-  getServerVersion,
-  getTransportMode,
-} from "./api.js";
+import { areSkillsEnabled, getTransportMode, SERVER_VERSION } from "./api.js";
 import { startHttpServer, type CreateServerOptions } from "./http.js";
 import { registerApiTools, registerSkillTools } from "./tools.js";
 
-const version = getServerVersion();
 /** Process-wide default (stdio + /mcp). /mcp/api always disables skills. */
 const envSkillsEnabled = areSkillsEnabled();
 
@@ -48,7 +43,7 @@ export function createServer(options: CreateServerOptions = {}): McpServer {
   const server = new McpServer(
     {
       name: skills ? "GrowthBook MCP Thin" : "GrowthBook MCP Thin (API only)",
-      version,
+      version: SERVER_VERSION,
       title: skills ? "GrowthBook MCP Thin" : "GrowthBook MCP Thin (API only)",
       websiteUrl: "https://growthbook.io",
     },
