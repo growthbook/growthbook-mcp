@@ -123,8 +123,8 @@ export function registerSkillTools(server: McpServer) {
       title: "Read GrowthBook Skill",
       description:
         "Return the full markdown content of a GrowthBook skill by path. " +
-        "Pass a top-level name from growthbook_list_skills (e.g. feature-flags or " +
-        "flag-create), or a qualified child path named by a skill " +
+        "Pass a top-level name from growthbook_list_skills (e.g. feature-flags), " +
+        "or a qualified child path named by a skill " +
         "(e.g. feature-flags/references/flag-create). " +
         "Follow the skill's workflow; when it shows `gb-call <METHOD> <PATH> [body]`, " +
         "use growthbook_api_read for GET and growthbook_api_write for POST/PUT/PATCH/DELETE.",
@@ -132,8 +132,8 @@ export function registerSkillTools(server: McpServer) {
         name: z
           .string()
           .describe(
-            "Top-level skill name (e.g. feature-flags or flag-create), or a " +
-              "qualified child path named by a skill"
+            "Top-level skill name (e.g. feature-flags), or a qualified " +
+              "child path named by a skill (e.g. feature-flags/references/flag-create)"
           ),
       }),
       annotations: {
