@@ -11,6 +11,12 @@ import {
 const API_DOCS =
   "https://docs.growthbook.io/api (OpenAPI: https://api.growthbook.io/api/v1/openapi.yaml)";
 
+function getClientName(server: McpServer): string | undefined {
+  const info = server.server.getClientVersion();
+  if (!info?.name) return undefined;
+  return info.version ? `${info.name}/${info.version}` : info.name;
+}
+
 export function registerApiTools(server: McpServer) {
   server.registerTool(
     "growthbook_api_read",
@@ -34,7 +40,12 @@ export function registerApiTools(server: McpServer) {
       },
     },
     async ({ path }) => {
-      const result = await callApi({ method: "GET", path });
+      const result = await callApi({
+        method: "GET",
+        path,
+        tool: "growthbook_api_read",
+        client: getClientName(server),
+      });
       return {
         content: [{ type: "text" as const, text: result.text }],
         isError: !result.ok,
@@ -74,7 +85,13 @@ export function registerApiTools(server: McpServer) {
       },
     },
     async ({ method, path, body }) => {
-      const result = await callApi({ method, path, body });
+      const result = await callApi({
+        method,
+        path,
+        body,
+        tool: "growthbook_api_write",
+        client: getClientName(server),
+      });
       return {
         content: [{ type: "text" as const, text: result.text }],
         isError: !result.ok,

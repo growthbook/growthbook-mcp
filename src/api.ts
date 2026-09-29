@@ -7,6 +7,7 @@
  */
 
 import { AsyncLocalStorage } from "node:async_hooks";
+import { createRequire } from "node:module";
 
 const CONTROL_RE = /[\s\x00-\x1f\x7f]/;
 const DEFAULT_API_URL = "https://api.growthbook.io";
@@ -18,10 +19,16 @@ export type HttpMethod = (typeof ALLOWED_METHODS)[number];
 /**
  * Per-request context (HTTP transport).
  * - bearer: OAuth bearer; falls back to GB_API_KEY for stdio.
+ * - userAgent: client User-Agent, sent as X-GB-MCP-Client in HTTP mode.
  */
 export const requestAuthStore = new AsyncLocalStorage<{
   bearer?: string;
+  userAgent?: string;
 }>();
+
+export const SERVER_VERSION: string = createRequire(import.meta.url)(
+  "../package.json"
+).version;
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -239,6 +246,32 @@ export interface CallApiArgs {
   method: string;
   path: string;
   body?: string;
+  /** For usage telemetry headers. */
+  tool?: string;
+  client?: string;
+}
+
+function sanitizeHeaderValue(value: string): string {
+  return value.replace(/[^\x20-\x7e]/g, "").trim().slice(0, 200);
+}
+
+/** Lets GrowthBook attribute API calls to the MCP in its own telemetry. */
+export function buildMcpTelemetryHeaders(
+  tool: string,
+  client?: string
+): Record<string, string> {
+  const headers: Record<string, string> = {
+    "X-GB-MCP-Version": SERVER_VERSION,
+    "X-GB-MCP-Transport": getTransportMode(),
+    "X-GB-MCP-Tool": sanitizeHeaderValue(tool),
+  };
+  const clientName = sanitizeHeaderValue(
+    client || requestAuthStore.getStore()?.userAgent || ""
+  );
+  if (clientName) {
+    headers["X-GB-MCP-Client"] = clientName;
+  }
+  return headers;
 }
 
 export interface CallApiResult {
@@ -259,7 +292,10 @@ export async function callApi(args: CallApiArgs): Promise<CallApiResult> {
 
   const hasBody =
     args.body !== undefined && args.body !== null && args.body !== "";
-  const headers = buildHeaders(apiKey, hasBody);
+  const headers = {
+    ...(args.tool ? buildMcpTelemetryHeaders(args.tool, args.client) : {}),
+    ...buildHeaders(apiKey, hasBody),
+  };
 
   let res: Response;
   try {

@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- REST calls from `growthbook_api_read` / `growthbook_api_write` send `X-GB-MCP-Tool`, `X-GB-MCP-Version`, `X-GB-MCP-Transport`, and `X-GB-MCP-Client` headers so GrowthBook can record MCP usage through its existing telemetry (disabled on self-hosted instances by `DISABLE_TELEMETRY`). The server itself sends no telemetry.
+
 ### Changed
 
 - Skill bundling preserves each top-level skill tree (`<skill>/SKILL.md` + optional `<skill>/references/*.md`) instead of flattening entry points to `server/skills/<name>.md`

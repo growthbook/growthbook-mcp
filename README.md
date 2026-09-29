@@ -165,6 +165,7 @@ This MCP server does **not** shell out to `gb-call`. Map `GET` → `growthbook_a
 - Returns raw response body on 2xx
 - On non-2xx, returns an actionable error (`isError: true`) covering auth failures, self-hosted 404 hints, and rate limits
 - Freeform paths target the [GrowthBook REST API](https://docs.growthbook.io/api)
+- Each request carries MCP usage headers (see [Usage telemetry](#usage-telemetry))
 
 ### `growthbook_list_skills` / `growthbook_read_skill`
 
@@ -172,6 +173,19 @@ Only registered when `GB_SKILLS_ENABLED` is not disabled.
 
 - `growthbook_list_skills` returns top-level skill entry points. An entry may contain a complete workflow or route to child workflows.
 - `growthbook_read_skill` accepts a listed top-level name or a qualified child path named by a loaded skill (`feature-flags/references/flag-create`) and returns the full markdown (workflow + guardrails).
+
+## Usage telemetry
+
+This server never sends telemetry anywhere itself. Instead, every REST call made by `growthbook_api_read` / `growthbook_api_write` includes headers that tell the GrowthBook instance it's talking to that the call came from the MCP:
+
+| Header | Example | Contents |
+|--------|---------|----------|
+| `X-GB-MCP-Tool` | `growthbook_api_read` | The tool that made the call |
+| `X-GB-MCP-Version` | `2.1.0` | This server's version |
+| `X-GB-MCP-Transport` | `stdio` | `stdio` or `http` |
+| `X-GB-MCP-Client` | `cursor/1.2.3` | The MCP client's name/version from the initialize handshake, or its `User-Agent` in HTTP mode |
+
+GrowthBook records these through its existing product telemetry, so the same controls apply. On a self-hosted instance, setting `DISABLE_TELEMETRY` on the GrowthBook back-end turns this off along with the rest of GrowthBook's telemetry. Older GrowthBook versions ignore the headers. Skill tools (`growthbook_list_skills` / `growthbook_read_skill`) are served locally and make no requests, so they aren't tracked.
 
 ## Development
 
