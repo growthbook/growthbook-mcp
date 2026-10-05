@@ -181,7 +181,7 @@ This server never sends telemetry anywhere itself. Instead, every REST call made
 | Header | Example | Contents |
 |--------|---------|----------|
 | `X-GB-MCP-Tool` | `growthbook_api_read` | The tool that made the call |
-| `X-GB-MCP-Version` | `2.1.0` | This server's version |
+| `X-GB-MCP-Version` | `2.2.0` | This server's version |
 | `X-GB-MCP-Transport` | `stdio` | `stdio` or `http` |
 | `X-GB-MCP-Client` | `cursor/1.2.3` | The MCP client's name/version from the initialize handshake, or its `User-Agent` in HTTP mode |
 

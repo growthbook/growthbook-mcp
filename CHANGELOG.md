@@ -4,8 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-10-05
+
 ### Added
 
+- `GB_MCP_KEEP_ALIVE_TIMEOUT_MS` sets the HTTP-mode idle keep-alive timeout (default `90000`, above typical load balancer idle timeouts) to prevent intermittent 502s
 - REST calls from `growthbook_api_read` / `growthbook_api_write` send `X-GB-MCP-Tool`, `X-GB-MCP-Version`, `X-GB-MCP-Transport`, and `X-GB-MCP-Client` headers so GrowthBook can record MCP usage through its existing telemetry (disabled on self-hosted instances by `DISABLE_TELEMETRY`). The server itself sends no telemetry.
 
 ### Changed
@@ -13,6 +16,12 @@ All notable changes to this project will be documented in this file.
 - Skill bundling preserves each top-level skill tree (`<skill>/SKILL.md` + optional `<skill>/references/*.md`) instead of flattening entry points to `server/skills/<name>.md`
 - `growthbook_list_skills` lists top-level skill entry points; `growthbook_read_skill` accepts a listed name or qualified child path (e.g. `feature-flags/references/flag-create`)
 - At bundle time, in-skill `` `references/foo.md` `` links are rewritten to qualified paths (e.g. `` `feature-flags/references/foo` ``) so the runtime can serve files as-is
+- Bundled skills are pinned to a reviewed `growthbook/skills` revision via `agent-skills.lock.json`, now bumped to `7a84f33`. This adds the learnings, metric-create, sql-query, dashboard-create and dashboard-edit references. **dashboard-create uses `/api/v2/dashboards`, which requires GrowthBook ≥ 5.2 when self-hosted.**
+
+### Fixed
+
+- `growthbook_read_skill` no longer gives `flag-create` as an example top-level skill name, since that name never resolves
+- Dependency updates for security advisories in `fast-uri`, `hono` and `qs`, among others
 
 ## [2.1.0] - 2026-08-10
 
