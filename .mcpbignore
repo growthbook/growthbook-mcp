@@ -3,3 +3,5 @@ src/
 scripts/
 scratch.js
 vitest.config.ts
+.cursor-plugin/
+mcp.json

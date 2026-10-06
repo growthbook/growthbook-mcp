@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Sync version across package.json, manifest.json, and server.json
+ * Sync version across package.json, manifest.json, server.json, and .cursor-plugin/plugin.json
  * Reads version from package.json and updates the other files
  */
 
@@ -38,5 +38,11 @@ if (server.packages && server.packages[0]) {
 }
 writeFileSync(serverPath, JSON.stringify(server, null, 2) + "\n");
 console.log(`✓ Updated server.json`);
+
+const cursorPluginPath = join(rootDir, ".cursor-plugin", "plugin.json");
+const cursorPlugin = JSON.parse(readFileSync(cursorPluginPath, "utf-8"));
+cursorPlugin.version = version;
+writeFileSync(cursorPluginPath, JSON.stringify(cursorPlugin, null, 2) + "\n");
+console.log(`✓ Updated .cursor-plugin/plugin.json`);
 
 console.log(`\nVersion ${version} successfully synced across all files!`);

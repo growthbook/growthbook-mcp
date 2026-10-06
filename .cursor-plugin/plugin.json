@@ -1,0 +1,21 @@
+{
+  "$schema": "https://cursor.com/schemas/cursor-plugin/plugin.json",
+  "name": "growthbook",
+  "displayName": "GrowthBook",
+  "version": "2.2.0",
+  "description": "Create and manage GrowthBook feature flags, experiments, and metrics from Cursor.",
+  "author": {
+    "name": "GrowthBook",
+    "email": "support@growthbook.io"
+  },
+  "homepage": "https://www.growthbook.io",
+  "repository": "https://github.com/growthbook/growthbook-mcp",
+  "license": "MIT",
+  "logo": "./icon.png",
+  "keywords": [
+    "growthbook",
+    "feature-flags",
+    "experimentation",
+    "ab-testing"
+  ]
+}
