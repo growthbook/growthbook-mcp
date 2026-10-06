@@ -13,6 +13,12 @@ Competence lives in the [skills](https://github.com/growthbook/skills) repo and 
 
 Tools are prefixed with `growthbook_` so they stay unambiguous when a client has multiple MCP servers loaded.
 
+## Cursor plugin
+
+Install **GrowthBook** from the [Cursor Marketplace](https://cursor.com/marketplace). The plugin connects Cursor to the hosted server at `https://mcp.growthbook.io/mcp`; the first tool call opens a GrowthBook sign-in to authorize it. Self-hosted GrowthBook users should configure the server manually as described below.
+
+The plugin is defined by `.cursor-plugin/plugin.json` and `mcp.json`. To test changes locally, copy the repo into `~/.cursor/plugins/local/growthbook` and run **Developer: Reload Window**.
+
 ## Install / run
 
 ```bash
@@ -210,7 +216,7 @@ Run it on a trusted network or bound to loopback. For a multi-tenant or public d
 
 ## Releases
 
-Cutting a release is deliberate: bump the version in `package.json`, then push a matching `v*` tag:
+Cutting a release is deliberate: bump the version in `package.json`, run `npm run sync-version` (updates `manifest.json`, `server.json`, and `.cursor-plugin/plugin.json`), then push a matching `v*` tag:
 
 ```bash
 git tag v2.0.0
@@ -223,5 +229,7 @@ That tagged commit (with skills frozen at cut time) publishes:
 - a multi-arch (`amd64` + `arm64`) image to `ghcr.io/growthbook/growthbook-mcp` (`:<version>`, plus `:<major>`, `:<major>.<minor>`, and `:latest` for stable releases)
 - an entry in the MCP registry
 - a GitHub Release
+
+The Cursor plugin is not published by CI: Cursor re-reviews the plugin from the default branch after the version bump lands.
 
 Install a release with `npx @growthbook/mcp@<version>` or pull `ghcr.io/growthbook/growthbook-mcp:<version>`.
