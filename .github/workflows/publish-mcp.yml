@@ -13,11 +13,26 @@ name: Release
 #
 # Prerelease versions (e.g. 2.0.0-beta.1) publish under the `beta` npm dist-tag
 # and only get the exact version image tag — they never move `latest`/major/minor.
+#
+# Every step skips work that is already done, so a partially failed release can
+# be finished from the Actions UI: Release → Run workflow → enter the existing tag.
+# A manual run uses this workflow file from the branch you pick (normally main),
+# but builds and publishes the code at the tag. Re-running an old run instead
+# would replay the workflow as it was at that tag.
 
 on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag to finish publishing (e.g. v2.2.0)"
+        required: true
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
 
 jobs:
   # Guard: the tag must match package.json, so a release can't ship a version
@@ -26,20 +41,30 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.repository == 'growthbook/growthbook-mcp' }}
     outputs:
+      tag: ${{ steps.v.outputs.tag }}
       version: ${{ steps.v.outputs.version }}
       prerelease: ${{ steps.v.outputs.prerelease }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.tag || github.ref }}
 
       - name: Verify tag matches package.json
         id: v
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
         run: |
-          TAG="${GITHUB_REF#refs/tags/v}"
+          if [[ "$RELEASE_TAG" != v* ]] || ! git rev-parse -q --verify "refs/tags/$RELEASE_TAG" >/dev/null; then
+            echo "::error::$RELEASE_TAG is not an existing v* tag."
+            exit 1
+          fi
+          TAG="${RELEASE_TAG#v}"
           PKG="$(node -p "require('./package.json').version")"
           if [ "$TAG" != "$PKG" ]; then
             echo "::error::Tag v$TAG does not match package.json version $PKG. Bump package.json and re-tag."
             exit 1
           fi
+          echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
           echo "version=$TAG" >> "$GITHUB_OUTPUT"
           if [[ "$TAG" == *-* ]]; then
             echo "prerelease=true" >> "$GITHUB_OUTPUT"
@@ -57,13 +82,8 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v5
-
-      # Use the same pinned skills as CI and cloud deploys.
-      - name: Checkout GrowthBook skills
-        uses: ./.github/actions/checkout-agent-skills
-
-      - uses: docker/setup-qemu-action@v3
-      - uses: docker/setup-buildx-action@v3
+        with:
+          ref: ${{ needs.verify.outputs.tag }}
 
       - name: Login to GHCR
         uses: docker/login-action@v4
@@ -72,7 +92,30 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # The exact-version tag is pushed together with latest/major/minor, so if
+      # it exists this release's image is already out. Don't rebuild over it.
+      - name: Check for existing image
+        id: exists
+        run: |
+          if docker buildx imagetools inspect "ghcr.io/${{ github.repository }}:${{ needs.verify.outputs.version }}" >/dev/null 2>&1; then
+            echo "Image ${{ needs.verify.outputs.version }} already on GHCR; skipping build."
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Use the same pinned skills as CI and cloud deploys.
+      - name: Checkout GrowthBook skills
+        if: steps.exists.outputs.exists != 'true'
+        uses: ./.github/actions/checkout-agent-skills
+
+      - if: steps.exists.outputs.exists != 'true'
+        uses: docker/setup-qemu-action@v3
+      - if: steps.exists.outputs.exists != 'true'
+        uses: docker/setup-buildx-action@v3
+
       - name: Compute image tags
+        if: steps.exists.outputs.exists != 'true'
         id: tags
         run: |
           IMG="ghcr.io/${{ github.repository }}"
@@ -86,6 +129,7 @@ jobs:
           echo "tags=$TAGS" >> "$GITHUB_OUTPUT"
 
       - name: Build and push release image
+        if: steps.exists.outputs.exists != 'true'
         uses: docker/build-push-action@v6
         with:
           push: true
@@ -93,7 +137,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.tags.outputs.tags }}
 
-  # npm package + MCP registry entry (formerly publish-mcp.yml, now tag-driven).
+  # npm package + MCP registry entry.
   npm:
     needs: verify
     runs-on: ubuntu-latest
@@ -101,26 +145,56 @@ jobs:
     permissions:
       id-token: write # npm trusted publishing (OIDC) + MCP registry github-oidc login
       contents: read
+    env:
+      VERSION: ${{ needs.verify.outputs.version }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.verify.outputs.tag }}
+
+      - name: Check what is already published
+        id: published
+        run: |
+          PKG="$(node -p "require('./package.json').name")"
+          SERVER="$(node -p "require('./server.json').name")"
+          NPM_URL="https://registry.npmjs.org/${PKG/\//%2f}/$VERSION"
+          REGISTRY_URL="https://registry.modelcontextprotocol.io/v0/servers/$(jq -rn --arg s "$SERVER" '$s|@uri')/versions/$VERSION"
+          echo "npm_url=$NPM_URL" >> "$GITHUB_OUTPUT"
+          if [ "$(curl -s -o /dev/null -w '%{http_code}' "$NPM_URL")" = "200" ]; then
+            echo "$PKG@$VERSION already on npm; skipping npm publish."
+            echo "npm=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "npm=false" >> "$GITHUB_OUTPUT"
+          fi
+          if [ "$(curl -s -o /dev/null -w '%{http_code}' "$REGISTRY_URL")" = "200" ]; then
+            echo "$SERVER@$VERSION already in the MCP registry; skipping registry publish."
+            echo "registry=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "registry=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Checkout GrowthBook skills
+        if: steps.published.outputs.npm != 'true'
         uses: ./.github/actions/checkout-agent-skills
 
       - name: Setup Node.js
+        if: steps.published.outputs.npm != 'true'
         uses: actions/setup-node@v5
         with:
           node-version: "lts/*"
 
       - name: Install dependencies
+        if: steps.published.outputs.npm != 'true'
         run: npm ci
 
       - name: Build
+        if: steps.published.outputs.npm != 'true'
         run: npm run build
         env:
           SKILLS_SRC: ${{ github.workspace }}/skills-src
 
       - name: Publish to npm
+        if: steps.published.outputs.npm != 'true'
         run: |
           if [ "${{ needs.verify.outputs.prerelease }}" = "true" ]; then
             npm publish --tag beta
@@ -128,14 +202,38 @@ jobs:
             npm publish
           fi
 
+      # The MCP registry validates that the npm version exists, and a fresh npm
+      # publish can take several minutes to become readable.
+      - name: Wait for npm to serve the new version
+        if: steps.published.outputs.registry != 'true'
+        env:
+          NPM_URL: ${{ steps.published.outputs.npm_url }}
+        run: |
+          for i in $(seq 1 40); do
+            if [ "$(curl -s -o /dev/null -w '%{http_code}' "$NPM_URL")" = "200" ]; then
+              echo "npm is serving $VERSION."
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "::error::npm still isn't serving $VERSION after 10 minutes."
+          exit 1
+
       - name: Download MCP Publisher
+        if: steps.published.outputs.registry != 'true'
         run: |
           curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
 
       - name: Publish to MCP Registry
+        if: steps.published.outputs.registry != 'true'
         run: |
           ./mcp-publisher login github-oidc
-          ./mcp-publisher publish
+          for i in 1 2 3; do
+            ./mcp-publisher publish && exit 0
+            echo "Publish attempt $i failed; retrying in 30s."
+            sleep 30
+          done
+          exit 1
 
   # GitHub Release with auto-generated notes, after artifacts are live.
   github-release:
@@ -147,14 +245,20 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
+          ref: ${{ needs.verify.outputs.tag }}
           fetch-depth: 0
 
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.verify.outputs.tag }}
         run: |
-          FLAGS="--generate-notes --title ${GITHUB_REF_NAME}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists; skipping."
+            exit 0
+          fi
+          FLAGS="--generate-notes --title $TAG"
           if [ "${{ needs.verify.outputs.prerelease }}" = "true" ]; then
             FLAGS="$FLAGS --prerelease"
           fi
-          gh release create "${GITHUB_REF_NAME}" $FLAGS
+          gh release create "$TAG" $FLAGS
