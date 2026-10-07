@@ -201,6 +201,15 @@ function createMcpHttpApp(options: McpHttpAppOptions): Express {
     sendProtectedResource(res, "/mcp/api");
   });
 
+  app.get("/.well-known/openai-apps-challenge", (_req, res) => {
+    const token = process.env.OPENAI_APPS_CHALLENGE_TOKEN?.trim();
+    if (!token) {
+      res.status(404).end();
+      return;
+    }
+    res.type("text/plain").send(token);
+  });
+
   const handleMcp = async (
     req: Request,
     res: Response,
