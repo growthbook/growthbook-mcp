@@ -36,6 +36,7 @@ export function registerApiTools(server: McpServer) {
       }),
       annotations: {
         readOnlyHint: true,
+        destructiveHint: false,
         openWorldHint: true,
       },
     },
@@ -123,6 +124,8 @@ export function registerSkillTools(server: McpServer) {
       inputSchema: z.object({}),
       annotations: {
         readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
       },
     },
     async () => {
@@ -155,6 +158,8 @@ export function registerSkillTools(server: McpServer) {
       }),
       annotations: {
         readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
       },
     },
     async ({ name }) => {
